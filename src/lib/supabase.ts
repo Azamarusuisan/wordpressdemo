@@ -1,6 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+let supabaseInstance: SupabaseClient | null = null;
+
+export const supabase = (() => {
+  if (!supabaseUrl || !supabaseKey) {
+    // ビルド時は空のプロキシを返す
+    return new Proxy({} as SupabaseClient, {
+      get: () => {
+        throw new Error('Supabase client not initialized. Check environment variables.');
+      }
+    });
+  }
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseKey);
+  }
+  return supabaseInstance;
+})();
