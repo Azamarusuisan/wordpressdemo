@@ -25,7 +25,7 @@ ${prompt}
 - 現代的で洗練されたデザイン
 - 高解像度、シャープな画質
 - LP/広告に適した構図
-- 日本語テキストがある場合は読みやすく美しく`;
+- テキストや文字は一切含めないでください（純粋な画像のみ）`;
 
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`,
