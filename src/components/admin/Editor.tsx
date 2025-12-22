@@ -198,6 +198,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     }
                 }
             }
+            // 4. 自動保存
+            await handleSave();
+            alert('リブランディング完了！ページを保存しました。');
+
         } catch (error: any) {
             alert(error.message || 'AI生成に失敗しました。');
         } finally {
