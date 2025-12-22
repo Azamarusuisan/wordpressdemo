@@ -4,9 +4,26 @@ import { supabase } from '@/lib/supabase';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
+// LPデザイナーとしてのシステムプロンプト
+const LP_DESIGNER_SYSTEM_PROMPT = `あなたはプロフェッショナルなLPデザイナーです。
+1つのランディングページを構成する複数の画像を生成します。
+
+【重要】すべての画像で以下を統一してください：
+- 色調・トーン: 同じカラーパレットを使用
+- スタイル: 統一されたビジュアルスタイル
+- 品質: 高解像度、商用利用可能なクオリティ
+- 雰囲気: 一貫したブランドイメージ
+
+【禁止事項】
+- テキスト、文字、ロゴは一切含めない
+- 各セクションでバラバラなスタイルにしない
+- 低品質な画像は生成しない
+
+あなたが生成するすべての画像は、同じLPの一部として自然につながるものでなければなりません。`;
+
 export async function POST(request: NextRequest) {
     try {
-        const { prompt } = await request.json();
+        const { prompt, taste, brandInfo } = await request.json();
 
         if (!prompt) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -16,16 +33,31 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Google API key is not configured' }, { status: 500 });
         }
 
+        // テイストに応じたスタイル指示
+        const tasteStyles: Record<string, string> = {
+            'ビジネス・信頼': '青系の落ち着いた色調、クリーンでプロフェッショナル、信頼感のあるビジネスライクなスタイル',
+            'ポップ・親しみ': '明るくカラフル、親しみやすい、楽しげで活気のあるスタイル',
+            '高級・洗練': 'ダークトーンまたはゴールド系、高級感、ミニマルで洗練されたスタイル',
+            'シンプル・清潔': '白ベース、余白を活かした、清潔感のあるミニマルスタイル',
+            '情熱・エモい': '赤やオレンジの暖色系、ダイナミック、感情に訴えかけるスタイル'
+        };
+
+        const styleInstruction = taste && tasteStyles[taste]
+            ? `\n\n【指定されたテイスト】${taste}\nスタイル: ${tasteStyles[taste]}`
+            : '';
+
+        const brandContext = brandInfo
+            ? `\n\n【ブランド/商材情報】${brandInfo}`
+            : '';
+
         // Gemini 3 Pro Image (Nano Banana Pro) で画像生成
-        const imagePrompt = `プロフェッショナルで高品質なランディングページ用の画像を生成してください:
+        const imagePrompt = `${prompt}${styleInstruction}${brandContext}
 
-${prompt}
-
-要件:
-- 現代的で洗練されたデザイン
+【要件】
+- このLPの他の画像と統一感のあるビジュアル
 - 高解像度、シャープな画質
 - LP/広告に適した構図
-- テキストや文字は一切含めないでください（純粋な画像のみ）`;
+- テキストや文字は一切含めない（純粋な画像のみ）`;
 
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`,
@@ -33,6 +65,9 @@ ${prompt}
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    systemInstruction: {
+                        parts: [{ text: LP_DESIGNER_SYSTEM_PROMPT }]
+                    },
                     contents: [{
                         parts: [{ text: imagePrompt }]
                     }],

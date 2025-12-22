@@ -179,7 +179,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             const imgRes = await fetch('/api/ai/generate-image', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ prompt: `${section.config.text} (テイスト: ${aiTaste})` })
+                                body: JSON.stringify({
+                                    prompt: section.config.text,
+                                    taste: aiTaste,
+                                    brandInfo: aiProductInfo
+                                })
                             });
                             const media = await imgRes.json();
                             if (media.id) {
