@@ -25,6 +25,7 @@ interface SortableItemProps {
     isReviewing?: boolean;
     isChatting?: boolean;
     isEditingImage?: boolean;
+    isGeneratingImage?: boolean;
     reviewResult?: {
         status: string;
         count: number;
@@ -85,33 +86,45 @@ export function SortableItem(props: SortableItemProps) {
                         <div className="flex h-full w-full items-center justify-center text-xs text-gray-400"><span>画像なし</span></div>
                     )}
 
+                    {/* 画像生成中のローディング表示 */}
+                    {(props.isGeneratingImage || props.isEditingImage) && (
+                        <div className="absolute inset-0 bg-purple-900/80 flex flex-col items-center justify-center gap-1 z-10">
+                            <RefreshCw className="h-5 w-5 text-white animate-spin" />
+                            <span className="text-[8px] font-bold text-white text-center px-1 leading-tight">
+                                AIで画像を<br/>リブランディング中...
+                            </span>
+                        </div>
+                    )}
+
                     {/* 画像ホバー時のアクション */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                        <button
-                            onClick={() => props.onImageChange(props.id)}
-                            className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors"
-                            title="画像を変更"
-                        >
-                            <Upload className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                            onClick={() => props.onAIImage(props.id)}
-                            className="p-1.5 rounded-full bg-blue-500/80 hover:bg-blue-500 text-white transition-colors"
-                            title="AIで新しく生成"
-                        >
-                            <Sparkles className="h-3.5 w-3.5" />
-                        </button>
-                        {props.onEditImage && preview && (
+                    {!props.isGeneratingImage && !props.isEditingImage && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
                             <button
-                                onClick={() => props.onEditImage?.(props.id)}
-                                disabled={props.isEditingImage}
-                                className="p-1.5 rounded-full bg-purple-500/80 hover:bg-purple-500 text-white transition-colors disabled:opacity-50"
-                                title="AIで画像を編集"
+                                onClick={() => props.onImageChange(props.id)}
+                                className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors"
+                                title="画像を変更"
                             >
-                                {props.isEditingImage ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                                <Upload className="h-3.5 w-3.5" />
                             </button>
-                        )}
-                    </div>
+                            <button
+                                onClick={() => props.onAIImage(props.id)}
+                                className="p-1.5 rounded-full bg-blue-500/80 hover:bg-blue-500 text-white transition-colors"
+                                title="AIで新しく生成"
+                            >
+                                <Sparkles className="h-3.5 w-3.5" />
+                            </button>
+                            {props.onEditImage && preview && (
+                                <button
+                                    onClick={() => props.onEditImage?.(props.id)}
+                                    disabled={props.isEditingImage}
+                                    className="p-1.5 rounded-full bg-purple-500/80 hover:bg-purple-500 text-white transition-colors disabled:opacity-50"
+                                    title="AIで画像を編集"
+                                >
+                                    {props.isEditingImage ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 min-w-0">

@@ -58,6 +58,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [isEditingImage, setIsEditingImage] = useState(false);
     const [editingSectionIds, setEditingSectionIds] = useState<Set<string>>(new Set());
 
+    // 画像一括生成中のセクションID
+    const [generatingImageSectionIds, setGeneratingImageSectionIds] = useState<Set<string>>(new Set());
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -166,6 +169,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
             // 3. オプション: 画像の一括生成
             if (shouldGenImages) {
+                // 全セクションを生成中としてマーク
+                const allSectionIds = new Set(updatedSections.filter(s => s.config?.text).map(s => s.id));
+                setGeneratingImageSectionIds(allSectionIds);
+
                 for (const section of updatedSections) {
                     if (section.config?.text) {
                         try {
@@ -175,9 +182,18 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 body: JSON.stringify({ prompt: `${section.config.text} (テイスト: ${aiTaste})` })
                             });
                             const media = await imgRes.json();
-                            setSections((prev: any[]) => prev.map(s => s.id === section.id ? { ...s, imageId: media.id, image: media } : s));
+                            if (media.id) {
+                                setSections((prev: any[]) => prev.map(s => s.id === section.id ? { ...s, imageId: media.id, image: media } : s));
+                            }
                         } catch (e) {
                             console.error(`セクション ${section.id} の画像生成に失敗しました:`, e);
+                        } finally {
+                            // このセクションの生成完了
+                            setGeneratingImageSectionIds(prev => {
+                                const next = new Set(prev);
+                                next.delete(section.id);
+                                return next;
+                            });
                         }
                     }
                 }
@@ -663,6 +679,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             isReviewing={reviewingSectionId === section.id}
                                             isChatting={chattingSectionId === section.id}
                                             isEditingImage={editingSectionIds.has(section.id)}
+                                            isGeneratingImage={generatingImageSectionIds.has(section.id)}
                                             reviewResult={reviewResults[section.id]}
                                         />
                                     ))}
