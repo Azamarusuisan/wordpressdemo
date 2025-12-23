@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
+import { getGoogleApiKey } from '@/lib/apiKeys';
 
 export async function POST(request: NextRequest) {
     try {
         const { productInfo, taste, sections } = await request.json();
 
+        const apiKey = await getGoogleApiKey();
+        if (!apiKey) {
+            return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
         // Use the high-accuracy "Nanobananapro" grade model: gemini-2.0-flash
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 

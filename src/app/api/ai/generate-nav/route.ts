@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
+import { getGoogleApiKey } from '@/lib/apiKeys';
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,6 +11,12 @@ export async function POST(request: NextRequest) {
         if (!sections || sections.length === 0) {
             return NextResponse.json({ error: '画像がありません。' }, { status: 400 });
         }
+
+        const apiKey = await getGoogleApiKey();
+        if (!apiKey) {
+            return NextResponse.json({ error: '設定画面でAPIキーを設定してください。' }, { status: 500 });
+        }
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 

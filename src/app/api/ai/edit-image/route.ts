@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
-
-const GOOGLE_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+import { getGoogleApiKey } from '@/lib/apiKeys';
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,8 +11,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Prompt or productInfo is required' }, { status: 400 });
         }
 
+        const GOOGLE_API_KEY = await getGoogleApiKey();
         if (!GOOGLE_API_KEY) {
-            return NextResponse.json({ error: 'Google API key is not configured' }, { status: 500 });
+            return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
         }
 
         // Get image data - either from base64 or fetch from URL

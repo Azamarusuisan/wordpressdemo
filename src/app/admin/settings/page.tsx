@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Save, Globe, Shield, Bell, Database, Github, Loader2, CheckCircle } from 'lucide-react';
+import { Save, Globe, Shield, Bell, Database, Github, Loader2, CheckCircle, Key, Sparkles } from 'lucide-react';
 
 export default function SettingsPage() {
     const [config, setConfig] = useState<any>({
         siteName: 'マイ・ランディングページ',
         language: 'ja',
+        googleApiKey: '',
         github: { token: '', owner: '', repo: '', branch: 'main', path: 'public/lp' }
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -70,6 +71,38 @@ export default function SettingsPage() {
                                 onChange={e => setConfig({ ...config, siteName: e.target.value })}
                                 className="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all font-bold"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Google AI API Key */}
+                <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-2 text-white">
+                            <Sparkles className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">Google AI APIキー</h2>
+                            <p className="text-xs text-gray-400">画像生成・コピー生成に必要</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[11px] font-black uppercase text-gray-400 tracking-widest mb-2">API Key</label>
+                            <input
+                                type="password"
+                                value={config.googleApiKey || ''}
+                                placeholder="AIzaSy..."
+                                onChange={e => setConfig({ ...config, googleApiKey: e.target.value })}
+                                className="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all font-mono"
+                            />
+                        </div>
+                        <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
+                            <p className="text-xs text-blue-700 font-medium">
+                                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold">Google AI Studio</a> でAPIキーを取得してください。
+                                課金設定を有効にするとより多くのリクエストが可能になります。
+                            </p>
                         </div>
                     </div>
                 </div>

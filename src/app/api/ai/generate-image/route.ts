@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-
-const GOOGLE_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+import { getGoogleApiKey } from '@/lib/apiKeys';
 
 // LPデザイナーとしてのシステムプロンプト
 const LP_DESIGNER_SYSTEM_PROMPT = `あなたはプロフェッショナルなLPデザイナーです。
@@ -42,8 +41,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
         }
 
+        const GOOGLE_API_KEY = await getGoogleApiKey();
         if (!GOOGLE_API_KEY) {
-            return NextResponse.json({ error: 'Google API key is not configured' }, { status: 500 });
+            return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
         }
 
         // テイストに応じたスタイル指示

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
+import { getGoogleApiKey } from '@/lib/apiKeys';
 
 export async function POST(request: NextRequest) {
     try {
         const { imageUrl } = await request.json();
+
+        const apiKey = await getGoogleApiKey();
+        if (!apiKey) {
+            return NextResponse.json({ error: '設定画面でAPIキーを設定してください。' }, { status: 500 });
+        }
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         // 画像のBase64取得（絶対URLを想定）
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
