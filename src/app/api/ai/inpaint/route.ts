@@ -85,23 +85,16 @@ export async function POST(request: NextRequest) {
             return `領域${i + 1}: ${getPositionDesc(m)}（左から${xPercent}%、上から${yPercent}%、幅${widthPercent}%、高さ${heightPercent}%）`;
         }).join('\n');
 
-        // インペインティング用プロンプト - 直接画像生成を指示
-        const inpaintPrompt = `あなたは画像編集AIです。この画像を編集して、編集後の完成画像を直接出力してください。
+        // インペインティング用プロンプト - 画像生成を強制
+        const inpaintPrompt = `You are an image editor. Generate a new image based on the provided image with the following modification:
 
-【編集内容】
 ${prompt}
 
-【編集対象の位置】
-${areasDescription}
+Apply this change to the area: ${areasDescription}
 
-【必須ルール】
-- 編集後の画像を直接生成して出力すること
-- 指定箇所以外は元画像と完全に同一にすること
-- 関数呼び出しは使用せず、画像を直接生成すること
+Output the complete edited image. Do not describe the changes - generate the actual modified image.`;
 
-編集後の完成画像を出力してください。`;
-
-        // Gemini 3.0（最新モデル）を使用
+        // Gemini 3.0 Pro（最新画像生成モデル）を使用
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`,
             {
@@ -110,17 +103,23 @@ ${areasDescription}
                 body: JSON.stringify({
                     contents: [{
                         parts: [
-                            { text: inpaintPrompt },
                             {
                                 inlineData: {
                                     mimeType: mimeType,
                                     data: base64Data
                                 }
-                            }
+                            },
+                            { text: inpaintPrompt }
                         ]
                     }],
                     generationConfig: {
-                        responseModalities: ["IMAGE", "TEXT"]
+                        responseModalities: ["IMAGE", "TEXT"],
+                        temperature: 1.0
+                    },
+                    toolConfig: {
+                        functionCallingConfig: {
+                            mode: "NONE"
+                        }
                     }
                 })
             }

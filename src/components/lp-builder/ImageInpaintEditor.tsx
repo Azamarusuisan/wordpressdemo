@@ -81,12 +81,12 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
         ctx.drawImage(image, 0, 0);
         ctx.restore();
 
-        // 全ての選択範囲を結合
+        // 全ての選択範囲を描画
         const allSelections = currentSelection
             ? [...selections, currentSelection]
             : selections;
 
-        allSelections.forEach((sel, index) => {
+        allSelections.forEach((sel: SelectionRect, index: number) => {
             const scaledSel = {
                 x: offset.x + sel.x * scale,
                 y: offset.y + sel.y * scale,

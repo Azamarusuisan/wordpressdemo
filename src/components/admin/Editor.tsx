@@ -952,7 +952,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             <span className="bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold">
                                                 v{index + 1}
                                             </span>
-                                            <span className="bg-black/60 text-white px-2 py-1 rounded text-[10px]">
+                                            <span className="bg-black/60 text-white px-2 py-1 rounded text-[10px]" suppressHydrationWarning>
                                                 {new Date(item.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
