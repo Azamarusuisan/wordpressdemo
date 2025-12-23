@@ -85,23 +85,23 @@ export async function POST(request: NextRequest) {
             return `領域${i + 1}: ${getPositionDesc(m)}（左から${xPercent}%、上から${yPercent}%、幅${widthPercent}%、高さ${heightPercent}%）`;
         }).join('\n');
 
-        // インペインティング用プロンプト
-        const inpaintPrompt = `【部分編集タスク】
-この画像の${allMasks.length}箇所の領域を編集してください。
+        // インペインティング用プロンプト - 直接画像生成を指示
+        const inpaintPrompt = `あなたは画像編集AIです。この画像を編集して、編集後の完成画像を直接出力してください。
 
-【編集対象領域】
-${areasDescription}
-
-【編集指示】
+【編集内容】
 ${prompt}
 
-【重要なルール】
-1. 指定された${allMasks.length}箇所の領域のみを変更してください
-2. それ以外の部分は一切変更しないでください
-3. 編集した部分が周囲と自然に馴染むようにしてください
-4. 画像全体の色調、明るさ、スタイルは維持してください`;
+【編集対象の位置】
+${areasDescription}
 
-        // Gemini 3 Pro Image（画像生成対応）を使用
+【必須ルール】
+- 編集後の画像を直接生成して出力すること
+- 指定箇所以外は元画像と完全に同一にすること
+- 関数呼び出しは使用せず、画像を直接生成すること
+
+編集後の完成画像を出力してください。`;
+
+        // Gemini 3.0（最新モデル）を使用
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`,
             {
@@ -142,20 +142,26 @@ ${prompt}
 }
 
 async function processInpaintResponse(data: any, userId: string | null) {
+    console.log('Gemini Response:', JSON.stringify(data, null, 2));
+
     const parts = data.candidates?.[0]?.content?.parts || [];
     let editedImageBase64: string | null = null;
     let textResponse: string | null = null;
 
     for (const part of parts) {
+        console.log('Part keys:', Object.keys(part));
         if (part.inlineData?.data) {
             editedImageBase64 = part.inlineData.data;
+            console.log('Found image data, length:', editedImageBase64?.length);
         }
         if (part.text) {
             textResponse = part.text;
+            console.log('Text response:', textResponse);
         }
     }
 
     if (!editedImageBase64) {
+        console.log('No image data found in response');
         return NextResponse.json({
             success: false,
             message: '画像の編集に失敗しました。選択範囲やプロンプトを変更してお試しください。',
