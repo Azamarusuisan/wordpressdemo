@@ -4,6 +4,7 @@ services:
     runtime: node
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm run start
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,4 +19,6 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_BASE_URL
         sync: false
