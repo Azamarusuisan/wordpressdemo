@@ -772,47 +772,50 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 </div>
             </div>
 
-            {/* AIアシスタントパネル（たたみ可能） */}
+            {/* AIアシスタントパネル（たたみ可能） - ページ丸ごと編集 */}
             <div className={clsx(
                 "fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 transform transition-transform duration-300 z-40",
                 showAIPanel ? "translate-y-0" : "translate-y-full"
             )}>
                 <div className="max-w-4xl mx-auto p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-purple-500" />
-                            AIアシスタント
-                        </h3>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-purple-500" />
+                                ページ丸ごと編集
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-1">全セクションを一括でAI生成・リブランディング</p>
+                        </div>
                         <button onClick={() => setShowAIPanel(false)} className="p-2 text-gray-400 hover:text-gray-600">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
                     <div className="grid md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-2 block">プロンプト</label>
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold text-gray-500 mb-2 block">商材・サービス情報</label>
                             <textarea
                                 value={aiProductInfo}
                                 onChange={(e) => setAiProductInfo(e.target.value)}
-                                placeholder="商材情報を入力..."
-                                className="w-full h-24 rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none"
+                                placeholder="例: 熱々の冷凍餃子の販促LP。ターゲットは主婦層、シズル感を重視。価格は12個入り980円..."
+                                className="w-full h-20 rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-500 mb-2 block">スタイル</label>
-                            <div className="grid grid-cols-3 gap-1">
+                            <div className="grid grid-cols-2 gap-1">
                                 {[
-                                    { id: 'professional', label: 'Business' },
-                                    { id: 'pops', label: 'Pop' },
-                                    { id: 'luxury', label: 'Luxury' },
-                                    { id: 'minimal', label: 'Minimal' },
-                                    { id: 'emotional', label: 'Emotional' }
+                                    { id: 'professional', label: 'ビジネス' },
+                                    { id: 'pops', label: 'ポップ' },
+                                    { id: 'luxury', label: '高級感' },
+                                    { id: 'minimal', label: 'シンプル' },
+                                    { id: 'emotional', label: '感情的' }
                                 ].map((t) => (
                                     <button
                                         key={t.id}
                                         onClick={() => setAiTaste(t.id)}
                                         className={clsx(
                                             "px-2 py-1.5 text-xs font-medium rounded-lg transition-all",
-                                            aiTaste === t.id ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            aiTaste === t.id ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                         )}
                                     >
                                         {t.label}
@@ -820,25 +823,34 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 ))}
                             </div>
                         </div>
-                        <div className="flex flex-col justify-end">
-                            <button
-                                onClick={handleGenerateAI}
-                                disabled={isGenerating || !aiProductInfo}
-                                className="w-full bg-purple-600 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {isGenerating ? (
-                                    <>
-                                        <RefreshCw className="h-4 w-4 animate-spin" />
-                                        生成中...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="h-4 w-4" />
-                                        AIで生成
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-sm text-gray-600">
+                            <input
+                                type="checkbox"
+                                checked={shouldGenImages}
+                                onChange={(e) => setShouldGenImages(e.target.checked)}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            画像も再生成する
+                        </label>
+                        <button
+                            onClick={handleGenerateAI}
+                            disabled={isGenerating || !aiProductInfo || sections.length === 0}
+                            className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                    生成中...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-4 w-4" />
+                                    ページを丸ごと生成
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>
