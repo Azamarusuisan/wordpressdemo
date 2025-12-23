@@ -101,9 +101,9 @@ ${prompt}
 3. 編集した部分が周囲と自然に馴染むようにしてください
 4. 画像全体の色調、明るさ、スタイルは維持してください`;
 
-        // Gemini 3.0（最新画像生成モデル）を使用
+        // Gemini 3 Pro Image（画像生成対応）を使用
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash-preview:generateContent?key=${GOOGLE_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${GOOGLE_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
