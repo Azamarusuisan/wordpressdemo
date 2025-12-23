@@ -5,7 +5,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/admin/SortableItem';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -76,6 +76,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // 画像一括生成中のセクションID
     const [generatingImageSectionIds, setGeneratingImageSectionIds] = useState<Set<string>>(new Set());
+
+    // 編集履歴（元に戻す用）
+    const [editHistory, setEditHistory] = useState<Record<string, { imageId: number; image: any; timestamp: number }[]>>({});
+    const [showHistoryPanel, setShowHistoryPanel] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -452,9 +456,20 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         if (!inpaintSectionId) return;
 
         const targetSectionId = inpaintSectionId;
+        const currentSection = sections.find(s => s.id === targetSectionId);
+
+        // 編集前の状態を履歴に保存
+        if (currentSection?.image) {
+            setEditHistory(prev => ({
+                ...prev,
+                [targetSectionId]: [
+                    ...(prev[targetSectionId] || []),
+                    { imageId: currentSection.imageId, image: currentSection.image, timestamp: Date.now() }
+                ]
+            }));
+        }
 
         // 新しい画像でセクションを更新
-        // APIから返された画像URLを使用してセクションを更新
         const res = await fetch('/api/media');
         const mediaList = await res.json();
         const newMedia = mediaList.find((m: any) => m.filePath === newImageUrl);
@@ -478,6 +493,29 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }, 100);
+    };
+
+    // 特定のバージョンに戻す
+    const handleRestoreVersion = (sectionId: string, historyIndex: number) => {
+        const history = editHistory[sectionId];
+        if (!history || historyIndex < 0 || historyIndex >= history.length) return;
+
+        const targetState = history[historyIndex];
+
+        // セクションを選択した状態に戻す
+        setSections(prev => prev.map(s =>
+            s.id === sectionId
+                ? { ...s, imageId: targetState.imageId, image: targetState.image }
+                : s
+        ));
+
+        // 選択したバージョン以降の履歴を削除
+        setEditHistory(prev => ({
+            ...prev,
+            [sectionId]: history.slice(0, historyIndex)
+        }));
+
+        setShowHistoryPanel(null);
     };
 
     const handleSaveSection = async (sectionId: string) => {
@@ -749,6 +787,23 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                 </span>
                                             </div>
                                         </div>
+                                        {/* 履歴ボタン */}
+                                        {editHistory[section.id]?.length > 0 && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowHistoryPanel(section.id);
+                                                }}
+                                                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all hover:scale-105"
+                                                title="編集履歴"
+                                            >
+                                                <Undo2 className="h-3.5 w-3.5" />
+                                                <span>履歴</span>
+                                                <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px]">
+                                                    {editHistory[section.id].length}
+                                                </span>
+                                            </button>
+                                        )}
                                         {/* ローディング */}
                                         {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id)) && (
                                             <div className="absolute inset-0 bg-purple-600/80 flex items-center justify-center">
@@ -854,6 +909,60 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     </div>
                 </div>
             </div>
+
+            {/* 編集履歴パネル */}
+            {showHistoryPanel && editHistory[showHistoryPanel] && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Undo2 className="h-5 w-5 text-gray-500" />
+                                    編集履歴
+                                </h3>
+                                <button
+                                    onClick={() => setShowHistoryPanel(null)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">戻したいバージョンをクリックしてください</p>
+                        </div>
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            <div className="grid grid-cols-3 gap-4">
+                                {editHistory[showHistoryPanel].map((item, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleRestoreVersion(showHistoryPanel, index)}
+                                        className="group relative aspect-[9/16] bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all"
+                                    >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={item.image.filePath}
+                                            alt={`バージョン ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                                            <span className="opacity-0 group-hover:opacity-100 bg-white text-gray-800 px-3 py-1.5 rounded-full text-xs font-bold transition-opacity">
+                                                この状態に戻す
+                                            </span>
+                                        </div>
+                                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                                            <span className="bg-black/60 text-white px-2 py-1 rounded text-[10px] font-bold">
+                                                v{index + 1}
+                                            </span>
+                                            <span className="bg-black/60 text-white px-2 py-1 rounded text-[10px]">
+                                                {new Date(item.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Hidden Input for Section Image Update */}
             <input
