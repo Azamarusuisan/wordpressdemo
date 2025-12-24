@@ -17,6 +17,8 @@ export function PagesHeader() {
         if (!importUrl) return;
         setIsImporting(true);
         try {
+            console.log('[Import] Starting import for URL:', importUrl);
+
             const res = await fetch('/api/import-url', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -24,24 +26,34 @@ export function PagesHeader() {
             });
             const data = await res.json();
 
+            console.log('[Import] API Response:', data);
+
             if (data.error) throw new Error(data.error);
 
             // Create a new page with these media segments (レイアウト情報を含む)
+            const sectionsPayload = data.media.map((m: any, idx: number) => ({
+                role: idx === 0 ? 'hero' : 'other',
+                imageId: m.id,
+                config: { layout: data.device } // mobile or desktop
+            }));
+
+            console.log('[Import] Creating page with sections:', sectionsPayload);
+
             const pageRes = await fetch('/api/pages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: `Imported: ${importUrl}`,
-                    sections: data.media.map((m: any, idx: number) => ({
-                        role: idx === 0 ? 'hero' : 'other',
-                        imageId: m.id,
-                        config: { layout: data.device } // mobile or desktop
-                    }))
+                    sections: sectionsPayload
                 })
             });
             const pageData = await pageRes.json();
+
+            console.log('[Import] Page created:', pageData);
+
             router.push(`/admin/pages/${pageData.id}`);
         } catch (error: any) {
+            console.error('[Import] Error:', error);
             alert(error.message || 'インポートに失敗しました。');
         } finally {
             setIsImporting(false);

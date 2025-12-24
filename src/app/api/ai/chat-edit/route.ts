@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getGoogleApiKey } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let prompt = '';
+
     try {
         const { message, currentText, role, dsl } = await request.json();
 
@@ -13,7 +17,7 @@ export async function POST(request: NextRequest) {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const prompt = `
+        prompt = `
             あなたは、LP制作の現場でデザイナーやライターに的確な指示を飛ばす【超一流のクリエイティブディレクター】です。
             ユーザーからの「修正指示」を受け取り、現在の「コピー」「役割」「DSL」を考慮した上で、最高の修正案を提示してください。
 
@@ -43,9 +47,36 @@ export async function POST(request: NextRequest) {
         const jsonMatch = resText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error('JSON生成失敗');
 
-        return NextResponse.json(JSON.parse(jsonMatch[0]));
+        const resultData = JSON.parse(jsonMatch[0]);
+
+        // ログ記録（成功）
+        await logGeneration({
+            userId: null,
+            type: 'chat-edit',
+            endpoint: '/api/ai/chat-edit',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt,
+            outputResult: JSON.stringify(resultData),
+            status: 'succeeded',
+            startTime
+        });
+
+        return NextResponse.json(resultData);
     } catch (error: any) {
         console.error('AI Chat Edit Final Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: null,
+            type: 'chat-edit',
+            endpoint: '/api/ai/chat-edit',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({
             error: 'AI Chat Edit Failed',
             details: error.message,

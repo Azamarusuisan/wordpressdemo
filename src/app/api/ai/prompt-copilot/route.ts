@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 // 管理者負担のAPIキー（環境変数から取得）
 const ADMIN_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
@@ -25,8 +26,12 @@ const SYSTEM_PROMPT = `あなたはLP（ランディングページ）画像生�
 - 日本語で回答`;
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let inputPrompt = '';
+
     try {
         const { messages } = await request.json();
+        inputPrompt = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
 
         // 管理者負担のAPIキーを使用（ユーザー認証不要）
         if (!ADMIN_API_KEY) {
@@ -66,10 +71,35 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'すみません、応答を生成できませんでした。';
 
+        // ログ記録（成功）
+        await logGeneration({
+            userId: null, // 管理者負担のため userId なし
+            type: 'prompt-copilot',
+            endpoint: '/api/ai/prompt-copilot',
+            model: 'gemini-1.5-flash-8b',
+            inputPrompt,
+            outputResult: text,
+            status: 'succeeded',
+            startTime
+        });
+
         return NextResponse.json({ message: text });
 
     } catch (error: any) {
         console.error('Prompt Copilot Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: null,
+            type: 'prompt-copilot',
+            endpoint: '/api/ai/prompt-copilot',
+            model: 'gemini-1.5-flash-8b',
+            inputPrompt: inputPrompt || 'Error before input',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

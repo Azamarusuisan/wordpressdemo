@@ -298,6 +298,7 @@ export default function LPBuilderPage() {
             properties: {
                 ...s.properties,
             },
+            imageId: s.imageId || null, // 生成された画像IDを保持
         }));
 
         setSections((prev) => [...prev, ...newSections]);

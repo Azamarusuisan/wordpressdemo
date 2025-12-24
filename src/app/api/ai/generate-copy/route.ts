@@ -3,8 +3,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
 import { getGoogleApiKey } from '@/lib/apiKeys';
+import { createClient } from '@/lib/supabase/server';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let prompt = '';
+
+    // ユーザー認証
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
     try {
         const { productInfo, taste, sections } = await request.json();
 
@@ -162,15 +171,16 @@ export async function POST(request: NextRequest) {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
             // 失敗ログの記録
-            await prisma.generationRun.create({
-                data: {
-                    type: 'copy',
-                    model: "gemini-2.0-flash",
-                    inputPrompt: prompt,
-                    outputResult: text,
-                    status: "failed",
-                    errorMessage: "JSON format mismatch"
-                }
+            await logGeneration({
+                userId: user?.id || null,
+                type: 'copy',
+                endpoint: '/api/ai/generate-copy',
+                model: 'gemini-2.0-flash',
+                inputPrompt: prompt,
+                outputResult: text,
+                status: 'failed',
+                errorMessage: 'JSON format mismatch',
+                startTime
             });
             throw new Error('JSONの生成に失敗しました。');
         }
@@ -178,32 +188,30 @@ export async function POST(request: NextRequest) {
         const resultData = JSON.parse(jsonMatch[0]);
 
         // 成功ログの記録
-        await prisma.generationRun.create({
-            data: {
-                type: 'copy',
-                model: "gemini-2.0-flash",
-                inputPrompt: prompt,
-                outputResult: JSON.stringify(resultData),
-                status: "succeeded"
-            }
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'copy',
+            endpoint: '/api/ai/generate-copy',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt,
+            outputResult: JSON.stringify(resultData),
+            status: 'succeeded',
+            startTime
         });
 
         return NextResponse.json(resultData);
     } catch (error: any) {
         console.error('Gemini Copy Generation Final Error:', error);
-        try {
-            await prisma.generationRun.create({
-                data: {
-                    type: 'copy',
-                    model: "gemini-2.0-flash",
-                    inputPrompt: "Error occurred before prompt finalization",
-                    status: "failed",
-                    errorMessage: error.message
-                }
-            });
-        } catch (dbError) {
-            console.error('Failed to log error to DB:', dbError);
-        }
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'copy',
+            endpoint: '/api/ai/generate-copy',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt || 'Error occurred before prompt finalization',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
         return NextResponse.json({
             error: 'AI Copy Generation Failed',
             details: error.message,

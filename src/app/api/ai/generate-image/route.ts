@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 // LPデザイナーとしてのシステムプロンプト
 const LP_DESIGNER_SYSTEM_PROMPT = `あなたはプロフェッショナルなLPデザイナーです。
@@ -44,6 +45,14 @@ const ASPECT_RATIOS: Record<string, { width: number; height: number; prompt: str
 };
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let imagePrompt = '';
+    let modelUsed = 'gemini-3-pro-image-preview';
+
+    // ユーザー認証を確認してAPIキーを取得
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
     try {
         const { prompt, taste, brandInfo, aspectRatio = '9:16' } = await request.json();
 
@@ -52,10 +61,6 @@ export async function POST(request: NextRequest) {
         }
 
         const arConfig = ASPECT_RATIOS[aspectRatio] || ASPECT_RATIOS['9:16'];
-
-        // ユーザー認証を確認してAPIキーを取得
-        const supabaseAuth = await createClient();
-        const { data: { user } } = await supabaseAuth.auth.getUser();
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);
         if (!GOOGLE_API_KEY) {
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
             : '';
 
         // Gemini 3 Pro Image (Nano Banana Pro) で画像生成
-        const imagePrompt = `${prompt}${styleInstruction}${brandContext}
+        imagePrompt = `${prompt}${styleInstruction}${brandContext}
 
 【要件】
 - ${arConfig.prompt}を生成すること
@@ -140,14 +145,56 @@ export async function POST(request: NextRequest) {
             }
 
             const fallbackData = await fallbackResponse.json();
-            return await processImageResponse(fallbackData, arConfig, user?.id || null);
+            modelUsed = 'gemini-2.5-flash-preview-image-generation';
+            const fallbackResult = await processImageResponse(fallbackData, arConfig, user?.id || null);
+
+            // ログ記録（フォールバック成功）
+            await logGeneration({
+                userId: user?.id || null,
+                type: 'image',
+                endpoint: '/api/ai/generate-image',
+                model: modelUsed,
+                inputPrompt: imagePrompt,
+                imageCount: 1,
+                status: 'succeeded',
+                startTime
+            });
+
+            return fallbackResult;
         }
 
         const data = await response.json();
-        return await processImageResponse(data, arConfig, user?.id || null);
+        const result = await processImageResponse(data, arConfig, user?.id || null);
+
+        // ログ記録（プライマリ成功）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'image',
+            endpoint: '/api/ai/generate-image',
+            model: modelUsed,
+            inputPrompt: imagePrompt,
+            imageCount: 1,
+            status: 'succeeded',
+            startTime
+        });
+
+        return result;
 
     } catch (error: any) {
         console.error('Image Generation Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'image',
+            endpoint: '/api/ai/generate-image',
+            model: modelUsed,
+            inputPrompt: imagePrompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }

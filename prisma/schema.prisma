@@ -50,22 +50,35 @@ model MediaImage {
   mime      String
   prompt    String?  // 生成に使用されたプロンプト
   hash      String?  @unique // プロンプトのハッシュ（キャッシュ用）
+  sourceUrl String?  // URLインポートの元URL
+  sourceType String? // "import" | "ai-generate" | "upload" など
   createdAt DateTime @default(now())
   sections  PageSection[]
 
   @@index([userId])
+  @@index([sourceUrl])
 }
 
 model GenerationRun {
-  id           Int      @id @default(autoincrement())
-  createdAt    DateTime @default(now())
-  type         String   // 'copy' or 'image'
-  model        String
-  inputPrompt  String
-  outputResult String?
-  costTokens   Int?
-  status       String   @default("succeeded")
-  errorMessage String?
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  userId        String?  // Supabase Auth user ID
+  type          String   // 'copy' | 'image' | 'inpaint' | 'edit-image' | 'prompt-copilot' | 'review' | 'image-to-prompt' | 'generate-nav' | 'chat-edit' | 'lp-generate'
+  endpoint      String?  // API endpoint path (e.g., '/api/ai/generate-image')
+  model         String
+  inputPrompt   String
+  outputResult  String?
+  inputTokens   Int?     // Input token count
+  outputTokens  Int?     // Output token count
+  imageCount    Int?     // Number of images generated
+  estimatedCost Float?   // Estimated cost in USD
+  status        String   @default("succeeded")
+  errorMessage  String?
+  durationMs    Int?     // Request duration in milliseconds
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
 }
 
 model GlobalConfig {

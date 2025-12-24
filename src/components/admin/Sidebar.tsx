@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Images, Settings, LogOut, FileText, Navigation, Crown } from 'lucide-react';
+import { LayoutDashboard, Images, Settings, LogOut, FileText, Navigation, Crown, History, BarChart3 } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/client';
 const navItems = [
     { name: 'ページ一覧', href: '/admin/pages', icon: FileText },
     { name: 'メディア', href: '/admin/media', icon: Images },
+    { name: 'API使用状況', href: '/admin/api-usage', icon: BarChart3 },
+    { name: 'インポート履歴', href: '/admin/import-history', icon: History },
     { name: '設定', href: '/admin/settings', icon: Settings },
     { name: 'ナビ', href: '/admin/navigation', icon: Navigation },
     { name: '高度な編集', href: '/admin/lp-builder', icon: LayoutDashboard },

@@ -3,18 +3,23 @@ import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let editPrompt = '';
+    let modelUsed = 'gemini-3-pro-image-preview';
+
+    // ユーザー認証を確認してAPIキーを取得
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
     try {
         const { imageBase64, imageUrl, prompt, productInfo } = await request.json();
 
         if (!prompt && !productInfo) {
             return NextResponse.json({ error: 'Prompt or productInfo is required' }, { status: 400 });
         }
-
-        // ユーザー認証を確認してAPIキーを取得
-        const supabaseAuth = await createClient();
-        const { data: { user } } = await supabaseAuth.auth.getUser();
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);
         if (!GOOGLE_API_KEY) {
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Build the editing prompt
-        const editPrompt = productInfo
+        editPrompt = productInfo
             ? `この画像のレイアウトと構成を維持しながら、以下の商材/サービス用にリブランディングしてください:
 
 ${productInfo}
@@ -119,14 +124,56 @@ ${prompt ? `追加指示: ${prompt}` : ''}`
             }
 
             const fallbackData = await fallbackResponse.json();
-            return processImageResponse(fallbackData, user?.id || null);
+            modelUsed = 'gemini-2.5-flash-preview-image-generation';
+            const fallbackResult = await processImageResponse(fallbackData, user?.id || null);
+
+            // ログ記録（フォールバック成功）
+            await logGeneration({
+                userId: user?.id || null,
+                type: 'edit-image',
+                endpoint: '/api/ai/edit-image',
+                model: modelUsed,
+                inputPrompt: editPrompt,
+                imageCount: 1,
+                status: 'succeeded',
+                startTime
+            });
+
+            return fallbackResult;
         }
 
         const data = await response.json();
-        return processImageResponse(data, user?.id || null);
+        const result = await processImageResponse(data, user?.id || null);
+
+        // ログ記録（プライマリ成功）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'edit-image',
+            endpoint: '/api/ai/edit-image',
+            model: modelUsed,
+            inputPrompt: editPrompt,
+            imageCount: 1,
+            status: 'succeeded',
+            startTime
+        });
+
+        return result;
 
     } catch (error: any) {
         console.error('Image Edit Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'edit-image',
+            endpoint: '/api/ai/edit-image',
+            model: modelUsed,
+            inputPrompt: editPrompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 interface MaskArea {
     x: number;      // 選択範囲の左上X（0-1の比率）
@@ -20,6 +21,13 @@ interface InpaintRequest {
 }
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let inpaintPrompt = '';
+
+    // ユーザー認証
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
     try {
         const { imageUrl, imageBase64, mask, masks, prompt }: InpaintRequest = await request.json();
 
@@ -29,14 +37,6 @@ export async function POST(request: NextRequest) {
 
         // 複数選択か単一選択か判定
         const allMasks: MaskArea[] = masks && masks.length > 0 ? masks : (mask ? [mask] : []);
-
-        if (allMasks.length === 0) {
-            return NextResponse.json({ error: '選択範囲を指定してください' }, { status: 400 });
-        }
-
-        // ユーザー認証
-        const supabaseAuth = await createClient();
-        const { data: { user } } = await supabaseAuth.auth.getUser();
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);
         if (!GOOGLE_API_KEY) {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         }).join('\n');
 
         // インペインティング用プロンプト - 画像生成を強制
-        const inpaintPrompt = `You are an image editor. Generate a new image based on the provided image with the following modification:
+        inpaintPrompt = `You are an image editor. Generate a new image based on the provided image with the following modification:
 
 ${prompt}
 
@@ -132,10 +132,37 @@ Output the complete edited image. Do not describe the changes - generate the act
         }
 
         const data = await response.json();
-        return await processInpaintResponse(data, user?.id || null);
+        const result = await processInpaintResponse(data, user?.id || null);
+
+        // ログ記録（成功）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'inpaint',
+            endpoint: '/api/ai/inpaint',
+            model: 'gemini-3-pro-image-preview',
+            inputPrompt: inpaintPrompt,
+            imageCount: 1,
+            status: 'succeeded',
+            startTime
+        });
+
+        return result;
 
     } catch (error: any) {
         console.error('Inpaint Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: user?.id || null,
+            type: 'inpaint',
+            endpoint: '/api/ai/inpaint',
+            model: 'gemini-3-pro-image-preview',
+            inputPrompt: inpaintPrompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }

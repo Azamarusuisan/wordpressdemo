@@ -3,8 +3,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
 import { getGoogleApiKey } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let prompt = '';
+
     try {
         const { sections } = await request.json();
 
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
             }
         }).composite(processedImages).jpeg({ quality: 80 }).toBuffer();
 
-        const prompt = `
+        prompt = `
             あなたはLP専門のUI/UXディレクターです。
             提出されたLPの下書き画像を見て、この商材に最適な「共通ナビゲーション（ヘッダー）」の構成を提案してください。
 
@@ -108,9 +112,34 @@ export async function POST(request: NextRequest) {
 
         const navConfig = JSON.parse(jsonMatch[0]);
 
+        // ログ記録（成功）
+        await logGeneration({
+            userId: null,
+            type: 'generate-nav',
+            endpoint: '/api/ai/generate-nav',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt,
+            outputResult: JSON.stringify(navConfig),
+            status: 'succeeded',
+            startTime
+        });
+
         return NextResponse.json(navConfig);
     } catch (error: any) {
         console.error('AI Nav Generation Final Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: null,
+            type: 'generate-nav',
+            endpoint: '/api/ai/generate-nav',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({
             error: 'AI Nav Generation Failed',
             details: error.message,

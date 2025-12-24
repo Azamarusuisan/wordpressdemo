@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getGoogleApiKey } from '@/lib/apiKeys';
+import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
+    const startTime = createTimer();
+    let prompt = '';
+
     try {
         const { imageUrl } = await request.json();
 
@@ -22,7 +26,7 @@ export async function POST(request: NextRequest) {
 
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const prompt = `
+        prompt = `
             あなたは画像生成AI（MidjourneyやDALL-E 3）のプロンプトエンジニアです。
             渡された画像を詳細に解析し、この画像の「魂（テイスト・構成）」を完全に再現するためのプロンプトを作成してください。
 
@@ -57,9 +61,36 @@ export async function POST(request: NextRequest) {
         const jsonMatch = resText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error('解析結果の取得に失敗しました');
 
-        return NextResponse.json(JSON.parse(jsonMatch[0]));
+        const resultData = JSON.parse(jsonMatch[0]);
+
+        // ログ記録（成功）
+        await logGeneration({
+            userId: null,
+            type: 'image-to-prompt',
+            endpoint: '/api/ai/image-to-prompt',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt,
+            outputResult: JSON.stringify(resultData),
+            status: 'succeeded',
+            startTime
+        });
+
+        return NextResponse.json(resultData);
     } catch (error: any) {
         console.error('Image Analysis Final Error:', error);
+
+        // ログ記録（エラー）
+        await logGeneration({
+            userId: null,
+            type: 'image-to-prompt',
+            endpoint: '/api/ai/image-to-prompt',
+            model: 'gemini-2.0-flash',
+            inputPrompt: prompt || 'Error before prompt',
+            status: 'failed',
+            errorMessage: error.message,
+            startTime
+        });
+
         return NextResponse.json({
             error: 'Image Analysis Failed',
             details: error.message,

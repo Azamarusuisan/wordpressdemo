@@ -4,6 +4,13 @@ import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
 
+// カラーログ
+const log = {
+    info: (msg: string) => console.log(`\x1b[36m[IMPORT-URL INFO]\x1b[0m ${msg}`),
+    success: (msg: string) => console.log(`\x1b[32m[IMPORT-URL SUCCESS]\x1b[0m ✓ ${msg}`),
+    error: (msg: string) => console.log(`\x1b[31m[IMPORT-URL ERROR]\x1b[0m ✗ ${msg}`),
+};
+
 // デバイスプリセット（高解像度対応）
 const DEVICE_PRESETS = {
     desktop: {
@@ -26,13 +33,19 @@ export async function POST(request: NextRequest) {
     try {
         const { url, device = 'desktop' } = await request.json();
 
+        log.info(`========== Starting URL Import ==========`);
+        log.info(`URL: ${url}`);
+        log.info(`Device: ${device}`);
+
         if (!url) {
+            log.error('URL is required');
             return NextResponse.json({ error: 'URL is required' }, { status: 400 });
         }
 
         const deviceConfig = DEVICE_PRESETS[device as keyof typeof DEVICE_PRESETS] || DEVICE_PRESETS.desktop;
 
         // 1. Launch Puppeteer
+        log.info('Launching Puppeteer...');
         const browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -73,6 +86,8 @@ export async function POST(request: NextRequest) {
         const numSegments = Math.ceil(height / segmentHeight);
         const createdMedia = [];
 
+        log.info(`Segmenting into ${numSegments} parts (${segmentHeight}px each)...`);
+
         for (let i = 0; i < numSegments; i++) {
             const top = i * segmentHeight;
             const currentSegHeight = Math.min(segmentHeight, height - top);
@@ -96,7 +111,10 @@ export async function POST(request: NextRequest) {
                     upsert: false
                 });
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                log.error(`Upload error for segment ${i}: ${uploadError.message}`);
+                throw uploadError;
+            }
 
             const { data: { publicUrl } } = supabase
                 .storage
@@ -109,10 +127,17 @@ export async function POST(request: NextRequest) {
                     mime: 'image/png',
                     width,
                     height: currentSegHeight,
+                    sourceUrl: url,
+                    sourceType: 'import',
                 },
             });
+            log.success(`Segment ${i + 1}/${numSegments} created → MediaImage ID: ${media.id}`);
             createdMedia.push(media);
         }
+
+        log.info(`========== Import Complete ==========`);
+        log.success(`Total segments: ${createdMedia.length}`);
+        log.info(`Media IDs: [${createdMedia.map(m => m.id).join(', ')}]`);
 
         return NextResponse.json({ success: true, media: createdMedia, device });
 

@@ -27,6 +27,14 @@ export async function GET() {
     }
 }
 
+// カラーログ
+const log = {
+    info: (msg: string) => console.log(`\x1b[36m[PAGES API]\x1b[0m ${msg}`),
+    success: (msg: string) => console.log(`\x1b[32m[PAGES API]\x1b[0m ✓ ${msg}`),
+    warn: (msg: string) => console.log(`\x1b[33m[PAGES API]\x1b[0m ⚠ ${msg}`),
+    error: (msg: string) => console.log(`\x1b[31m[PAGES API]\x1b[0m ✗ ${msg}`),
+};
+
 // POST /api/pages (Create)
 export async function POST(request: NextRequest) {
     // ユーザー認証
@@ -35,6 +43,21 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { sections, headerConfig, ...rest } = body;
+
+    log.info(`========== Creating New Page ==========`);
+    log.info(`Title: ${rest.title}`);
+    log.info(`Sections count: ${sections?.length || 0}`);
+
+    // セクションごとのimageId確認
+    if (sections && sections.length > 0) {
+        sections.forEach((sec: any, idx: number) => {
+            if (sec.imageId) {
+                log.success(`Section ${idx}: role=${sec.role}, imageId=${sec.imageId}`);
+            } else {
+                log.warn(`Section ${idx}: role=${sec.role}, imageId=NULL (画像なし)`);
+            }
+        });
+    }
 
     const page = await prisma.page.create({
         data: {
@@ -48,12 +71,15 @@ export async function POST(request: NextRequest) {
                 create: sections.map((sec: any, index: number) => ({
                     role: sec.role || 'other',
                     order: index,
-                    imageId: sec.imageId,
+                    imageId: sec.imageId || null,
                     config: sec.config ? JSON.stringify(sec.config) : null,
                 })),
             },
         },
     });
+
+    log.success(`Page created with ID: ${page.id}`);
+    log.info(`========== Page Creation Complete ==========`);
 
     return NextResponse.json(page);
 }
