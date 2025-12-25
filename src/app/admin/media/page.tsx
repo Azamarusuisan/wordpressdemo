@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Search, Sparkles, Wand2, Download, Copy, RefreshCw, Eye, Info, Check, Pencil } from 'lucide-react';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
+import toast from 'react-hot-toast';
 
 export default function MediaLibrary() {
     const [media, setMedia] = useState<any[]>([]);
@@ -74,7 +75,7 @@ export default function MediaLibrary() {
             if (data.error) throw new Error(data.error);
             setAnalysisResult(data);
         } catch (error: any) {
-            alert('解析に失敗しました: ' + error.message);
+            toast.error('解析に失敗しました: ' + error.message);
         } finally {
             setIsAnalyzing(false);
         }
@@ -108,8 +109,9 @@ export default function MediaLibrary() {
             await fetchMedia();
             setShowAIModal(false);
             setAiPrompt('');
+            toast.success('画像を生成しました');
         } catch (error: any) {
-            alert(error.message || '生成に失敗しました。');
+            toast.error(error.message || '生成に失敗しました');
         } finally {
             setIsGenerating(false);
         }

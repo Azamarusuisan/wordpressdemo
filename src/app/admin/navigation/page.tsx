@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Save, Plus, Trash2, GripVertical, Navigation, Link as LinkIcon, Type, MousePointer2, RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface NavItem {
     id: string;
@@ -44,10 +45,10 @@ export default function NavigationPage() {
                 body: JSON.stringify(config)
             });
             if (res.ok) {
-                alert('ナビゲーション設定を保存しました。');
+                toast.success('ナビゲーション設定を保存しました');
             }
         } catch (e) {
-            alert('保存に失敗しました。');
+            toast.error('保存に失敗しました');
         } finally {
             setIsSaving(false);
         }

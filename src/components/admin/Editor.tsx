@@ -9,6 +9,7 @@ import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Dr
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 
 interface EditorProps {
     pageId: string;
@@ -205,10 +206,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             });
 
             if (matchCount === 0) {
-                alert(`AIは${data.length}件のセクションを生成しましたが、編集中のセクションIDと一致しませんでした。マッピングに失敗しています。`);
+                toast.error(`AIは${data.length}件のセクションを生成しましたが、マッピングに失敗しました`);
             } else {
                 setSections(updatedSections);
-                alert(`${matchCount}件のセクションを新しい商材内容にリブランディングしました！`);
+                toast.success(`${matchCount}件のセクションをリブランディングしました`);
             }
 
             // 2. オプション: ナビゲーション（ヘッダー）の自動提案
@@ -269,10 +270,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             }
             // 4. 自動保存
             await handleSave();
-            alert('リブランディング完了！ページを保存しました。');
+            toast.success('リブランディング完了！ページを保存しました');
 
         } catch (error: any) {
-            alert(error.message || 'AI生成に失敗しました。');
+            toast.error(error.message || 'AI生成に失敗しました');
         } finally {
             setIsGenerating(false);
         }
@@ -374,7 +375,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, imageId: media.id, image: media } : s));
             setShowSectionAIModal(false);
         } catch (error) {
-            alert('画像生成に失敗しました。');
+            toast.error('画像生成に失敗しました。');
         } finally {
             setIsGeneratingSectionImage(false);
         }
@@ -397,7 +398,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         if (!editImageSectionId) return;
         const section = sections.find(s => s.id === editImageSectionId);
         if (!section?.image?.filePath) {
-            alert('編集する画像がありません。');
+            toast.error('編集する画像がありません。');
             return;
         }
 
@@ -429,11 +430,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             ));
 
             setShowEditImageModal(false);
-            alert('画像を編集しました！');
+            toast.success('画像を編集しました');
 
         } catch (error: any) {
             console.error('画像編集エラー:', error);
-            alert(error.message || '画像編集に失敗しました。');
+            toast.error(error.message || '画像編集に失敗しました');
         } finally {
             setIsEditingImage(false);
             setEditingSectionIds(prev => {
@@ -584,7 +585,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     const handleSync = async (type: 'github') => {
         if (pageId === 'new') {
-            alert('同期する前にページを保存してください。');
+            toast.error('同期する前にページを保存してください。');
             return;
         }
         setIsSyncing(type);
@@ -596,9 +597,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-            alert(data.message);
+            toast.success(data.message || '同期が完了しました');
         } catch (error: any) {
-            alert(error.message || '同期に失敗しました。設定画面で連携情報を確認してください。');
+            toast.error(error.message || '同期に失敗しました。設定画面で連携情報を確認してください');
         } finally {
             setIsSyncing(null);
         }
@@ -606,7 +607,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     const handleExport = async () => {
         if (pageId === 'new') {
-            alert('エクスポートする前にページを保存してください。');
+            toast.error('エクスポートする前にページを保存してください。');
             return;
         }
         try {
@@ -623,7 +624,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (e) {
-            alert('エクスポート中にエラーが発生しました。');
+            toast.error('エクスポート中にエラーが発生しました。');
         }
     };
 
@@ -654,12 +655,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             } else if (res.ok) {
                 router.refresh(); // Refresh server data
             } else {
-                alert('保存中にエラーが発生しました。');
+                toast.error('保存中にエラーが発生しました。');
             }
 
         } catch (e) {
             console.error(e);
-            alert('保存に失敗しました。');
+            toast.error('保存に失敗しました。');
         }
         setIsSaving(false);
     };

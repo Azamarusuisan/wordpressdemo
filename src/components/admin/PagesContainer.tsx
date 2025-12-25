@@ -3,28 +3,15 @@
 import { useState } from 'react';
 import { Plus, Star } from 'lucide-react';
 import { PageCard } from './PageCard';
-
-interface Page {
-    id: number;
-    title: string;
-    slug: string;
-    status: string;
-    isFavorite: boolean;
-    updatedAt: string;
-    sections?: Array<{
-        image?: {
-            filePath: string;
-        } | null;
-    }>;
-}
+import type { PageListItem } from '@/types';
 
 interface PagesContainerProps {
-    initialPages: Page[];
+    initialPages: PageListItem[];
     headerContent: React.ReactNode;
 }
 
 export function PagesContainer({ initialPages, headerContent }: PagesContainerProps) {
-    const [pages, setPages] = useState<Page[]>(initialPages);
+    const [pages, setPages] = useState<PageListItem[]>(initialPages);
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
     const handleDelete = (id: number) => {

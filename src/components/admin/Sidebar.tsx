@@ -1,11 +1,12 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Images, Settings, LogOut, FileText, Navigation, Crown, History, BarChart3 } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 const navItems = [
     { name: 'Pages', href: '/admin/pages', icon: FileText },
@@ -19,8 +20,10 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [plan, setPlan] = useState<'normal' | 'premium'>('normal');
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     useEffect(() => {
         const supabase = createClient();
@@ -42,6 +45,22 @@ export function Sidebar() {
         };
         fetchPlan();
     }, []);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            const supabase = createClient();
+            await supabase.auth.signOut();
+            toast.success('ログアウトしました');
+            router.push('/');
+            router.refresh();
+        } catch (error) {
+            console.error('Logout error:', error);
+            toast.error('ログアウトに失敗しました');
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     return (
         <div className="flex h-screen w-64 flex-col border-r border-border bg-background">
@@ -78,7 +97,7 @@ export function Sidebar() {
                 })}
             </nav>
 
-            <div className="border-t border-border p-4">
+            <div className="border-t border-border p-4 space-y-3">
                 <div className="flex items-center gap-3 rounded-md border border-border bg-surface-50 p-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
                         {user?.email?.[0]?.toUpperCase() || 'U'}
@@ -96,6 +115,14 @@ export function Sidebar() {
                         </div>
                     </div>
                 </div>
+                <button
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="w-full flex items-center justify-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50"
+                >
+                    <LogOut className="h-4 w-4" />
+                    {isLoggingOut ? 'ログアウト中...' : 'ログアウト'}
+                </button>
             </div>
         </div>
     );

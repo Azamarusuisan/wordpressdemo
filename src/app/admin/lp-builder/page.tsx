@@ -4,133 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Save, Eye, Trash2, GripVertical, Plus, Maximize2, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box } from 'lucide-react';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2 } from 'lucide-react';
 import { GeminiGeneratorModal } from '@/components/lp-builder/GeminiGeneratorModal';
+import { SortableSection } from '@/components/lp-builder/SortableSection';
+import { SECTION_TEMPLATES, SectionTemplate } from '@/components/lp-builder/constants';
+import toast from 'react-hot-toast';
+import type { LPSection, ExistingPage } from '@/types';
 
-const SECTION_TEMPLATES = [
-    { type: 'hero', name: 'ヒーロー', icon: '🎯', description: 'メインビジュアルエリア' },
-    { type: 'features', name: '特徴', icon: '✨', description: '製品の特徴' },
-    { type: 'pricing', name: '価格', icon: '💰', description: '料金プラン' },
-    { type: 'faq', name: 'FAQ', icon: '❓', description: 'よくある質問' },
-    { type: 'cta', name: 'CTA', icon: '🚀', description: '行動喚起' },
-    { type: 'testimonials', name: 'お客様の声', icon: '💬', description: 'ユーザーレビュー' },
-];
-
-interface Section {
-    id: string;
-    type: string;
-    name: string;
-    properties: {
-        title?: string;
-        subtitle?: string;
-        description?: string;
-        image?: string;
-        backgroundColor?: string;
-        textColor?: string;
-        [key: string]: any;
-    };
-    imageId?: number | null;
-}
-
-interface ExistingPage {
-    id: number;
-    title: string;
-    slug: string;
-    status: string;
-    updatedAt: string;
-    sections: any[];
-}
-
-interface SortableSectionProps {
-    section: Section;
-    onSelect: (id: string) => void;
-    onDelete: (id: string) => void;
-    isSelected: boolean;
-}
-
-function SortableSection({ section, onSelect, onDelete, isSelected }: SortableSectionProps) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: section.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    const template = SECTION_TEMPLATES.find(t => t.type === section.type);
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            className={`group relative rounded-sm border transition-all duration-200 ${isSelected
-                ? 'border-primary bg-primary/5'
-                : 'border-border bg-background hover:border-primary/50'
-                }`}
-        >
-            <div className="flex items-center gap-4 p-4">
-                <button
-                    {...attributes}
-                    {...listeners}
-                    className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
-                >
-                    <GripVertical className="h-5 w-5" />
-                </button>
-
-                <button
-                    onClick={() => onSelect(section.id)}
-                    className="flex-1 flex items-center gap-3 text-left"
-                >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-surface-100 text-xl border border-border">
-                        {template?.icon || '📄'}
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-sm font-bold text-foreground">{section.name}</h3>
-                        <p className="text-xs text-muted-foreground font-mono">{template?.description || section.type}</p>
-                    </div>
-                </button>
-
-                <button
-                    onClick={() => onDelete(section.id)}
-                    className="opacity-0 group-hover:opacity-100 rounded-sm p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-all"
-                >
-                    <Trash2 className="h-4 w-4" />
-                </button>
-            </div>
-
-            <div
-                className="px-4 pb-4"
-                style={{
-                    backgroundColor: section.properties.backgroundColor || '#ffffff',
-                    color: section.properties.textColor || '#000000',
-                }}
-            >
-                <div className="rounded-sm border border-border/50 bg-background/50 p-6 backdrop-blur-sm">
-                    {section.properties.title && (
-                        <h2 className="text-xl font-bold mb-2">{section.properties.title}</h2>
-                    )}
-                    {section.properties.subtitle && (
-                        <h3 className="text-sm font-medium opacity-80 mb-2">{section.properties.subtitle}</h3>
-                    )}
-                    {section.properties.description && (
-                        <p className="text-sm opacity-70">{section.properties.description}</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function DroppableTemplate({ template, onAdd }: { template: typeof SECTION_TEMPLATES[0]; onAdd: () => void }) {
+function DroppableTemplate({ template, onAdd }: { template: SectionTemplate; onAdd: () => void }) {
     return (
         <button
             onClick={onAdd}
@@ -150,7 +32,7 @@ function DroppableTemplate({ template, onAdd }: { template: typeof SECTION_TEMPL
 }
 
 export default function LPBuilderPage() {
-    const [sections, setSections] = useState<Section[]>([]);
+    const [sections, setSections] = useState<LPSection[]>([]);
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -190,7 +72,7 @@ export default function LPBuilderPage() {
     const loadPage = async (page: ExistingPage) => {
         setIsLoading(true);
         try {
-            const loadedSections: Section[] = page.sections.map((s: any, idx: number) => {
+            const loadedSections: LPSection[] = page.sections.map((s: any, idx: number) => {
                 let config: any = {};
                 try {
                     config = s.config ? JSON.parse(s.config) : {};
@@ -256,7 +138,7 @@ export default function LPBuilderPage() {
         const template = SECTION_TEMPLATES.find(t => t.type === type);
         if (!template) return;
 
-        const newSection: Section = {
+        const newSection: LPSection = {
             id: `section-${Date.now()}`,
             type: template.type,
             name: template.name,
@@ -280,7 +162,7 @@ export default function LPBuilderPage() {
         }
     };
 
-    const updateSectionProperty = (id: string, key: keyof Section['properties'], value: string) => {
+    const updateSectionProperty = (id: string, key: keyof LPSection['properties'], value: string) => {
         setSections((prev) =>
             prev.map((s) =>
                 s.id === id
@@ -331,13 +213,13 @@ export default function LPBuilderPage() {
                     setCurrentPageId(data.pageId);
                 }
                 await fetchPages();
-                alert('保存しました！');
+                toast.success('保存しました');
             } else {
-                alert('保存に失敗しました: ' + (data.error || '不明なエラー'));
+                toast.error('保存に失敗しました: ' + (data.error || '不明なエラー'));
             }
         } catch (error) {
             console.error('Save error:', error);
-            alert('保存に失敗しました');
+            toast.error('保存に失敗しました');
         } finally {
             setIsSaving(false);
         }
@@ -536,7 +418,7 @@ export default function LPBuilderPage() {
                                     {/* Manual Creation Card */}
                                     <button
                                         onClick={() => {
-                                            const newSection: Section = {
+                                            const newSection: LPSection = {
                                                 id: `section-${Date.now()}`,
                                                 type: 'hero',
                                                 name: 'Hero',

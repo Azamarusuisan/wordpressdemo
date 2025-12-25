@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export function ContactForm() {
     const handleSubmit = () => {
-        alert('送信完了しました。');
+        toast.success('送信完了しました');
     };
 
     return (

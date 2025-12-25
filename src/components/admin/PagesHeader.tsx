@@ -3,14 +3,32 @@
 import React, { useState } from 'react';
 import { Plus, Globe, Loader2, X, Layout, Sparkles, Monitor, Smartphone, Copy, Wand2, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 // スタイル定義
 const STYLE_OPTIONS = [
-    { id: 'professional', label: 'ビジネス', color: 'blue' },
-    { id: 'pops', label: 'ポップ', color: 'pink' },
-    { id: 'luxury', label: '高級', color: 'amber' },
-    { id: 'minimal', label: 'シンプル', color: 'gray' },
-    { id: 'emotional', label: '情熱', color: 'red' },
+    { id: 'professional', label: 'ビジネス', icon: '💼' },
+    { id: 'pops', label: 'ポップ', icon: '🎨' },
+    { id: 'luxury', label: '高級', icon: '✨' },
+    { id: 'minimal', label: 'シンプル', icon: '◻️' },
+    { id: 'emotional', label: '情熱', icon: '🔥' },
+];
+
+// カラースキーム定義
+const COLOR_SCHEMES = [
+    { id: 'original', label: 'オリジナル維持', colors: ['#gray', '#gray'] },
+    { id: 'blue', label: 'ブルー系', colors: ['#3B82F6', '#1E40AF'] },
+    { id: 'green', label: 'グリーン系', colors: ['#22C55E', '#15803D'] },
+    { id: 'purple', label: 'パープル系', colors: ['#A855F7', '#7C3AED'] },
+    { id: 'orange', label: 'オレンジ系', colors: ['#F97316', '#EA580C'] },
+    { id: 'monochrome', label: 'モノクロ', colors: ['#1F2937', '#6B7280'] },
+];
+
+// レイアウト変更オプション
+const LAYOUT_OPTIONS = [
+    { id: 'keep', label: 'レイアウト維持', description: '元のレイアウトを維持' },
+    { id: 'modernize', label: 'モダン化', description: '余白を増やしすっきりと' },
+    { id: 'compact', label: 'コンパクト', description: '情報密度を高める' },
 ];
 
 interface ImportProgress {
@@ -28,6 +46,9 @@ export function PagesHeader() {
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [importMode, setImportMode] = useState<'faithful' | 'light' | 'heavy'>('faithful');
     const [style, setStyle] = useState('professional');
+    const [colorScheme, setColorScheme] = useState('original');
+    const [layoutOption, setLayoutOption] = useState('keep');
+    const [customPrompt, setCustomPrompt] = useState('');
     const [progress, setProgress] = useState<ImportProgress | null>(null);
 
     const handleImport = async () => {
@@ -45,7 +66,10 @@ export function PagesHeader() {
                     url: importUrl,
                     device,
                     importMode,
-                    style: importMode !== 'faithful' ? style : undefined
+                    style: importMode !== 'faithful' ? style : undefined,
+                    colorScheme: importMode !== 'faithful' ? colorScheme : undefined,
+                    layoutOption: importMode !== 'faithful' ? layoutOption : undefined,
+                    customPrompt: importMode !== 'faithful' && customPrompt ? customPrompt : undefined,
                 })
             });
 
@@ -123,7 +147,7 @@ export function PagesHeader() {
             router.push(`/admin/pages/${pageData.id}`);
         } catch (error: any) {
             console.error('[Import] Error:', error);
-            alert(error.message || 'インポートに失敗しました。');
+            toast.error(error.message || 'インポートに失敗しました');
         } finally {
             setIsImporting(false);
             setProgress(null);
@@ -134,9 +158,9 @@ export function PagesHeader() {
         <>
             {/* Modal */}
             {showSelection && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-6">
-                    <div className="w-full max-w-2xl overflow-hidden rounded-lg bg-background border border-border shadow-2xl animate-in fade-in zoom-in duration-300">
-                        <div className="p-8">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-6 overflow-y-auto">
+                    <div className="w-full max-w-2xl rounded-lg bg-background border border-border shadow-2xl animate-in fade-in zoom-in duration-300 my-auto">
+                        <div className="p-8 max-h-[85vh] overflow-y-auto">
                             <div className="flex items-center justify-between mb-8">
                                 <h2 className="text-xl font-bold text-foreground tracking-tight"><span>新規ページ作成</span></h2>
                                 <button onClick={() => setShowSelection(false)} className="text-muted-foreground hover:text-foreground transition-colors" disabled={isImporting}>
@@ -270,25 +294,108 @@ export function PagesHeader() {
                                         </p>
                                     </div>
 
-                                    {/* Style Select */}
+                                    {/* Design Customization Options */}
                                     {importMode !== 'faithful' && (
-                                        <div className="animate-in slide-in-from-top-2 duration-200">
-                                            <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2"><span>スタイルターゲット</span></label>
-                                            <div className="flex gap-2 flex-wrap">
-                                                {STYLE_OPTIONS.map((opt) => (
-                                                    <button
-                                                        key={opt.id}
-                                                        type="button"
-                                                        onClick={() => setStyle(opt.id)}
-                                                        disabled={isImporting}
-                                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${style === opt.id
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                                            }`}
-                                                    >
-                                                        {opt.label}
-                                                    </button>
-                                                ))}
+                                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-200 border-t border-border pt-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Wand2 className="h-4 w-4 text-primary" />
+                                                <span className="text-sm font-bold text-foreground">デザイン変更オプション</span>
+                                            </div>
+
+                                            {/* Style Select */}
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                    <span>スタイルターゲット</span>
+                                                </label>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {STYLE_OPTIONS.map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setStyle(opt.id)}
+                                                            disabled={isImporting}
+                                                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1 ${style === opt.id
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                }`}
+                                                        >
+                                                            <span>{opt.icon}</span>
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Color Scheme */}
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                    <span>カラースキーム</span>
+                                                </label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {COLOR_SCHEMES.map((scheme) => (
+                                                        <button
+                                                            key={scheme.id}
+                                                            type="button"
+                                                            onClick={() => setColorScheme(scheme.id)}
+                                                            disabled={isImporting}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${colorScheme === scheme.id
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                }`}
+                                                        >
+                                                            {scheme.id !== 'original' && (
+                                                                <div className="flex gap-0.5">
+                                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[0] }} />
+                                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[1] }} />
+                                                                </div>
+                                                            )}
+                                                            <span>{scheme.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Layout Option */}
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                    <span>レイアウト調整</span>
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {LAYOUT_OPTIONS.map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setLayoutOption(opt.id)}
+                                                            disabled={isImporting}
+                                                            className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${layoutOption === opt.id
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                }`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                                    {LAYOUT_OPTIONS.find(o => o.id === layoutOption)?.description}
+                                                </p>
+                                            </div>
+
+                                            {/* Custom Prompt */}
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                    <span>追加の変更指示（任意）</span>
+                                                </label>
+                                                <textarea
+                                                    value={customPrompt}
+                                                    onChange={(e) => setCustomPrompt(e.target.value)}
+                                                    disabled={isImporting}
+                                                    placeholder="例: ヘッダーを大きくして、CTAボタンを目立たせてください。フォントは丸みのあるものに変更。"
+                                                    className="w-full h-20 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 resize-none"
+                                                />
+                                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                                    AIがこの指示を元にデザインを調整します
+                                                </p>
                                             </div>
                                         </div>
                                     )}

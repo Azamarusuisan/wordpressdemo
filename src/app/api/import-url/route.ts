@@ -8,6 +8,7 @@ import path from 'path';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
+import { importUrlSchema, validateRequest } from '@/lib/validations';
 
 // カラーログ
 const log = {
@@ -23,6 +24,23 @@ const STYLE_DESCRIPTIONS: Record<string, string> = {
     luxury: 'ラグジュアリーで高級感のあるデザイン。ゴールド・ブラック・深い色調を使用。',
     minimal: 'シンプルでミニマルなデザイン。余白を活かした洗練されたレイアウト。',
     emotional: '情熱的でエネルギッシュなデザイン。赤やオレンジなど暖色系で力強い印象。',
+};
+
+// カラースキーム定義
+const COLOR_SCHEME_DESCRIPTIONS: Record<string, string> = {
+    original: '',
+    blue: 'Use blue color palette (#3B82F6, #1E40AF) as the primary colors.',
+    green: 'Use green color palette (#22C55E, #15803D) as the primary colors.',
+    purple: 'Use purple color palette (#A855F7, #7C3AED) as the primary colors.',
+    orange: 'Use orange color palette (#F97316, #EA580C) as the primary colors.',
+    monochrome: 'Use monochrome color palette (black, white, and grays only).',
+};
+
+// レイアウトオプション定義
+const LAYOUT_DESCRIPTIONS: Record<string, string> = {
+    keep: '',
+    modernize: 'Increase whitespace and padding for a more modern, spacious look.',
+    compact: 'Reduce whitespace and make the layout more information-dense.',
 };
 
 // デバイスプリセット（高解像度対応）
@@ -43,33 +61,55 @@ const DEVICE_PRESETS = {
     }
 };
 
+// デザインオプションの型定義
+interface DesignOptions {
+    style: string;
+    colorScheme?: string;
+    layoutOption?: string;
+    customPrompt?: string;
+}
+
 // AI画像変換処理
 async function processImageWithAI(
     imageBuffer: Buffer,
     importMode: 'light' | 'heavy',
-    style: string,
+    designOptions: DesignOptions,
     segmentIndex: number,
     apiKey: string,
     userId: string | null
 ): Promise<Buffer | null> {
     const startTime = createTimer();
+    const { style, colorScheme, layoutOption, customPrompt } = designOptions;
     const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.professional;
+    const colorDesc = colorScheme ? COLOR_SCHEME_DESCRIPTIONS[colorScheme] || '' : '';
+    const layoutDesc = layoutOption ? LAYOUT_DESCRIPTIONS[layoutOption] || '' : '';
+
+    // カスタムプロンプトとオプションを組み合わせる
+    const additionalInstructions = [
+        colorDesc,
+        layoutDesc,
+        customPrompt ? `Additional instructions: ${customPrompt}` : ''
+    ].filter(Boolean).join('\n');
 
     const prompt = importMode === 'light'
         ? `This is a screenshot of a website section. Recreate this image while:
 - MAINTAINING the exact same layout, structure, and composition
 - KEEPING all elements in the same positions
 - CHANGING only the visual style to: ${styleDesc}
+${additionalInstructions ? `- Apply these modifications:\n${additionalInstructions}` : ''}
 - DO NOT include any text, letters, or characters
 - Keep it as a website design visual
+- Make it look DIFFERENT from the original to avoid copying
 
 Output the modified image directly.`
         : `This is a screenshot of a website section. Use this as inspiration to create a completely NEW design:
 - REFERENCE the general layout and composition concept
 - CREATE a fresh, original design with style: ${styleDesc}
-- DO NOT copy the original - make it unique
+${additionalInstructions ? `- Apply these modifications:\n${additionalInstructions}` : ''}
+- DO NOT copy the original - make it unique and original
 - DO NOT include any text, letters, or characters
 - Design for a high-quality landing page visual
+- Ensure the design is distinctly different from the source
 
 Output the new image directly.`;
 
@@ -182,16 +222,44 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
     const body = await request.json();
-    const { url, device = 'desktop', importMode = 'faithful', style = 'professional' } = body;
 
-    if (!url) {
-        return Response.json({ error: 'URL is required' }, { status: 400 });
+    // Validate input
+    const validation = validateRequest(importUrlSchema, body);
+    if (!validation.success) {
+        return Response.json({
+            error: validation.error,
+            details: validation.details
+        }, { status: 400 });
     }
+
+    const {
+        url,
+        device = 'desktop',
+        importMode = 'faithful',
+        style = 'professional',
+        colorScheme,
+        layoutOption,
+        customPrompt
+    } = validation.data;
+
+    // デザインオプションをまとめる
+    const designOptions: DesignOptions = {
+        style,
+        colorScheme,
+        layoutOption,
+        customPrompt,
+    };
 
     // ストリーミングレスポンスを返す
     return createStreamResponse(async (send) => {
         log.info(`========== Starting URL Import ==========`);
-        log.info(`URL: ${url}, Mode: ${importMode}, Style: ${style}, Device: ${device}`);
+        log.info(`URL: ${url}, Mode: ${importMode}, Device: ${device}`);
+        if (importMode !== 'faithful') {
+            log.info(`Design Options: Style=${style}, Color=${colorScheme || 'original'}, Layout=${layoutOption || 'keep'}`);
+            if (customPrompt) {
+                log.info(`Custom Prompt: ${customPrompt.substring(0, 100)}${customPrompt.length > 100 ? '...' : ''}`);
+            }
+        }
 
         send({ type: 'progress', step: 'init', message: 'インポートを開始しています...' });
 
@@ -400,7 +468,7 @@ export async function POST(request: NextRequest) {
                 const aiBuffer = await processImageWithAI(
                     buffer,
                     importMode as 'light' | 'heavy',
-                    style,
+                    designOptions,
                     i,
                     googleApiKey,
                     user?.id || null

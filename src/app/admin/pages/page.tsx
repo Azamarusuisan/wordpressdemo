@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { PagesHeader } from '@/components/admin/PagesHeader';
 import { PagesContainer } from '@/components/admin/PagesContainer';
+import type { PageListItem, PageStatus } from '@/types';
 
 export default async function PagesPage() {
     let pages: any[] = [];
@@ -25,11 +26,11 @@ export default async function PagesPage() {
     }
 
     // Transform data for client component
-    const pagesData = pages.map((page) => ({
+    const pagesData: PageListItem[] = pages.map((page) => ({
         id: page.id,
         title: page.title,
         slug: page.slug,
-        status: page.status,
+        status: page.status as PageStatus,
         isFavorite: page.isFavorite ?? false,
         updatedAt: page.updatedAt.toISOString(),
         sections: page.sections?.map((section: any) => ({

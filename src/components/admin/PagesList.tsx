@@ -3,27 +3,14 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { PageCard } from './PageCard';
-
-interface Page {
-    id: number;
-    title: string;
-    slug: string;
-    status: string;
-    isFavorite: boolean;
-    updatedAt: string;
-    sections?: Array<{
-        image?: {
-            filePath: string;
-        } | null;
-    }>;
-}
+import type { PageListItem } from '@/types';
 
 interface PagesListProps {
-    initialPages: Page[];
+    initialPages: PageListItem[];
 }
 
 export function PagesList({ initialPages }: PagesListProps) {
-    const [pages, setPages] = useState<Page[]>(initialPages);
+    const [pages, setPages] = useState<PageListItem[]>(initialPages);
 
     const handleDelete = (id: number) => {
         setPages((prev) => prev.filter((page) => page.id !== id));

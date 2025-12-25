@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, Globe, Github, Loader2, CheckCircle, Sparkles, LogOut, Crown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -77,10 +78,11 @@ export default function SettingsPage() {
 
             if (res.ok) {
                 setSaveStatus('success');
+                toast.success('設定を保存しました');
                 setTimeout(() => setSaveStatus('idle'), 3000);
             }
         } catch (e) {
-            alert('設定の保存に失敗しました。');
+            toast.error('設定の保存に失敗しました');
         } finally {
             setIsSaving(false);
         }

@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
+import { businessInfoSchema, validateRequest } from '@/lib/validations';
 
 // Initialize Gemini Client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
@@ -239,6 +240,15 @@ export async function POST(req: NextRequest) {
 
         if (!businessInfo) {
             return NextResponse.json({ error: 'Business info is required' }, { status: 400 });
+        }
+
+        // Validate business info
+        const validation = validateRequest(businessInfoSchema, businessInfo);
+        if (!validation.success) {
+            return NextResponse.json({
+                error: validation.error,
+                details: validation.details
+            }, { status: 400 });
         }
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);

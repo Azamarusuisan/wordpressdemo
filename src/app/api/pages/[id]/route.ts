@@ -1,35 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { pageUpdateSchema, pageSectionsUpdateSchema, validateRequest } from '@/lib/validations';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
     const id = parseInt(params.id);
+
+    if (isNaN(id)) {
+        return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+    }
+
     const body = await request.json();
-    const { sections, headerConfig, ...rest } = body;
 
-    await prisma.$transaction([
-        prisma.pageSection.deleteMany({ where: { pageId: id } }),
-        prisma.page.update({
-            where: { id },
-            data: {
-                updatedAt: new Date(),
-                headerConfig: headerConfig ? JSON.stringify(headerConfig) : undefined,
-                sections: {
-                    create: sections.map((sec: any, index: number) => ({
-                        role: sec.role,
-                        order: index,
-                        imageId: sec.imageId,
-                        config: sec.config ? JSON.stringify(sec.config) : null,
-                    }))
+    // Validate input
+    const validation = validateRequest(pageSectionsUpdateSchema, body);
+    if (!validation.success) {
+        return NextResponse.json({
+            error: validation.error,
+            details: validation.details
+        }, { status: 400 });
+    }
+
+    const { sections, headerConfig } = validation.data;
+
+    try {
+        await prisma.$transaction([
+            prisma.pageSection.deleteMany({ where: { pageId: id } }),
+            prisma.page.update({
+                where: { id },
+                data: {
+                    updatedAt: new Date(),
+                    headerConfig: headerConfig ? JSON.stringify(headerConfig) : undefined,
+                    sections: {
+                        create: sections.map((sec, index: number) => ({
+                            role: sec.role,
+                            order: index,
+                            imageId: sec.imageId,
+                            config: sec.config ? JSON.stringify(sec.config) : null,
+                        }))
+                    }
                 }
-            }
-        })
-    ]);
+            })
+        ]);
 
-    return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Failed to update page sections:', error);
+        return NextResponse.json({ error: 'Failed to update page sections' }, { status: 500 });
+    }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
     const id = parseInt(params.id);
+
+    if (isNaN(id)) {
+        return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+    }
 
     try {
         await prisma.page.delete({
@@ -44,12 +69,26 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
     const id = parseInt(params.id);
+
+    if (isNaN(id)) {
+        return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+    }
+
     const body = await request.json();
+
+    // Validate input
+    const validation = validateRequest(pageUpdateSchema, body);
+    if (!validation.success) {
+        return NextResponse.json({
+            error: validation.error,
+            details: validation.details
+        }, { status: 400 });
+    }
 
     try {
         const page = await prisma.page.update({
             where: { id },
-            data: body
+            data: validation.data
         });
         return NextResponse.json({ success: true, page });
     } catch (error) {

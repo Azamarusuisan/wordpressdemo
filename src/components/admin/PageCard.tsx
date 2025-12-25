@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Copy, FileText, Star, Trash } from 'lucide-react';
 import clsx from 'clsx';
+import type { PageListItem } from '@/types';
+import { useApiMutation } from '@/hooks';
 
 function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -14,67 +16,43 @@ function formatDate(dateString: string): string {
 }
 
 interface PageCardProps {
-    page: {
-        id: number;
-        title: string;
-        slug: string;
-        status: string;
-        isFavorite: boolean;
-        updatedAt: string;
-        sections?: Array<{
-            image?: {
-                filePath: string;
-            } | null;
-        }>;
-    };
+    page: PageListItem;
     onDelete: (id: number) => void;
     onToggleFavorite: (id: number, isFavorite: boolean) => void;
 }
 
 export function PageCard({ page, onDelete, onToggleFavorite }: PageCardProps) {
-    const [isDeleting, setIsDeleting] = useState(false);
     const [isFavorite, setIsFavorite] = useState(page.isFavorite);
-    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    const deleteApi = useApiMutation();
+    const favoriteApi = useApiMutation();
+
     const handleDelete = async () => {
-        setIsDeleting(true);
-        try {
-            const res = await fetch(`/api/pages/${page.id}`, {
-                method: 'DELETE',
-            });
-            if (res.ok) {
+        await deleteApi.execute({
+            endpoint: `/api/pages/${page.id}`,
+            method: 'DELETE',
+            successMessage: 'ページを削除しました',
+            errorMessage: '削除に失敗しました',
+            onSuccess: () => {
                 onDelete(page.id);
-            } else {
-                alert('削除に失敗しました');
-            }
-        } catch (error) {
-            console.error('Delete failed:', error);
-            alert('削除に失敗しました');
-        } finally {
-            setIsDeleting(false);
-            setShowDeleteConfirm(false);
-        }
+                setShowDeleteConfirm(false);
+            },
+        });
     };
 
     const handleToggleFavorite = async () => {
-        setIsTogglingFavorite(true);
         const newFavoriteState = !isFavorite;
-        try {
-            const res = await fetch(`/api/pages/${page.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isFavorite: newFavoriteState }),
-            });
-            if (res.ok) {
+        await favoriteApi.execute({
+            endpoint: `/api/pages/${page.id}`,
+            method: 'PATCH',
+            body: { isFavorite: newFavoriteState },
+            showToast: false,
+            onSuccess: () => {
                 setIsFavorite(newFavoriteState);
                 onToggleFavorite(page.id, newFavoriteState);
-            }
-        } catch (error) {
-            console.error('Toggle favorite failed:', error);
-        } finally {
-            setIsTogglingFavorite(false);
-        }
+            },
+        });
     };
 
     const thumbnailPath = page.sections?.[0]?.image?.filePath;
@@ -99,7 +77,7 @@ export function PageCard({ page, onDelete, onToggleFavorite }: PageCardProps) {
                             e.stopPropagation();
                             handleToggleFavorite();
                         }}
-                        disabled={isTogglingFavorite}
+                        disabled={favoriteApi.loading}
                         className={clsx(
                             'rounded-full p-2 transition-all shadow-sm',
                             isFavorite
@@ -172,10 +150,10 @@ export function PageCard({ page, onDelete, onToggleFavorite }: PageCardProps) {
                             </button>
                             <button
                                 onClick={handleDelete}
-                                disabled={isDeleting}
+                                disabled={deleteApi.loading}
                                 className="text-xs text-red-500 font-bold hover:text-red-600"
                             >
-                                {isDeleting ? '削除中...' : '削除する'}
+                                {deleteApi.loading ? '削除中...' : '削除する'}
                             </button>
                         </div>
                     ) : (
