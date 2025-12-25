@@ -8,13 +8,13 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 const navItems = [
-    { name: 'ページ一覧', href: '/admin/pages', icon: FileText },
-    { name: 'メディア', href: '/admin/media', icon: Images },
-    { name: 'API使用状況', href: '/admin/api-usage', icon: BarChart3 },
-    { name: 'インポート履歴', href: '/admin/import-history', icon: History },
-    { name: '設定', href: '/admin/settings', icon: Settings },
-    { name: 'ナビ', href: '/admin/navigation', icon: Navigation },
-    { name: '高度な編集', href: '/admin/lp-builder', icon: LayoutDashboard },
+    { name: 'Pages', href: '/admin/pages', icon: FileText },
+    { name: 'Media', href: '/admin/media', icon: Images },
+    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3 },
+    { name: 'History', href: '/admin/import-history', icon: History },
+    { name: 'Navigation', href: '/admin/navigation', icon: Navigation },
+    { name: 'Builder', href: '/admin/lp-builder', icon: LayoutDashboard },
+    { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -44,16 +44,16 @@ export function Sidebar() {
     }, []);
 
     return (
-        <div className="flex h-screen w-64 flex-col border-r border-gray-100 bg-white/80 backdrop-blur-md">
-            <div className="flex h-20 items-center px-8">
+        <div className="flex h-screen w-64 flex-col border-r border-border bg-background">
+            <div className="flex h-16 items-center px-6 border-b border-border">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-lg shadow-blue-200" />
-                    <span className="text-xl font-black tracking-tight text-gray-900">LP Builder</span>
+                    <div className="h-6 w-6 bg-primary rounded-sm" />
+                    <span className="text-lg font-bold tracking-tight text-foreground">LP Builder</span>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-1.5 px-4 py-4 overflow-y-auto">
-                <div className="mb-4 px-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">メインメニュー</div>
+            <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
+                <div className="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Menu</div>
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname.startsWith(item.href);
@@ -62,15 +62,15 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={clsx(
-                                'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200',
+                                'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200',
                                 isActive
-                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'bg-primary/5 text-primary'
+                                    : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'
                             )}
                         >
                             <Icon className={clsx(
-                                'h-5 w-5 transition-transform group-hover:scale-110',
-                                isActive ? 'text-white' : 'text-gray-400 group-hover:text-blue-600'
+                                'h-4 w-4 transition-colors',
+                                isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
                             )} />
                             {item.name}
                         </Link>
@@ -78,26 +78,21 @@ export function Sidebar() {
                 })}
             </nav>
 
-            <div className="border-t border-gray-50 p-6">
-                <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-3">
-                    <div className={clsx(
-                        "h-10 w-10 rounded-full ring-2 ring-white flex items-center justify-center text-white font-bold",
-                        plan === 'premium'
-                            ? "bg-gradient-to-b from-amber-400 to-yellow-500"
-                            : "bg-gradient-to-b from-gray-300 to-gray-400"
-                    )}>
+            <div className="border-t border-border p-4">
+                <div className="flex items-center gap-3 rounded-md border border-border bg-surface-50 p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
                         {user?.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 overflow-hidden">
-                        <div className="truncate text-xs font-bold text-gray-900">
+                        <div className="truncate text-xs font-bold text-foreground">
                             {user?.email?.split('@')[0] || 'Admin User'}
                         </div>
                         <div className={clsx(
-                            "truncate text-[10px] font-semibold flex items-center gap-1",
-                            plan === 'premium' ? "text-amber-600" : "text-gray-500"
+                            "truncate text-[10px] font-medium flex items-center gap-1",
+                            plan === 'premium' ? "text-primary" : "text-muted-foreground"
                         )}>
                             {plan === 'premium' && <Crown className="h-3 w-3" />}
-                            {plan === 'premium' ? 'Premium Plan' : 'Normal Plan'}
+                            {plan === 'premium' ? 'Premium' : 'Standard'}
                         </div>
                     </div>
                 </div>

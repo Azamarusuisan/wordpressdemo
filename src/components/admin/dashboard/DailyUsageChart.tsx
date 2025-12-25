@@ -21,7 +21,7 @@ export function DailyUsageChart({ data }: { data: DailyData[] }) {
         <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-blue-600" />
-                Daily API Usage
+                日別API使用量
             </h3>
             <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -40,9 +40,9 @@ export function DailyUsageChart({ data }: { data: DailyData[] }) {
                                 border: 'none',
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                             }}
-                            formatter={(value: number, name: string) => {
-                                if (name === 'count') return [value, 'API Calls'];
-                                if (name === 'cost') return [`$${value.toFixed(4)}`, 'Cost'];
+                            formatter={(value: any, name: any) => {
+                                if (name === 'count') return [value, 'API呼び出し'];
+                                if (name === 'cost') return [`$${value.toFixed(4)}`, 'コスト'];
                                 return [value, name];
                             }}
                         />

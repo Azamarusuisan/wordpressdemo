@@ -3,31 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, ArrowRight, Layout, Type, Image as ImageIcon, Check, MousePointer2 } from 'lucide-react';
+import { ArrowRight, MoveRight } from 'lucide-react';
 
 const GENERATION_STEPS = [
   {
-    query: "パーソナルジムの入会促進LPを作って",
-    accent: "#4285F4",
+    query: "パーソナルジムの入会促進LP",
+    accent: "#111",
     sections: [
-      { type: 'Hero', color: 'bg-blue-600', textColor: 'text-white', title: '理想の体へ、最短距離で。', desc: 'プロのトレーナーがあなた専用のプログラムを構築し、理想のボディメイクをサポート。', btn: '体験入会を予約する' },
-      { type: 'Features', color: 'bg-white', textColor: 'text-gray-900', title: '選ばれる3つの理由', desc: '完全個室、24時間管理、科学的な食事指導で結果にコミットします。', btn: '詳細を見る' }
+      { type: '01. Hero', title: '理想の体へ、最短距離で。', desc: 'プロのトレーナーがあなた専用のプログラムを構築し、理想のボディメイクをサポート。', btn: '体験入会を予約する' },
+      { type: '02. Features', title: '選ばれる3つの理由', desc: '完全個室、24時間管理、科学的な食事指導で結果にコミットします。', btn: '詳細を見る' }
     ]
   },
   {
-    query: "新発売のオーガニックコーヒーを紹介したい",
-    accent: "#34A853",
+    query: "新発売のオーガニックコーヒー",
+    accent: "#111",
     sections: [
-      { type: 'Hero', color: 'bg-emerald-900', textColor: 'text-emerald-50', title: '至福の一杯を、エシカルに。', desc: 'アフリカ直送の厳選された豆を使用した、100%オーガニックな深い味わい。', btn: '定期便を申し込む' },
-      { type: 'Pricing', color: 'bg-white', textColor: 'text-gray-900', title: 'シンプルで続けやすいプラン', desc: '毎月新鮮な豆が届く、あなたにぴったりのコーヒーライフをご提案。', btn: 'プランを選ぶ' }
+      { type: '01. Hero', title: '至福の一杯を、エシカルに。', desc: 'アフリカ直送の厳選された豆を使用した、100%オーガニックな深い味わい。', btn: '定期便を申し込む' },
+      { type: '02. Pricing', title: 'シンプルで続けやすいプラン', desc: '毎月新鮮な豆が届く、あなたにぴったりのコーヒーライフをご提案。', btn: 'プランを選ぶ' }
     ]
   },
   {
-    query: "AI特化型プログラミングスクールの募集用",
-    accent: "#EA4335",
+    query: "AI特化型プログラミングスクール",
+    accent: "#111",
     sections: [
-      { type: 'Hero', color: 'bg-slate-900', textColor: 'text-white', title: 'AIを操り、未来を創る。', desc: '現場第一線のエンジニアが教える、実務特化型のAI開発カリキュラム。', btn: '無料カウンセリング' },
-      { type: 'FAQ', color: 'bg-blue-50', textColor: 'text-blue-900', title: 'よくある質問', desc: '学習の進め方やキャリアサポートについて、詳しくお答えします。', btn: 'FAQ一覧へ' }
+      { type: '01. Hero', title: 'AIを操り、未来を創る。', desc: '現場第一線のエンジニアが教える、実務特化型のAI開発カリキュラム。', btn: '無料カウンセリング' },
+      { type: '02. FAQ', title: 'よくある質問', desc: '学習の進め方やキャリアサポートについて、詳しくお答えします。', btn: 'FAQ一覧へ' }
     ]
   }
 ];
@@ -43,335 +43,169 @@ export default function LPBuilderIntroPage() {
       setTimeout(() => {
         setStepIndex((prev) => (prev + 1) % GENERATION_STEPS.length);
         setIsGenerating(false);
-      }, 800);
-    }, 6000);
+      }, 1200);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-blue-50 overflow-x-hidden">
-      {/* Google-Style Header */}
-      <header className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-sm px-6 h-16 flex items-center justify-between border-b border-transparent hover:border-gray-100 transition-colors">
-        <div className="flex items-center space-x-2">
-          <motion.div
-            className="flex space-x-0.5"
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, duration: 4 }}
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-[#4285F4]"></div>
-            <div className="w-2.5 h-2.5 rounded-full bg-[#EA4335]"></div>
-            <div className="w-2.5 h-2.5 rounded-full bg-[#FBBC05]"></div>
-            <div className="w-2.5 h-2.5 rounded-full bg-[#34A853]"></div>
-          </motion.div>
-          <span className="text-sm font-bold text-gray-600 tracking-tight font-google">ZettAI LP Builder</span>
+    <div className="min-h-screen bg-[#f8f8f8] text-[#111] font-sans selection:bg-black selection:text-white">
+      {/* Minimal Header */}
+      <header className="fixed top-0 w-full z-50 bg-[#f8f8f8]/80 backdrop-blur-md px-6 md:px-12 h-20 flex items-center justify-between border-b border-black/5">
+        <div className="text-lg font-bold tracking-tight font-manrope">
+          ZettAI <span className="font-light text-gray-400">Builder</span>
         </div>
-        <div className="flex items-center space-x-6">
-          <nav className="hidden md:flex items-center space-x-6 text-[13px] font-medium text-gray-500 font-google">
-            <a href="#" className="hover:text-gray-900 transition-colors">製品情報</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">活用事例</a>
-          </nav>
+        <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-500">
           <Link
             href="/admin/lp-builder"
-            className="px-6 py-2 bg-[#1a73e8] text-white text-sm font-bold rounded-md hover:bg-[#1557b0] transition-colors shadow-sm font-google"
+            className="text-black border-b border-black pb-0.5 hover:opacity-70 transition-opacity"
           >
-            ログイン
+            Login
           </Link>
-        </div>
+        </nav>
       </header>
 
-      {/* Google-Style Search/Hero Section */}
-      <section className="pt-40 pb-32 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            <h1 className="text-5xl md:text-6xl font-google font-medium tracking-tight text-[#202124] mb-8 leading-tight">
-              作りたいLPを、<br />
-              言葉にするだけ。
-            </h1>
-          </motion.div>
+      {/* Typographic Hero Section */}
+      <section className="pt-48 pb-32 px-6 md:px-12 max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
 
-          {/* Search Bar Style Input UI Area */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="relative max-w-2xl mx-auto group"
-          >
-            <div className="flex items-center bg-white border border-gray-200 rounded-full px-6 py-4 shadow-sm hover:shadow-md transition-shadow group-focus-within:shadow-md group-focus-within:border-transparent group-focus-within:ring-1 group-focus-within:ring-blue-100 min-h-[64px]">
-              <Search className="w-5 h-5 text-gray-400 mr-4" />
-              <div className="flex-1 text-left text-gray-600 text-lg overflow-hidden whitespace-nowrap font-google">
+          {/* Main Title Area */}
+          <div className="lg:col-span-8">
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-6xl md:text-8xl lg:text-[7rem] font-bold leading-[0.9] tracking-tighter mb-12"
+            >
+              Words become<br />
+              <span className="text-gray-400">Interface.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-lg md:text-xl text-gray-600 max-w-xl leading-relaxed font-jp mb-12"
+            >
+              あなたのビジョンを言葉にするだけで、<br className="hidden md:block" />
+              ビジネスを加速させるランディングページが完成します。<br />
+              デザインも、コピーも、すべてAIと共に。
+            </motion.p>
+
+            {/* Input Simulation */}
+            <div className="relative max-w-2xl group">
+              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-black opacity-0 group-hover:opacity-100 transition-opacity" />
+              <input
+                type="text"
+                readOnly
+                value=""
+                placeholder="What do you want to build?"
+                className="w-full bg-transparent border-b-2 border-gray-200 py-4 text-2xl md:text-3xl font-light text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-black transition-colors"
+              />
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none flex items-center">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={stepIndex}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.5 }}
+                    transition={{ duration: 0.4 }}
+                    className="text-2xl md:text-3xl font-light text-black truncate"
                   >
                     {currentStep.query}
                   </motion.span>
                 </AnimatePresence>
-                <span className="inline-block w-0.5 h-6 bg-blue-500 ml-1 align-middle animate-pulse"></span>
+                {isGenerating && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="ml-4 px-3 py-1 bg-black text-white text-xs font-bold uppercase tracking-widest"
+                  >
+                    Thinking
+                  </motion.div>
+                )}
               </div>
-              <motion.div
-                animate={isGenerating ? { rotate: 360 } : { rotate: 0 }}
-                transition={{ duration: 0.8, ease: "linear" }}
-              >
-                <Sparkles className={`w-5 h-5 ml-4 transition-colors ${isGenerating ? 'text-blue-600' : 'text-blue-400'}`} />
-              </motion.div>
             </div>
-          </motion.div>
 
-          <div className="mt-12 flex items-center justify-center space-x-6">
-            <Link
-              href="/admin/lp-builder"
-              className="bg-gray-50 px-6 py-2 rounded text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all font-google border border-gray-200"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-12"
             >
-              Google 検索
-            </Link>
-            <Link
-              href="/admin/lp-builder"
-              className="bg-gray-50 px-6 py-2 rounded text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all font-google border border-gray-200"
-            >
-              I'm Feeling Lucky
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* AI Generation Animation Section */}
-      <section className="py-24 bg-[#f8f9fa] border-y border-gray-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col lg:flex-row items-center gap-20">
-            <div className="flex-1 text-left">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
+              <Link
+                href="/admin/lp-builder"
+                className="group inline-flex items-center text-lg font-bold border-b-2 border-black pb-1 hover:text-gray-600 hover:border-gray-600 transition-colors"
               >
-                <h2 className="text-3xl font-google font-medium text-[#202124] mb-6">
-                  思考を、そのまま形に。
-                </h2>
-                <p className="text-[#5f6368] font-google leading-relaxed mb-8 text-lg">
-                  ZettAI AIがあなたのビジネスを理解し、一貫性のあるデザインと心に響くコピーを自動生成。
-                  磨き抜かれた構成美と機能性が、顧客の心を掴みます。
-                </p>
-                <div className="space-y-4">
-                  {[
-                    { icon: <Layout className="w-4 h-4" />, text: "構成案の自動選定" },
-                    { icon: <Type className="w-4 h-4" />, text: "コピーライティング生成" },
-                    { icon: <ImageIcon className="w-4 h-4" />, text: "ビジュアルトーンの統一" }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center text-sm font-medium text-[#202124] font-google">
-                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center mr-3 shadow-sm text-blue-500">
-                        {item.icon}
+                Start Building
+                <MoveRight className="ml-3 w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Right Column: Preview Feed */}
+          <div className="lg:col-span-4 mt-12 lg:mt-0 lg:pl-12 border-l border-gray-100 h-full min-h-[400px]">
+            <div className="relative">
+              <div className="absolute -left-[3.25rem] top-0 text-xs font-mono text-gray-300 -rotate-90 origin-bottom-right">LIVE PREVIEW</div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={stepIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.5, ease: "circOut" }}
+                  className="space-y-6"
+                >
+                  {currentStep.sections.map((section, i) => (
+                    <div key={i} className="bg-white p-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-gray-100/50">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-4">{section.type}</div>
+                      <h3 className="text-xl font-bold mb-3 font-jp">{section.title}</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed font-jp mb-6">{section.desc}</p>
+                      <div className="inline-block border border-gray-200 px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-black hover:text-white transition-colors cursor-default">
+                        {section.btn}
                       </div>
-                      {item.text}
                     </div>
                   ))}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Animated LP Preview */}
-            <div className="flex-1 w-full max-w-xl">
-              <motion.div
-                className="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden aspect-[4/5] flex flex-col relative"
-                animate={{ borderColor: currentStep.accent + '33' }}
-              >
-                {/* Browser Toolbar */}
-                <div className="h-10 bg-white border-b border-gray-100 px-4 flex items-center justify-between shrink-0">
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-3 h-3 rounded-full bg-gray-200"></div>
-                    <div className="w-3 h-3 rounded-full bg-gray-200"></div>
-                    <div className="w-3 h-3 rounded-full bg-gray-200"></div>
-                  </div>
-                  <div className="w-32 h-4 bg-gray-50 rounded px-2 flex items-center">
-                    <div className="w-full h-1 bg-gray-200 rounded-full"></div>
-                  </div>
-                  <div className="w-4 h-4 rounded-full bg-gray-50 text-[10px] flex items-center justify-center text-gray-300">
-                    G
-                  </div>
-                </div>
-
-                {/* Preview Content Area */}
-                <div className="flex-1 relative overflow-hidden bg-gray-50">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={stepIndex}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.6 }}
-                      className="h-full"
-                    >
-                      <div className="h-full overflow-y-auto custom-scrollbar p-6 space-y-4">
-                        {currentStep.sections.map((section, idx) => (
-                          <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, y: 40, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{ delay: idx * 0.5, type: "spring", damping: 20 }}
-                            className={`${section.color} ${section.textColor} rounded-2xl p-8 shadow-sm border border-black/5 flex flex-col items-center text-center`}
-                          >
-                            <motion.div
-                              className="text-[10px] font-black tracking-widest uppercase mb-4 opacity-60 font-google"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 0.6 }}
-                              transition={{ delay: idx * 0.5 + 0.2 }}
-                            >
-                              {section.type} Section
-                            </motion.div>
-                            <motion.h3
-                              className="text-xl md:text-2xl font-black mb-4 leading-tight font-google"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.5 + 0.3 }}
-                            >
-                              {section.title}
-                            </motion.h3>
-                            <motion.p
-                              className="text-xs md:text-sm mb-6 opacity-80 leading-relaxed font-google"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 0.8 }}
-                              transition={{ delay: idx * 0.5 + 0.5 }}
-                            >
-                              {section.desc}
-                            </motion.p>
-                            <motion.div
-                              className={`px-6 py-2 rounded-full text-xs font-bold transition-all ${section.textColor === 'text-white' ? 'bg-white text-gray-900' : 'bg-gray-900 text-white'}`}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: idx * 0.5 + 0.7 }}
-                            >
-                              {section.btn}
-                            </motion.div>
-                          </motion.div>
-                        ))}
-
-                        {/* Placeholder for more content */}
-                        <div className="h-32 bg-white/40 rounded-2xl border border-dashed border-gray-200 flex items-center justify-center">
-                          <div className="text-[10px] font-bold text-gray-300 uppercase tracking-widest font-google">Next Section Generating...</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {/* AI Mouse Cursor Overlay */}
-                  <motion.div
-                    className="absolute text-blue-500 z-20 pointer-events-none drop-shadow-lg"
-                    animate={{
-                      x: [100, 350, 200, 400, 150],
-                      y: [150, 80, 250, 350, 100],
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 8,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <MousePointer2 className="w-5 h-5 fill-current" />
-                    <motion.div
-                      className="absolute top-4 left-4 bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded shadow-lg font-black whitespace-nowrap"
-                      animate={{ opacity: [0, 1, 1, 0], x: [0, 5, 5, 0] }}
-                      transition={{ repeat: Infinity, duration: 8 }}
-                    >
-                      ZettAI AI
-                    </motion.div>
-                  </motion.div>
-
-                  {/* AI Generation Status Overlay */}
-                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-full border border-blue-100 shadow-xl flex items-center space-x-3 z-30">
-                    <div className="flex space-x-1">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                    <span className="text-[10px] font-black text-blue-600 tracking-wider uppercase font-google">Synthesizing</span>
-                  </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Value Props Section */}
-      <section className="py-24 border-b border-gray-50">
-        <div className="max-w-5xl mx-auto px-6 grid md:grid-cols-3 gap-16">
-          {[
-            { icon: <Layout className="text-[#4285F4]" />, title: "本質を捉える構成", desc: "業界特有の訴求ポイントをAIが自動分析し、コンバージョンに特化したレイアウトを生成。" },
-            { icon: <Type className="text-[#EA4335]" />, title: "感情を動かすコピー", desc: "Gemini 1.5の高度な言語処理で、単なる紹介に留まらない「売れる」文章を書き上げます。" },
-            { icon: <Sparkles className="text-[#FBBC05]" />, title: "洗練された世界観", desc: "ターゲットに合わせたビジュアルトーンを自動選定。ブランドの信頼性を高めます。" }
-          ].map((item, i) => (
-            <div key={i} className="text-center group">
-              <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                {item.icon}
+      {/* Feature List (Editorial Style) */}
+      <section className="py-32 border-t border-black/5">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12">
+          <div className="grid md:grid-cols-3 gap-x-12 gap-y-16">
+            {[
+              { label: "01", title: "Structure", desc: "業界特有の成功パターンを学習したAIが、目的達成に最適な構成を提案します。" },
+              { label: "02", title: "Copywriting", desc: "人の心を動かす言葉選び。商品の魅力を最大限に引き出すコピーを自動生成。" },
+              { label: "03", title: "Visuals", desc: "ブランドの世界観に合わせたトーン&マナーで、洗練されたビジュアルを構築。" }
+            ].map((item, i) => (
+              <div key={i} className="group cursor-default">
+                <div className="text-xs font-mono text-gray-300 mb-6 group-hover:text-black transition-colors">{item.label}</div>
+                <h3 className="text-2xl font-bold mb-4 font-manrope">{item.title}</h3>
+                <p className="text-gray-500 leading-loose text-sm font-jp border-l border-gray-100 pl-6 group-hover:border-black/20 transition-colors">
+                  {item.desc}
+                </p>
               </div>
-              <h3 className="text-[15px] font-bold text-gray-900 mb-3 font-google">{item.title}</h3>
-              <p className="text-[13px] text-gray-500 leading-relaxed px-6 font-google">
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-40 bg-white">
-        <div className="max-w-2xl mx-auto text-center px-6">
-          <h2 className="text-4xl md:text-5xl font-google font-medium tracking-tight text-[#202124] mb-12 leading-tight">
-            これからの制作は、<br />AIが良きパートナーに。
-          </h2>
-          <Link
-            href="/admin/lp-builder"
-            className="inline-flex items-center px-10 py-4 bg-[#1a73e8] text-white font-bold rounded-lg hover:bg-[#1557b0] transition-all shadow-xl hover:shadow-2xl active:scale-95 group font-google"
-          >
-            ログインしてはじめる
-            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Link>
-          <p className="mt-8 text-xs text-gray-400 font-google">
-            高度な専門知識は不要。数ステップでプロ品質のLPが完成します。
-          </p>
-        </div>
-      </section>
-
-      {/* Google-Style Footer */}
-      <footer className="py-12 bg-[#f8f9fa] border-t border-gray-100 px-6 font-google">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between text-[#70757a] text-[13px]">
-          <div className="flex items-center space-x-8 mb-4 md:mb-0">
-            <a href="#" className="hover:underline">利用規約</a>
-            <a href="#" className="hover:underline">プライバシー</a>
-            <a href="#" className="hover:underline">ヘルプ</a>
+            ))}
           </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 border-t border-black/5 bg-white">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12 flex justify-between items-end">
           <div>
-            © 2024 Gemini LP Builder
+            <div className="text-sm font-bold tracking-tight mb-2">ZettAI Inc.</div>
+            <p className="text-xs text-gray-400">© 2025 All rights reserved.</p>
+          </div>
+          <div className="text-[10px] font-mono text-gray-300 uppercase tracking-widest">
+            Designed by Intelligence
           </div>
         </div>
       </footer>
-
-      <style jsx global>{`
-                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
-                .font-google {
-                    font-family: 'Roboto', 'Noto Sans JP', sans-serif;
-                }
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #e2e8f0;
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #cbd5e1;
-                }
-            `}</style>
     </div>
   );
 }

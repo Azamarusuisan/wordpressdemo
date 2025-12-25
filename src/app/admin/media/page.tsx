@@ -138,58 +138,58 @@ export default function MediaLibrary() {
     );
 
     return (
-        <div className="p-10 max-w-7xl mx-auto relative">
+        <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
             {/* AI Generation Modal */}
             {showAIModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-6">
-                    <div className="w-full max-w-xl overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
-                        <div className="relative h-32 bg-gradient-to-tr from-blue-600 to-indigo-600 p-8">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-6">
+                    <div className="w-full max-w-xl overflow-hidden rounded-lg border border-border bg-background shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="relative h-32 bg-gradient-to-tr from-primary/20 to-primary/5 p-8 border-b border-border">
                             <button
                                 onClick={() => setShowAIModal(false)}
-                                className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+                                className="absolute top-6 right-6 text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                <X className="h-6 w-6" />
+                                <X className="h-5 w-5" />
                             </button>
                             <div className="flex items-center gap-3">
-                                <div className="rounded-2xl bg-white/20 p-3 backdrop-blur-md">
-                                    <Sparkles className="h-6 w-6 text-white" />
+                                <div className="rounded-md bg-background p-2 border border-border">
+                                    <Sparkles className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black text-white">AI画像生成</h2>
-                                    <p className="text-sm text-white/70 font-medium">プロンプトから高品質な画像を生成します。</p>
+                                    <h2 className="text-lg font-bold text-foreground">AI画像生成</h2>
+                                    <p className="text-sm text-muted-foreground">プロンプトから高品質な画像を生成します。</p>
                                 </div>
                             </div>
                         </div>
                         <div className="p-8">
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">生成したいイメージの説明</label>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">画像の説明 (プロンプト)</label>
                             <textarea
                                 value={aiPrompt}
                                 onChange={(e) => setAiPrompt(e.target.value)}
-                                placeholder="例：抹茶の芸術、ミニマル、高級感のある写真、4k..."
-                                className="w-full min-h-[120px] rounded-2xl border border-gray-100 bg-gray-50 p-5 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all shadow-inner resize-none mb-6"
+                                placeholder="例: 静かな和室、抹茶、自然光、4k..."
+                                className="w-full min-h-[120px] rounded-md border border-input bg-background p-4 text-sm font-medium outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm resize-none mb-6 placeholder:text-muted-foreground"
                             />
 
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowAIModal(false)}
-                                    className="flex-1 rounded-2xl border border-gray-100 py-4 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all"
+                                    className="flex-1 rounded-md border border-border py-3 text-sm font-bold text-muted-foreground hover:bg-surface-50 hover:text-foreground transition-all"
                                 >
                                     キャンセル
                                 </button>
                                 <button
                                     onClick={handleGenerateAI}
                                     disabled={isGenerating || !aiPrompt}
-                                    className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                                    className="flex-[2] flex items-center justify-center gap-2 rounded-md bg-primary py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
                                 >
                                     {isGenerating ? (
                                         <>
-                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                            AIが描いています...
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                                            生成中...
                                         </>
                                     ) : (
                                         <>
                                             <Wand2 className="h-4 w-4" />
-                                            画像を生成する
+                                            生成する
                                         </>
                                     )}
                                 </button>
@@ -201,30 +201,30 @@ export default function MediaLibrary() {
 
             <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-gray-900">Media Library</h1>
-                    <p className="text-gray-500 mt-1">アップロード・生成されたすべての画像を管理します。</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">メディアライブラリ</h1>
+                    <p className="text-sm text-muted-foreground mt-1">アップロードまたは生成されたすべてのアセットを管理します。</p>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
                         <input
                             type="text"
                             placeholder="画像を検索..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="rounded-2xl border border-gray-100 bg-white pl-12 pr-6 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-50 shadow-sm transition-all w-64"
+                            className="rounded-md border border-input bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all w-64 placeholder:text-muted-foreground"
                         />
                     </div>
                     <button
                         onClick={() => setShowAIModal(true)}
-                        className="flex items-center gap-2 rounded-2xl bg-gray-900 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-gray-200 hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="flex items-center gap-2 rounded-md bg-foreground px-5 py-2.5 text-sm font-bold text-background hover:bg-foreground/90 transition-all"
                     >
-                        <Sparkles className="h-5 w-5 text-blue-400" />
-                        AIで生成
+                        <Sparkles className="h-4 w-4 text-primary-foreground" />
+                        AI生成
                     </button>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        <Upload className="h-5 w-5" />
+                    <label className="flex cursor-pointer items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all">
+                        <Upload className="h-4 w-4" />
                         {uploading ? '...' : 'アップロード'}
                         <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
                     </label>
@@ -233,62 +233,50 @@ export default function MediaLibrary() {
 
             {loading ? (
                 <div className="flex h-96 items-center justify-center">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent shadow-md"></div>
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                 </div>
             ) : filteredMedia.length === 0 ? (
-                <div className="flex h-[32rem] flex-col items-center justify-center rounded-[3rem] border-2 border-dashed border-gray-100 bg-white/50 shadow-sm">
-                    <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
-                        <ImageIcon className="h-12 w-12 text-gray-200" />
+                <div className="flex h-[32rem] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-50/50">
+                    <div className="mb-6 rounded-full bg-surface-100 p-6">
+                        <ImageIcon className="h-10 w-10 text-muted-foreground" />
                     </div>
-                    <p className="font-bold text-gray-400 text-xl tracking-tight">メディアが見つかりません</p>
-                    <p className="text-gray-400 text-sm mt-2 font-medium">新しい画像をアップロードしてプロジェクトを開始しましょう。</p>
+                    <p className="font-bold text-foreground text-lg tracking-tight">メディアが見つかりません</p>
+                    <p className="text-muted-foreground text-sm mt-1">新しい画像をアップロードして開始してください。</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                     {filteredMedia.map((item) => (
                         <div
                             key={item.id}
-                            className="group relative aspect-square overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-2 shadow-sm transition-all hover:shadow-2xl hover:shadow-gray-100 hover:-translate-y-1"
+                            className="group relative aspect-square overflow-hidden rounded-md border border-border bg-white cursor-pointer hover:border-primary/50 transition-all"
+                            onClick={() => {
+                                setSelectedMedia(item);
+                                setAnalysisResult(null);
+                            }}
                         >
-                            {/* 常時表示の編集ボタン */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleOpenInpaint(item); }}
-                                className="absolute top-4 right-4 z-20 h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-purple-200 hover:scale-110 hover:shadow-xl transition-all"
-                                title="AIで部分編集"
-                            >
-                                <Pencil className="h-5 w-5" />
-                            </button>
+                            <img
+                                src={item.filePath}
+                                alt={item.filePath}
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
 
-                            <div
-                                onClick={() => {
-                                    setSelectedMedia(item);
-                                    setAnalysisResult(null);
-                                }}
-                                className="h-full w-full overflow-hidden rounded-[1.5rem] bg-gray-50 cursor-pointer"
-                            >
-                                <img
-                                    src={item.filePath}
-                                    alt={item.filePath}
-                                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                />
-                            </div>
-                            <div className="absolute inset-2 flex flex-col justify-end rounded-[1.5rem] bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none">
-                                <div className="flex items-center justify-between pointer-events-auto">
-                                    <div className="overflow-hidden">
-                                        <span className="block truncate text-[10px] font-black uppercase tracking-widest text-white/90">{item.mime.split('/')[1]}</span>
-                                        <span className="block text-[8px] font-bold text-white/50 uppercase">{new Date(item.createdAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
-                                            className="h-7 w-7 rounded-lg bg-white/20 flex items-center justify-center text-white backdrop-blur-md hover:bg-blue-600 transition-colors"
-                                        >
-                                            <Download className="h-3.5 w-3.5" />
-                                        </button>
-                                        <button className="h-7 w-7 rounded-lg bg-white/20 flex items-center justify-center text-white backdrop-blur-md hover:bg-red-500 transition-colors">
-                                            <X className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-3">
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleOpenInpaint(item); }}
+                                        className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-colors"
+                                        title="編集"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+                                        className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-colors"
+                                        title="ダウンロード"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -296,25 +284,25 @@ export default function MediaLibrary() {
                 </div>
             )}
 
-            {/* Detail Sidebar / Modal */}
+            {/* Detail Sidebar */}
             {selectedMedia && (
-                <div className="fixed inset-y-0 right-0 z-[110] w-[32rem] bg-white shadow-[-20px_0_60px_rgba(0,0,0,0.1)] p-8 overflow-y-auto animate-in slide-in-from-right duration-500 backdrop-blur-3xl border-l border-gray-100/50">
-                    <div className="mb-8 flex items-center justify-between">
+                <div className="fixed inset-y-0 right-0 z-[110] w-[28rem] bg-background shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300 border-l border-border">
+                    <div className="mb-6 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
-                                <Info className="h-5 w-5" />
+                            <div className="rounded-md bg-surface-100 p-2 text-foreground">
+                                <Info className="h-4 w-4" />
                             </div>
-                            <h3 className="text-xl font-black text-gray-900">画像詳細</h3>
+                            <h3 className="text-lg font-bold text-foreground">画像の詳細</h3>
                         </div>
                         <button
                             onClick={() => setSelectedMedia(null)}
-                            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 transition-colors"
+                            className="rounded-full p-2 text-muted-foreground hover:bg-surface-100 hover:text-foreground transition-colors"
                         >
-                            <X className="h-6 w-6" />
+                            <X className="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div className="mb-8 overflow-hidden rounded-[2.5rem] border border-gray-100 bg-gray-50 shadow-inner">
+                    <div className="mb-6 overflow-hidden rounded-md border border-border bg-surface-50">
                         <img
                             src={selectedMedia.filePath}
                             alt="Selected"
@@ -322,19 +310,19 @@ export default function MediaLibrary() {
                         />
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={() => handleOpenInpaint(selectedMedia)}
-                                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 px-6 py-4 text-sm font-black text-white shadow-xl shadow-blue-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                className="w-full flex items-center justify-center gap-2 rounded-md bg-primary/10 px-4 py-3 text-sm font-bold text-primary hover:bg-primary/20 transition-all border border-primary/20"
                             >
                                 <Pencil className="h-4 w-4" />
-                                AIで部分編集
+                                編集エディタ
                             </button>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => handleDownload(selectedMedia)}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-6 py-4 text-sm font-black text-white shadow-xl shadow-gray-200 hover:bg-black transition-all"
+                                    className="flex-1 flex items-center justify-center gap-2 rounded-md bg-surface-100 px-4 py-3 text-sm font-bold text-foreground hover:bg-surface-200 transition-all border border-border"
                                 >
                                     <Download className="h-4 w-4" />
                                     ダウンロード
@@ -342,49 +330,49 @@ export default function MediaLibrary() {
                                 <button
                                     onClick={() => handleAnalyze(selectedMedia)}
                                     disabled={isAnalyzing}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                    className="flex-1 flex items-center justify-center gap-2 rounded-md bg-surface-100 px-4 py-3 text-sm font-bold text-foreground hover:bg-surface-200 transition-all border border-border disabled:opacity-50"
                                 >
                                     {isAnalyzing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                    プロンプト化
+                                    解析する
                                 </button>
                             </div>
                         </div>
 
                         {/* Analysis Result */}
                         {analysisResult && (
-                            <div className="rounded-[2rem] bg-indigo-50/50 p-6 border border-indigo-100 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="rounded-md bg-surface-50 p-4 border border-border space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">生成プロンプト (Prompt)</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">プロンプト</span>
                                         <button
                                             onClick={() => copyToClipboard(analysisResult.prompt)}
-                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-white text-indigo-600 border border-indigo-100 hover:border-indigo-300'}`}
+                                            className={`flex items-center gap-1.5 px-2 py-1 rounded-sm text-[10px] font-bold transition-all ${copied ? 'bg-green-500 text-white' : 'bg-background text-foreground border border-border hover:bg-surface-100'}`}
                                         >
                                             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                                            {copied ? 'コピー済み' : 'コピー'}
+                                            {copied ? 'コピー済' : 'コピー'}
                                         </button>
                                     </div>
-                                    <div className="rounded-2xl bg-white p-4 text-xs font-mono font-medium text-gray-700 leading-relaxed shadow-sm border border-indigo-50">
+                                    <div className="rounded-md bg-background p-3 text-xs font-mono font-medium text-foreground leading-relaxed shadow-sm border border-input">
                                         {analysisResult.prompt}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-indigo-400">画像解析・意図 (Explanation)</span>
-                                    <div className="text-sm font-medium text-indigo-900 leading-relaxed">
+                                    <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">説明</span>
+                                    <div className="text-xs font-medium text-foreground leading-relaxed">
                                         {analysisResult.explanation}
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4 rounded-[2rem] bg-gray-50/50 p-6 border border-gray-100">
+                        <div className="grid grid-cols-2 gap-4 rounded-md bg-surface-50 p-4 border border-border">
                             <div>
-                                <span className="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">形式</span>
-                                <span className="text-sm font-black text-gray-900">{selectedMedia.mime.split('/')[1].toUpperCase()}</span>
+                                <span className="block text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">フォーマット</span>
+                                <span className="text-sm font-bold text-foreground">{selectedMedia.mime.split('/')[1].toUpperCase()}</span>
                             </div>
                             <div>
-                                <span className="block text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">作成日</span>
-                                <span className="text-sm font-black text-gray-900">{new Date(selectedMedia.createdAt).toLocaleDateString()}</span>
+                                <span className="block text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">作成日時</span>
+                                <span className="text-sm font-bold text-foreground">{new Date(selectedMedia.createdAt).toLocaleDateString()}</span>
                             </div>
                         </div>
                     </div>

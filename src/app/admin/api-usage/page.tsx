@@ -72,7 +72,7 @@ export default function ApiUsageDashboard() {
             <div className="flex h-96 items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="text-gray-500 font-medium">Loading stats...</p>
+                    <p className="text-gray-500 font-medium">読み込み中...</p>
                 </div>
             </div>
         );
@@ -83,14 +83,14 @@ export default function ApiUsageDashboard() {
             <div className="p-10 max-w-7xl mx-auto">
                 <div className="bg-red-50 rounded-3xl p-8 text-center">
                     <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-red-700 mb-2">Error Loading Data</h2>
+                    <h2 className="text-xl font-bold text-red-700 mb-2">データの読み込みエラー</h2>
                     <p className="text-red-600 mb-4">{error}</p>
                     <button
                         onClick={fetchStats}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
                     >
                         <RefreshCw className="h-4 w-4" />
-                        Retry
+                        再試行
                     </button>
                 </div>
             </div>
@@ -102,7 +102,7 @@ export default function ApiUsageDashboard() {
             {/* Header */}
             <div className="mb-10 flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-gray-900">API Usage Dashboard</h1>
+                    <h1 className="text-3xl font-black tracking-tight text-gray-900">API使用状況</h1>
                     <p className="text-gray-500 mt-1">AI APIの使用状況とコスト分析</p>
                 </div>
 
@@ -133,55 +133,55 @@ export default function ApiUsageDashboard() {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <StatCard
-                    title="Total API Calls"
+                    title="API呼び出し総数"
                     value={stats?.summary?.totalCalls?.toLocaleString() || 0}
                     icon={Activity}
                     color="blue"
                 />
                 <StatCard
-                    title="Estimated Cost"
+                    title="推定コスト"
                     value={`$${(stats?.summary?.totalCost || 0).toFixed(4)}`}
                     icon={DollarSign}
                     color="green"
-                    subValue={`avg: $${stats?.summary?.totalCalls ? ((stats?.summary?.totalCost || 0) / stats.summary.totalCalls).toFixed(6) : '0'}/call`}
+                    subValue={`平均: $${stats?.summary?.totalCalls ? ((stats?.summary?.totalCost || 0) / stats.summary.totalCalls).toFixed(6) : '0'}/回`}
                 />
                 <StatCard
-                    title="Images Generated"
+                    title="生成画像数"
                     value={stats?.summary?.totalImages?.toLocaleString() || 0}
                     icon={ImageIcon}
                     color="purple"
                 />
                 <StatCard
-                    title="Error Rate"
+                    title="エラー率"
                     value={`${(stats?.errorRate?.rate || 0).toFixed(1)}%`}
                     icon={AlertTriangle}
                     color={(stats?.errorRate?.failed || 0) > 0 ? 'red' : 'gray'}
-                    subValue={`${stats?.errorRate?.failed || 0} failed / ${stats?.errorRate?.total || 0} total`}
+                    subValue={`${stats?.errorRate?.failed || 0}件失敗 / ${stats?.errorRate?.total || 0}件中`}
                 />
             </div>
 
             {/* Additional Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <StatCard
-                    title="Avg Response Time"
-                    value={`${((stats?.summary?.avgDurationMs || 0) / 1000).toFixed(1)}s`}
+                    title="平均応答時間"
+                    value={`${((stats?.summary?.avgDurationMs || 0) / 1000).toFixed(1)}秒`}
                     icon={Clock}
                     color="amber"
                 />
                 <StatCard
-                    title="Input Tokens"
+                    title="入力トークン"
                     value={(stats?.summary?.totalInputTokens || 0).toLocaleString()}
                     icon={MessageSquare}
                     color="blue"
                 />
                 <StatCard
-                    title="Output Tokens"
+                    title="出力トークン"
                     value={(stats?.summary?.totalOutputTokens || 0).toLocaleString()}
                     icon={MessageSquare}
                     color="purple"
                 />
                 <StatCard
-                    title="Total Tokens"
+                    title="合計トークン"
                     value={((stats?.summary?.totalInputTokens || 0) + (stats?.summary?.totalOutputTokens || 0)).toLocaleString()}
                     icon={MessageSquare}
                     color="green"
@@ -202,7 +202,7 @@ export default function ApiUsageDashboard() {
                 <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <DollarSign className="h-5 w-5 text-green-600" />
-                        Cost by Model
+                        モデル別コスト
                     </h3>
                     <div className="space-y-4">
                         {(stats?.byModel || []).map((model, idx) => (
@@ -216,11 +216,11 @@ export default function ApiUsageDashboard() {
                             </div>
                         ))}
                         {(stats?.byModel || []).length === 0 && (
-                            <p className="text-gray-400 text-center py-4">No data available</p>
+                            <p className="text-gray-400 text-center py-4">データがありません</p>
                         )}
                         {(stats?.byModel || []).length > 0 && (
                             <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                                <span className="text-gray-600 font-bold">Total</span>
+                                <span className="text-gray-600 font-bold">合計</span>
                                 <span className="font-black text-green-600 text-xl">
                                     ${(stats?.summary?.totalCost || 0).toFixed(4)}
                                 </span>

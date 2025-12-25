@@ -11,7 +11,8 @@ export type GenerationType =
   | 'image-to-prompt'
   | 'generate-nav'
   | 'chat-edit'
-  | 'lp-generate';
+  | 'lp-generate'
+  | 'import-arrange';
 
 export interface LogGenerationParams {
   userId?: string | null;

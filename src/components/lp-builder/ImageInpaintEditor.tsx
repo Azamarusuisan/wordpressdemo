@@ -74,7 +74,8 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
             canvas.height = containerRef.current.clientHeight;
         }
 
-        ctx.fillStyle = '#1a1a2e';
+        // Draw neutral background instead of dark
+        ctx.fillStyle = '#f3f4f6';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
@@ -285,166 +286,182 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="relative w-[95vw] h-[95vh] bg-gray-900 rounded-2xl overflow-hidden flex flex-col">
-                {/* 成功オーバーレイ */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-6">
+            <div className="relative w-full h-full max-w-[1600px] max-h-[900px] bg-background rounded-xl shadow-2xl overflow-hidden flex flex-col border border-border animate-in fade-in zoom-in duration-200">
+                {/* Success Overlay */}
                 {showSuccess && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-900/95 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="text-center">
-                            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                                <Check className="w-10 h-10 text-green-400" />
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="text-center p-8 bg-surface-50 rounded-xl border border-border shadow-lg">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center border border-green-200">
+                                <Check className="w-8 h-8" />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">画像を編集しました</h3>
+                            <h3 className="text-xl font-bold text-foreground mb-2">編集完了</h3>
+                            <p className="text-muted-foreground text-sm mb-6">画像を保存して閉じています...</p>
+
                             {costInfo && (
-                                <div className="flex items-center justify-center gap-4 mt-4 bg-gray-800/50 rounded-2xl px-6 py-4">
+                                <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border">
                                     <div className="text-center">
-                                        <p className="text-xs text-gray-400 mb-1">コスト</p>
-                                        <p className="text-xl font-bold text-green-400">${costInfo.estimatedCost.toFixed(4)}</p>
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">コスト</p>
+                                        <p className="text-lg font-bold text-foreground font-mono">${costInfo.estimatedCost.toFixed(4)}</p>
                                     </div>
-                                    <div className="w-px h-10 bg-gray-700" />
+                                    <div className="w-px h-8 bg-border" />
                                     <div className="text-center">
-                                        <p className="text-xs text-gray-400 mb-1">処理時間</p>
-                                        <p className="text-xl font-bold text-blue-400">{(costInfo.durationMs / 1000).toFixed(1)}s</p>
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">処理時間</p>
+                                        <p className="text-lg font-bold text-foreground font-mono">{(costInfo.durationMs / 1000).toFixed(1)}s</p>
                                     </div>
-                                    <div className="w-px h-10 bg-gray-700" />
+                                    <div className="w-px h-8 bg-border" />
                                     <div className="text-center">
-                                        <p className="text-xs text-gray-400 mb-1">モデル</p>
-                                        <p className="text-sm font-medium text-gray-300">{costInfo.model}</p>
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">モデル</p>
+                                        <p className="text-sm font-bold text-foreground">{costInfo.model}</p>
                                     </div>
                                 </div>
                             )}
-                            <p className="text-gray-400 text-sm mt-4">画面を閉じています...</p>
                         </div>
                     </div>
                 )}
-                {/* ヘッダー */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Wand2 className="w-5 h-5 text-purple-400" />
-                        画像の部分編集
-                        <span className="text-sm font-normal text-gray-400">（複数選択可）</span>
-                    </h2>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
                     <div className="flex items-center gap-3">
-                        {/* コスト表示 */}
+                        <div className="p-2 bg-primary/10 rounded-md text-primary border border-primary/20">
+                            <Wand2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-foreground">画象部分編集</h2>
+                            <p className="text-xs text-muted-foreground font-medium">画像の一部を選択してAIで編集・修正します（複数選択可）</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {/* Cost Info */}
                         {costInfo && (
-                            <div className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-2 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="flex items-center gap-1.5 text-green-400">
-                                    <DollarSign className="w-4 h-4" />
-                                    <span className="text-sm font-bold">${costInfo.estimatedCost.toFixed(4)}</span>
+                            <div className="flex items-center gap-3 bg-surface-100 rounded-md px-4 py-2 border border-border">
+                                <span className="text-xs font-bold text-muted-foreground">前回:</span>
+                                <div className="flex items-center gap-1 text-foreground">
+                                    <DollarSign className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-xs font-mono font-bold">${costInfo.estimatedCost.toFixed(4)}</span>
                                 </div>
-                                <div className="w-px h-4 bg-gray-600" />
-                                <div className="flex items-center gap-1.5 text-blue-400">
-                                    <Clock className="w-4 h-4" />
-                                    <span className="text-sm font-medium">{(costInfo.durationMs / 1000).toFixed(1)}s</span>
+                                <div className="w-px h-3 bg-border" />
+                                <div className="flex items-center gap-1 text-foreground">
+                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-xs font-mono font-bold">{(costInfo.durationMs / 1000).toFixed(1)}s</span>
                                 </div>
-                                <div className="w-px h-4 bg-gray-600" />
-                                <span className="text-xs text-gray-400">{costInfo.model}</span>
                             </div>
                         )}
                         <button
                             onClick={onClose}
-                            className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-700"
+                            className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-surface-100"
                         >
-                            <X className="w-6 h-6" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex-1 flex">
-                    {/* キャンバスエリア */}
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Canvas Area */}
                     <div
                         ref={containerRef}
-                        className="flex-1 relative bg-[#1a1a2e]"
+                        className="flex-1 relative bg-surface-100 overflow-hidden"
                     >
+                        {/* Checkerboard background for transparency hint */}
+                        <div className="absolute inset-0 opacity-[0.03]"
+                            style={{
+                                backgroundImage: 'linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%)',
+                                backgroundSize: '20px 20px',
+                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
+                            }}
+                        />
+
                         <canvas
                             ref={canvasRef}
-                            className={`w-full h-full ${tool === 'select' ? 'cursor-crosshair' : 'cursor-grab'}`}
+                            className={`w-full h-full relative z-10 ${tool === 'select' ? 'cursor-crosshair' : 'cursor-grab'}`}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseUp}
                         />
 
-                        {/* ツールバー */}
-                        <div className="absolute top-4 left-4 flex gap-2">
+                        {/* Toolbar */}
+                        <div className="absolute top-6 left-6 flex flex-col gap-2 bg-background p-1.5 rounded-lg border border-border shadow-lg z-20">
                             <button
                                 onClick={() => setTool('select')}
-                                className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                                className={`p-2.5 rounded-md transition-all ${tool === 'select' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
                                 title="選択ツール"
                             >
                                 <Plus className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={() => setTool('pan')}
-                                className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                                className={`p-2.5 rounded-md transition-all ${tool === 'pan' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
                                 title="移動ツール"
                             >
                                 <Move className="w-5 h-5" />
                             </button>
-                            <div className="w-px bg-gray-600 mx-1" />
+                            <div className="h-px bg-border mx-1 my-1" />
                             <button
                                 onClick={handleZoomIn}
-                                className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                 title="拡大"
                             >
                                 <ZoomIn className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={handleZoomOut}
-                                className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                 title="縮小"
                             >
                                 <ZoomOut className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={handleReset}
-                                className="p-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                 title="リセット"
                             >
                                 <RotateCcw className="w-5 h-5" />
                             </button>
                         </div>
 
-                        {/* スケール表示 */}
-                        <div className="absolute bottom-4 left-4 text-sm text-gray-400 bg-gray-800/80 px-3 py-1 rounded-lg">
+                        {/* Scale Indicator */}
+                        <div className="absolute bottom-6 left-6 text-xs font-bold text-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-md border border-border shadow-sm z-20">
                             {Math.round(scale * 100)}%
                         </div>
                     </div>
 
-                    {/* サイドパネル */}
-                    <div className="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col">
-                        <h3 className="text-lg font-semibold text-white mb-4">編集指示</h3>
+                    {/* Side Panel */}
+                    <div className="w-80 bg-background border-l border-border p-6 flex flex-col z-20 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.05)]">
+                        <div className="mb-6">
+                            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-1">編集設定</h3>
+                            <p className="text-xs text-muted-foreground">編集したい領域を選択してください。</p>
+                        </div>
 
-                        {/* 選択範囲リスト */}
+                        {/* Selections List */}
                         {selections.length > 0 ? (
-                            <div className="mb-4">
+                            <div className="mb-6 flex-1 overflow-hidden flex flex-col">
                                 <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm text-gray-300">選択範囲: {selections.length}箇所</p>
+                                    <p className="text-xs font-bold text-foreground">{selections.length} 箇所の選択範囲</p>
                                     <button
                                         onClick={clearAllSelections}
-                                        className="text-xs text-red-400 hover:text-red-300"
+                                        className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
                                     >
                                         全て削除
                                     </button>
                                 </div>
-                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                <div className="space-y-2 overflow-y-auto pr-1">
                                     {selections.map((sel, index) => {
-                                        const colors = ['bg-blue-600', 'bg-green-600', 'bg-amber-600', 'bg-red-600', 'bg-purple-600'];
+                                        const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500'];
                                         return (
-                                            <div key={sel.id} className="flex items-center justify-between p-2 bg-gray-700 rounded-lg">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-5 h-5 rounded text-white text-xs flex items-center justify-center ${colors[index % colors.length]}`}>
+                                            <div key={sel.id} className="flex items-center justify-between p-3 bg-surface-50 border border-border rounded-md hover:border-primary/30 transition-colors group">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
                                                         {index + 1}
                                                     </span>
-                                                    <span className="text-xs text-gray-400">
-                                                        {Math.round(sel.width)}x{Math.round(sel.height)}px
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                        {Math.round(sel.width)} x {Math.round(sel.height)} px
                                                     </span>
                                                 </div>
                                                 <button
                                                     onClick={() => removeSelection(sel.id)}
-                                                    className="p-1 text-gray-400 hover:text-red-400"
+                                                    className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
                                                 >
-                                                    <Trash2 className="w-3 h-3" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             </div>
                                         );
@@ -452,48 +469,53 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                                 </div>
                             </div>
                         ) : (
-                            <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
-                                <p className="text-sm text-blue-300">
-                                    画像上でドラッグして編集したい範囲を選択してください（複数選択可）
-                                </p>
+                            <div className="mb-6 p-6 bg-surface-50 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
+                                <div className="w-10 h-10 bg-surface-100 rounded-full flex items-center justify-center mb-3">
+                                    <Plus className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                                <p className="text-sm font-bold text-foreground">範囲を選択</p>
+                                <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />編集エリアを指定します。</p>
                             </div>
                         )}
 
-                        {/* プロンプト入力 */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                修正指示
+                        {/* Prompt Input */}
+                        <div className="mb-6 mt-auto">
+                            <label className="block text-xs font-bold text-foreground uppercase tracking-widest mb-3">
+                                編集プロンプト
                             </label>
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="例: 選択した部分のテキストを「新発売」に変更"
-                                className="w-full h-32 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                placeholder="例: テキストを消す、背景を青空にする..."
+                                className="w-full h-32 px-4 py-3 rounded-md border border-input bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none shadow-sm"
                             />
                         </div>
 
-                        {/* エラー表示 */}
+                        {/* Error Message */}
                         {error && (
-                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                                <p className="text-sm text-red-300">{error}</p>
+                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md">
+                                <p className="text-xs text-red-600 font-bold flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                                    {error}
+                                </p>
                             </div>
                         )}
 
-                        <div className="mt-auto space-y-3">
+                        <div className="space-y-3 pt-6 border-t border-border">
                             <button
                                 onClick={handleInpaint}
                                 disabled={isLoading || selections.length === 0 || !prompt.trim()}
-                                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                             >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                         生成中...
                                     </>
                                 ) : (
                                     <>
-                                        <Wand2 className="w-5 h-5" />
-                                        {selections.length}箇所をAIで編集
+                                        <Wand2 className="w-4 h-4" />
+                                        実行する ({selections.length})
                                     </>
                                 )}
                             </button>
@@ -501,7 +523,7 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                             <button
                                 onClick={onClose}
                                 disabled={isLoading}
-                                className="w-full py-3 px-4 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+                                className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all disabled:opacity-50"
                             >
                                 キャンセル
                             </button>

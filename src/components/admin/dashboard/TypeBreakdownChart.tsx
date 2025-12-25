@@ -6,16 +6,16 @@ import { Activity } from 'lucide-react';
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#6366f1', '#14b8a6', '#f97316', '#84cc16'];
 
 const TYPE_LABELS: Record<string, string> = {
-    'copy': 'Copy Generation',
-    'image': 'Image Generation',
-    'inpaint': 'Inpainting',
-    'edit-image': 'Image Edit',
-    'prompt-copilot': 'Prompt Copilot',
-    'review': 'Copy Review',
-    'image-to-prompt': 'Image Analysis',
-    'generate-nav': 'Nav Generation',
-    'chat-edit': 'Chat Edit',
-    'lp-generate': 'LP Generation'
+    'copy': 'コピー生成',
+    'image': '画像生成',
+    'inpaint': 'インペイント',
+    'edit-image': '画像編集',
+    'prompt-copilot': 'プロンプト補助',
+    'review': 'コピーレビュー',
+    'image-to-prompt': '画像解析',
+    'generate-nav': 'ナビ生成',
+    'chat-edit': 'チャット編集',
+    'lp-generate': 'LP生成'
 };
 
 interface TypeData {
@@ -37,7 +37,7 @@ export function TypeBreakdownChart({ data }: { data: TypeData[] }) {
         <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <Activity className="h-5 w-5 text-blue-600" />
-                Usage by Type
+                種類別使用量
             </h3>
             <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -61,10 +61,10 @@ export function TypeBreakdownChart({ data }: { data: TypeData[] }) {
                                 border: 'none',
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                             }}
-                            formatter={(value: number, name: string, props: any) => {
+                            formatter={(value: any, name: any, props: any) => {
                                 return [
                                     <span key="value">
-                                        {value} calls (${props.payload.cost.toFixed(4)})
+                                        {value}回 (${props.payload.cost.toFixed(4)})
                                     </span>,
                                     props.payload.name
                                 ];

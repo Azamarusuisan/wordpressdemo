@@ -27,3 +27,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({ success: true });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+    const id = parseInt(params.id);
+
+    try {
+        await prisma.page.delete({
+            where: { id }
+        });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Failed to delete page:', error);
+        return NextResponse.json({ error: 'Failed to delete page' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+    const id = parseInt(params.id);
+    const body = await request.json();
+
+    try {
+        const page = await prisma.page.update({
+            where: { id },
+            data: body
+        });
+        return NextResponse.json({ success: true, page });
+    } catch (error) {
+        console.error('Failed to update page:', error);
+        return NextResponse.json({ error: 'Failed to update page' }, { status: 500 });
+    }
+}
