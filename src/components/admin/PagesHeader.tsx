@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 // スタイル定義
 const STYLE_OPTIONS = [
+    { id: 'sampling', label: '元デザイン維持', icon: '📐' },
     { id: 'professional', label: 'ビジネス', icon: '💼' },
     { id: 'pops', label: 'ポップ', icon: '🎨' },
     { id: 'luxury', label: '高級', icon: '✨' },
@@ -45,7 +46,7 @@ export function PagesHeader() {
     const [mode, setMode] = useState<'select' | 'import'>('select');
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [importMode, setImportMode] = useState<'faithful' | 'light' | 'heavy'>('faithful');
-    const [style, setStyle] = useState('professional');
+    const [style, setStyle] = useState('sampling');
     const [colorScheme, setColorScheme] = useState('original');
     const [layoutOption, setLayoutOption] = useState('keep');
     const [customPrompt, setCustomPrompt] = useState('');
@@ -288,9 +289,9 @@ export function PagesHeader() {
                                             </button>
                                         </div>
                                         <p className="mt-2 text-[10px] text-muted-foreground">
-                                            {importMode === 'faithful' && 'そのままキャプチャします。'}
-                                            {importMode === 'light' && 'レイアウトを維持し、色とスタイルを更新します。'}
-                                            {importMode === 'heavy' && 'コンテンツに基づいてAIが完全に再デザインします。'}
+                                            {importMode === 'faithful' && 'そのままキャプチャします。変更なし。'}
+                                            {importMode === 'light' && '📐 レイアウト固定｜色・フォント・ボタン形状を変更。構造は維持。'}
+                                            {importMode === 'heavy' && '🎨 レイアウト自由｜配置も含めて完全に新しいデザインを生成。'}
                                         </p>
                                     </div>
 
@@ -355,31 +356,33 @@ export function PagesHeader() {
                                                 </div>
                                             </div>
 
-                                            {/* Layout Option */}
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>レイアウト調整</span>
-                                                </label>
-                                                <div className="flex gap-2">
-                                                    {LAYOUT_OPTIONS.map((opt) => (
-                                                        <button
-                                                            key={opt.id}
-                                                            type="button"
-                                                            onClick={() => setLayoutOption(opt.id)}
-                                                            disabled={isImporting}
-                                                            className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${layoutOption === opt.id
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                                                }`}
-                                                        >
-                                                            {opt.label}
-                                                        </button>
-                                                    ))}
+                                            {/* Layout Option - heavyモードのみ表示 */}
+                                            {importMode === 'heavy' && (
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                        <span>レイアウト調整</span>
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        {LAYOUT_OPTIONS.map((opt) => (
+                                                            <button
+                                                                key={opt.id}
+                                                                type="button"
+                                                                onClick={() => setLayoutOption(opt.id)}
+                                                                disabled={isImporting}
+                                                                className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${layoutOption === opt.id
+                                                                    ? 'bg-primary text-primary-foreground'
+                                                                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                    }`}
+                                                            >
+                                                                {opt.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="mt-1 text-[10px] text-muted-foreground">
+                                                        {LAYOUT_OPTIONS.find(o => o.id === layoutOption)?.description}
+                                                    </p>
                                                 </div>
-                                                <p className="mt-1 text-[10px] text-muted-foreground">
-                                                    {LAYOUT_OPTIONS.find(o => o.id === layoutOption)?.description}
-                                                </p>
-                                            </div>
+                                            )}
 
                                             {/* Custom Prompt */}
                                             <div>

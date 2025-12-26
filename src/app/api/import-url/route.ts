@@ -17,30 +17,31 @@ const log = {
     error: (msg: string) => console.log(`\x1b[31m[IMPORT-URL ERROR]\x1b[0m ✗ ${msg}`),
 };
 
-// スタイル定義
+// スタイル定義（日本語で具体的なデザイン指示）
 const STYLE_DESCRIPTIONS: Record<string, string> = {
-    professional: 'プロフェッショナルでビジネス向けのクリーンなデザイン。信頼感のある青系カラーと整然としたレイアウト。',
-    pops: '明るくポップでカラフルなデザイン。親しみやすく、若々しい印象。',
-    luxury: 'ラグジュアリーで高級感のあるデザイン。ゴールド・ブラック・深い色調を使用。',
-    minimal: 'シンプルでミニマルなデザイン。余白を活かした洗練されたレイアウト。',
-    emotional: '情熱的でエネルギッシュなデザイン。赤やオレンジなど暖色系で力強い印象。',
+    sampling: '元デザイン維持：色、フォント、ボタン形状、装飾など元のデザインのスタイルをそのまま維持。テキストの書き換えと軽微なレイアウト調整のみ行う',
+    professional: '企業・信頼感スタイル：ネイビーブルー(#1E3A5F)と白を基調、クリーンなゴシック体、控えめなシャドウ、角丸の長方形ボタン、プロフェッショナルな印象',
+    pops: 'ポップ・活気スタイル：明るいグラデーション（ピンク→オレンジ、シアン→パープル）、丸みのある形状、太字フォント、楽しいアイコン、若々しく元気な印象',
+    luxury: '高級・エレガントスタイル：黒とゴールド(#D4AF37)を基調、明朝体、細くエレガントなライン、贅沢な余白、上質なテクスチャ、洗練された高級感',
+    minimal: 'ミニマル・シンプルスタイル：モノクロ+単一アクセントカラー、最大限の余白、細い軽量フォント、シンプルな幾何学形状、装飾なし、禅のようなシンプルさ',
+    emotional: '情熱・エネルギースタイル：暖色系（深紅#C41E3A、オレンジ）、強いコントラスト、インパクトのある大きな文字、ダイナミックな斜め要素、緊急性とエネルギー',
 };
 
-// カラースキーム定義
+// カラースキーム定義（具体的なカラーコード付き）
 const COLOR_SCHEME_DESCRIPTIONS: Record<string, string> = {
     original: '',
-    blue: 'Use blue color palette (#3B82F6, #1E40AF) as the primary colors.',
-    green: 'Use green color palette (#22C55E, #15803D) as the primary colors.',
-    purple: 'Use purple color palette (#A855F7, #7C3AED) as the primary colors.',
-    orange: 'Use orange color palette (#F97316, #EA580C) as the primary colors.',
-    monochrome: 'Use monochrome color palette (black, white, and grays only).',
+    blue: 'カラー変更：メイン=#3B82F6、サブ=#1E40AF、アクセント=#60A5FA、背景=#F0F9FF。すべての色をこのブルー系パレットに置き換えてください。',
+    green: 'カラー変更：メイン=#22C55E、サブ=#15803D、アクセント=#86EFAC、背景=#F0FDF4。すべての色をこのグリーン系パレットに置き換えてください。',
+    purple: 'カラー変更：メイン=#A855F7、サブ=#7C3AED、アクセント=#C4B5FD、背景=#FAF5FF。すべての色をこのパープル系パレットに置き換えてください。',
+    orange: 'カラー変更：メイン=#F97316、サブ=#EA580C、アクセント=#FDBA74、背景=#FFF7ED。すべての色をこのオレンジ系パレットに置き換えてください。',
+    monochrome: 'カラー変更：黒(#000000)、白(#FFFFFF)、グレー(#374151, #6B7280, #9CA3AF, #E5E7EB)のみ使用。他の色は禁止。',
 };
 
-// レイアウトオプション定義
+// レイアウトオプション定義（具体的な数値指示付き）
 const LAYOUT_DESCRIPTIONS: Record<string, string> = {
     keep: '',
-    modernize: 'Increase whitespace and padding for a more modern, spacious look.',
-    compact: 'Reduce whitespace and make the layout more information-dense.',
+    modernize: 'レイアウト調整：余白を50%増加、セクション間にゆとりを追加、大きめのマージン。モダンで開放的な印象に。',
+    compact: 'レイアウト調整：余白を30%削減、要素間を詰める、スクロールなしでより多くのコンテンツを表示。情報密度を高く。',
 };
 
 // デバイスプリセット（高解像度対応）
@@ -75,6 +76,7 @@ async function processImageWithAI(
     importMode: 'light' | 'heavy',
     designOptions: DesignOptions,
     segmentIndex: number,
+    totalSegments: number,
     apiKey: string,
     userId: string | null
 ): Promise<Buffer | null> {
@@ -82,36 +84,85 @@ async function processImageWithAI(
     const { style, colorScheme, layoutOption, customPrompt } = designOptions;
     const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.professional;
     const colorDesc = colorScheme ? COLOR_SCHEME_DESCRIPTIONS[colorScheme] || '' : '';
-    const layoutDesc = layoutOption ? LAYOUT_DESCRIPTIONS[layoutOption] || '' : '';
+    // lightモードではレイアウト固定なのでlayoutOptionは無視
+    const layoutDesc = (importMode === 'heavy' && layoutOption) ? LAYOUT_DESCRIPTIONS[layoutOption] || '' : '';
 
     // カスタムプロンプトとオプションを組み合わせる
     const additionalInstructions = [
         colorDesc,
         layoutDesc,
-        customPrompt ? `Additional instructions: ${customPrompt}` : ''
+        customPrompt ? `ユーザー指示：${customPrompt}` : ''
     ].filter(Boolean).join('\n');
 
+    // セグメント位置と役割の定義（セグメント独立処理のため詳細に）
+    const segmentInfo = segmentIndex === 0
+        ? { position: 'ヘッダー・ヒーローセクション', role: 'ナビゲーション、ロゴ、メインビジュアル、キャッチコピーを含む最重要セクション' }
+        : segmentIndex === totalSegments - 1
+        ? { position: 'フッターセクション', role: 'CTA、問い合わせ、著作権表示などページの締めくくり' }
+        : { position: `コンテンツセクション（${segmentIndex + 1}/${totalSegments}）`, role: '商品説明、特徴、お客様の声などの本文コンテンツ' };
+
+    // samplingモードの場合は特別に厳格なプロンプト
+    const isSamplingMode = style === 'sampling';
+
     const prompt = importMode === 'light'
-        ? `This is a screenshot of a website section. Recreate this image while:
-- MAINTAINING the exact same layout, structure, and composition
-- KEEPING all elements in the same positions
-- CHANGING only the visual style to: ${styleDesc}
-${additionalInstructions ? `- Apply these modifications:\n${additionalInstructions}` : ''}
-- DO NOT include any text, letters, or characters
-- Keep it as a website design visual
-- Make it look DIFFERENT from the original to avoid copying
+        ? (isSamplingMode
+            ? `この画像をほぼそのまま再現してください。
 
-Output the modified image directly.`
-        : `This is a screenshot of a website section. Use this as inspiration to create a completely NEW design:
-- REFERENCE the general layout and composition concept
-- CREATE a fresh, original design with style: ${styleDesc}
-${additionalInstructions ? `- Apply these modifications:\n${additionalInstructions}` : ''}
-- DO NOT copy the original - make it unique and original
-- DO NOT include any text, letters, or characters
-- Design for a high-quality landing page visual
-- Ensure the design is distinctly different from the source
+【最重要】入力画像を可能な限り忠実にコピーしてください。
 
-Output the new image directly.`;
+【許可される変更】
+- テキストの言い回しのみ微調整（例：「詳しくはこちら」→「もっと見る」）
+
+【禁止事項】
+- 色の変更禁止
+- レイアウトの変更禁止
+- フォントの変更禁止
+- 要素の追加・削除禁止
+- 背景の変更禁止
+
+【出力】入力画像とほぼ同一の画像を出力。テキストの言い回しのみ変更可。`
+            : `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を新しいスタイルに変換してください。
+
+【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+
+【セグメント情報】
+- 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
+- 役割：${segmentInfo.role}
+
+【絶対厳守ルール】
+1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
+2. レイアウト固定：要素の位置、サイズ、間隔は1ピクセルも変えない
+3. 上下の端：他セグメントと繋がるため、背景色やパターンが途切れないようにする
+
+【スタイル変更ルール】
+4. 適用スタイル：${styleDesc}
+5. テキスト書き換え：意味を保ち言い回しを変える（例：「今すぐ始める」→「スタートする」）
+6. 色の統一：全セグメントで同じカラーパレットを使用する
+7. 形状の統一：ボタンは全て同じ角丸、シャドウは同じ深さ、フォントは同じウェイト
+${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
+
+【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`)
+        : `あなたはクリエイティブなWebデザイナーです。Webページの一部分（セグメント画像）を参考に新しいデザインを作成してください。
+
+【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+
+【セグメント情報】
+- 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
+- 役割：${segmentInfo.role}
+
+【絶対厳守ルール】
+1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
+2. 上下の端：他セグメントと繋がるため、背景色が途切れないようにする
+3. 横幅いっぱい：左右の余白を統一し、コンテンツ幅を揃える
+
+【デザイン変更ルール】
+4. 新スタイル：${styleDesc}
+5. レイアウト再構成：要素の配置は自由に変更してよいが、セクションの役割は維持
+6. テキスト書き換え：意味を保ち新鮮な言い回しに変更
+7. デザインシステム統一：色、フォント、ボタン形状、余白リズムを全セグメントで統一
+${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
+
+【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`;
 
     log.info(`[AI] Processing segment ${segmentIndex + 1} with ${importMode} mode, style: ${style}`);
 
@@ -132,7 +183,8 @@ Output the new image directly.`;
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        temperature: importMode === 'heavy' ? 1.2 : 0.8
+                        // sampling: 最小、light: 低め、heavy: 創造性重視
+                        temperature: isSamplingMode ? 0.1 : (importMode === 'heavy' ? 0.8 : 0.3)
                     },
                     toolConfig: { functionCallingConfig: { mode: "NONE" } }
                 })
@@ -445,10 +497,13 @@ export async function POST(request: NextRequest) {
 
             if (currentSegHeight <= 0) continue;
 
+            // samplingモードはAI処理をスキップ（スクショそのまま使用）
+            const shouldProcessWithAI = importMode !== 'faithful' && style !== 'sampling' && googleApiKey;
+
             send({
                 type: 'progress',
                 step: 'processing',
-                message: importMode !== 'faithful'
+                message: shouldProcessWithAI
                     ? `セグメント ${i + 1}/${numSegments} をAI処理中...`
                     : `セグメント ${i + 1}/${numSegments} を保存中...`,
                 total: numSegments,
@@ -462,14 +517,15 @@ export async function POST(request: NextRequest) {
                 .png()
                 .toBuffer();
 
-            // AI processing if needed
-            if (importMode !== 'faithful' && googleApiKey) {
+            // AI processing if needed (samplingモードはスキップ)
+            if (shouldProcessWithAI && googleApiKey) {
                 log.info(`Segment ${i + 1}: Applying AI transformation...`);
                 const aiBuffer = await processImageWithAI(
                     buffer,
                     importMode as 'light' | 'heavy',
                     designOptions,
                     i,
+                    numSegments,
                     googleApiKey,
                     user?.id || null
                 );

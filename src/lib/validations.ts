@@ -77,7 +77,7 @@ export const importUrlSchema = z.object({
     url: z.string().url('有効なURLを入力してください'),
     device: z.enum(['desktop', 'mobile']).default('desktop'),
     importMode: z.enum(['faithful', 'light', 'heavy']).default('faithful'),
-    style: z.enum(['professional', 'pops', 'luxury', 'minimal', 'emotional']).optional(),
+    style: z.enum(['sampling', 'professional', 'pops', 'luxury', 'minimal', 'emotional']).optional(),
     colorScheme: z.enum(['original', 'blue', 'green', 'purple', 'orange', 'monochrome']).optional(),
     layoutOption: z.enum(['keep', 'modernize', 'compact']).optional(),
     customPrompt: z.string().max(500, 'カスタムプロンプトは500文字以内で入力してください').optional(),
