@@ -288,7 +288,7 @@ export async function POST(request: NextRequest) {
         url,
         device = 'desktop',
         importMode = 'faithful',
-        style = 'professional',
+        style = 'sampling',  // デフォルトは元デザイン維持
         colorScheme,
         layoutOption,
         customPrompt
