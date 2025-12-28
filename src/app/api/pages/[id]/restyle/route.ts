@@ -5,11 +5,7 @@ import sharp from 'sharp';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
-import {
-    generateDesignTokens,
-    tokensToPromptDescription,
-} from '@/lib/design-tokens';
-import { DesignTokens } from '@/types';
+// design-tokens.ts のインポートは不要になりました（editOptions方式に移行）
 import { z } from 'zod';
 
 // カラーログ
@@ -19,41 +15,219 @@ const log = {
     error: (msg: string) => console.log(`\x1b[31m[RESTYLE ERROR]\x1b[0m ${msg}`),
 };
 
-// バリデーションスキーマ
-const restyleSchema = z.object({
-    style: z.enum(['sampling', 'professional', 'pops', 'luxury', 'minimal', 'emotional']),
-    colorScheme: z.enum(['original', 'blue', 'green', 'purple', 'orange', 'monochrome']).optional(),
-    layoutOption: z.enum(['keep', 'modernize', 'compact']).optional(),
-    customPrompt: z.string().max(500).optional(),
-    mode: z.enum(['light', 'heavy']).default('light'),
+// デザイン定義スキーマ
+const designDefinitionSchema = z.object({
+    colorPalette: z.object({
+        primary: z.string().optional(),
+        secondary: z.string().optional(),
+        accent: z.string().optional(),
+        background: z.string().optional(),
+    }).optional(),
+    typography: z.object({
+        style: z.string().optional(),
+        mood: z.string().optional(),
+    }).optional(),
+    layout: z.object({
+        density: z.string().optional(),
+        style: z.string().optional(),
+    }).optional(),
+    vibe: z.string().optional(),
+    description: z.string().optional(),
+}).optional();
+
+// 編集オプションスキーマ
+const editOptionsSchema = z.object({
+    people: z.object({
+        enabled: z.boolean(),
+        mode: z.enum(['similar', 'different']),
+    }),
+    text: z.object({
+        enabled: z.boolean(),
+        mode: z.enum(['nuance', 'copywriting', 'rewrite']),
+    }),
+    pattern: z.object({
+        enabled: z.boolean(),
+    }),
+    objects: z.object({
+        enabled: z.boolean(),
+    }),
+    color: z.object({
+        enabled: z.boolean(),
+        scheme: z.string(),
+    }),
+    layout: z.object({
+        enabled: z.boolean(),
+    }),
 });
 
-// スタイル定義
-const STYLE_DESCRIPTIONS: Record<string, string> = {
-    sampling: '元デザイン維持：色、フォント、ボタン形状、装飾など元のデザインのスタイルをそのまま維持',
-    professional: '企業・信頼感スタイル：ネイビーブルー(#1E3A5F)と白を基調、クリーンなゴシック体',
-    pops: 'ポップ・活気スタイル：明るいグラデーション（ピンク→オレンジ）、丸みのある形状、太字フォント',
-    luxury: '高級・エレガントスタイル：黒とゴールド(#D4AF37)を基調、明朝体、細くエレガントなライン',
-    minimal: 'ミニマル・シンプルスタイル：モノクロ+単一アクセントカラー、最大限の余白',
-    emotional: '情熱・エネルギースタイル：暖色系（深紅#C41E3A、オレンジ）、強いコントラスト',
+// バリデーションスキーマ
+const restyleSchema = z.object({
+    editOptions: editOptionsSchema,
+    designDefinition: designDefinitionSchema,
+});
+
+// カラースキーム定義
+const COLOR_SCHEMES: Record<string, { primary: string; secondary: string; accent: string; background: string }> = {
+    blue: { primary: '#3B82F6', secondary: '#1E40AF', accent: '#60A5FA', background: '#F0F9FF' },
+    green: { primary: '#22C55E', secondary: '#15803D', accent: '#86EFAC', background: '#F0FDF4' },
+    purple: { primary: '#A855F7', secondary: '#7C3AED', accent: '#C4B5FD', background: '#FAF5FF' },
+    orange: { primary: '#F97316', secondary: '#EA580C', accent: '#FDBA74', background: '#FFF7ED' },
+    monochrome: { primary: '#000000', secondary: '#374151', accent: '#6B7280', background: '#FFFFFF' },
 };
 
-// AI画像変換処理
+// editOptionsからプロンプトを生成
+function generateEditPrompt(options: z.infer<typeof editOptionsSchema>): string {
+    const instructions: string[] = [];
+
+    if (options.people.enabled) {
+        if (options.people.mode === 'similar') {
+            instructions.push(`【人物・写真の変更】
+人物が写っている場合、同じ雰囲気・同じシチュエーションの別の人物に置き換えてください。
+- 年齢層、性別、服装の雰囲気は維持
+- 表情やポーズは自然に変更
+- 背景との調和を保つ`);
+        } else {
+            instructions.push(`【人物・写真の変更】
+人物が写っている場合、完全に異なるイメージの人物に置き換えてください。
+- 新しい人物で新鮮な印象を与える
+- サービスや商品に合った人物を選択
+- 背景との調和を保つ`);
+        }
+    }
+
+    if (options.text.enabled) {
+        if (options.text.mode === 'nuance') {
+            instructions.push(`【テキストの変更】
+テキストのニュアンスを少し変更してください。
+- 意味は同じまま、言い回しを少し変える
+- 読みやすさを維持
+- フォントスタイルは変更しない`);
+        } else if (options.text.mode === 'copywriting') {
+            instructions.push(`【テキストの変更 - コピーライティング改善】
+テキストをより魅力的なコピーライティングに改善してください。
+- ユーザーの心に響く言葉選び
+- 行動を促すCTA文言
+- 読みやすく印象的なフレーズ
+- フォントスタイルは維持`);
+        } else {
+            instructions.push(`【テキストの変更 - 完全書き換え】
+テキストを完全に新しい内容に書き換えてください。
+- 同じ目的・役割は維持
+- 全く新しい表現で新鮮さを出す
+- フォントスタイルは維持`);
+        }
+    }
+
+    if (options.pattern.enabled) {
+        instructions.push(`【模様・パターン・背景の変更】
+背景の模様やパターンを変更してください。
+- グラデーション、テクスチャ、パターンを新しいものに
+- 全体の雰囲気に合った背景に変更
+- 読みやすさを損なわないよう注意`);
+    }
+
+    if (options.objects.enabled) {
+        instructions.push(`【オブジェクト・アイコンの変更】
+アイコンや装飾オブジェクトを変更してください。
+- アイコンを別のスタイルのものに置き換え
+- 装飾要素を新しいデザインに
+- 全体の統一感を保つ`);
+    }
+
+    if (options.color.enabled) {
+        const scheme = COLOR_SCHEMES[options.color.scheme];
+        if (scheme) {
+            instructions.push(`【カラー・配色の変更】
+以下の新しいカラーパレットに完全に置き換えてください：
+- メインカラー: ${scheme.primary}
+- サブカラー: ${scheme.secondary}
+- アクセントカラー: ${scheme.accent}
+- 背景色: ${scheme.background}
+全ての色要素（ボタン、背景、アイコン、装飾）を新しい配色に統一してください。`);
+        }
+    }
+
+    if (options.layout.enabled) {
+        instructions.push(`【レイアウト・構成の変更】
+レイアウトを再構成してください。
+- 要素の配置を変更
+- 余白のバランスを調整
+- より効果的なレイアウトに改善
+- セクションの役割は維持`);
+    }
+
+    return instructions.join('\n\n');
+}
+
+// デザイン定義をプロンプト用テキストに変換
+function designDefinitionToPrompt(def: z.infer<typeof designDefinitionSchema>): string {
+    if (!def) return '';
+
+    const parts: string[] = [];
+
+    if (def.vibe) {
+        parts.push(`【雰囲気】${def.vibe}`);
+    }
+    if (def.description) {
+        parts.push(`【デザインの特徴】${def.description}`);
+    }
+    if (def.colorPalette) {
+        const colors = [];
+        if (def.colorPalette.primary) colors.push(`メイン: ${def.colorPalette.primary}`);
+        if (def.colorPalette.secondary) colors.push(`サブ: ${def.colorPalette.secondary}`);
+        if (def.colorPalette.accent) colors.push(`アクセント: ${def.colorPalette.accent}`);
+        if (def.colorPalette.background) colors.push(`背景: ${def.colorPalette.background}`);
+        if (colors.length > 0) {
+            parts.push(`【カラーパレット】${colors.join(', ')}`);
+        }
+    }
+    if (def.typography) {
+        const typo = [];
+        if (def.typography.style) typo.push(`スタイル: ${def.typography.style}`);
+        if (def.typography.mood) typo.push(`ムード: ${def.typography.mood}`);
+        if (typo.length > 0) {
+            parts.push(`【タイポグラフィ】${typo.join(', ')}`);
+        }
+    }
+    if (def.layout) {
+        const layout = [];
+        if (def.layout.density) layout.push(`密度: ${def.layout.density}`);
+        if (def.layout.style) layout.push(`スタイル: ${def.layout.style}`);
+        if (layout.length > 0) {
+            parts.push(`【レイアウト】${layout.join(', ')}`);
+        }
+    }
+
+    return parts.length > 0 ? parts.join('\n') : '';
+}
+
+// AI画像変換処理（editOptions対応）
 async function processImageWithAI(
     imageBuffer: Buffer,
-    mode: 'light' | 'heavy',
-    style: string,  // スタイルID（samplingモード判定用）
-    styleDesc: string,
-    designTokens: DesignTokens,
+    editOptions: z.infer<typeof editOptionsSchema>,
     segmentIndex: number,
     totalSegments: number,
-    customPrompt: string,
     apiKey: string,
     userId: string | null,
-    styleReferenceImage?: Buffer  // 最初のセグメントの結果を参照として渡す
+    styleReferenceImage?: Buffer,  // 最初のセグメントの結果を参照として渡す
+    originalDesignDefinition?: z.infer<typeof designDefinitionSchema>  // 元のデザイン解析結果
 ): Promise<Buffer | null> {
     const startTime = createTimer();
-    const tokenDescription = tokensToPromptDescription(designTokens);
+    const editPrompt = generateEditPrompt(editOptions);
+    const originalDesignPrompt = designDefinitionToPrompt(originalDesignDefinition);
+
+    // 何も選択されていない場合はスキップ
+    const hasAnyEdit = editOptions.people.enabled ||
+        editOptions.text.enabled ||
+        editOptions.pattern.enabled ||
+        editOptions.objects.enabled ||
+        editOptions.color.enabled ||
+        editOptions.layout.enabled;
+
+    if (!hasAnyEdit) {
+        log.info(`[AI] Segment ${segmentIndex + 1}: No edits selected, skipping`);
+        return null;
+    }
 
     const segmentInfo = segmentIndex === 0
         ? { position: 'ヘッダー・ヒーローセクション', role: 'ナビゲーション、ロゴ、メインビジュアル' }
@@ -62,9 +236,7 @@ async function processImageWithAI(
         : { position: `コンテンツセクション（${segmentIndex + 1}/${totalSegments}）`, role: '本文コンテンツ' };
 
     // 参照画像がある場合（2番目以降のセグメント）は一貫性指示を追加
-    // ただしsamplingモードでは元画像の忠実な再現が目的なので、参照画像は使用しない
-    const isSamplingMode = style === 'sampling';
-    const hasStyleReference = !isSamplingMode && styleReferenceImage && segmentIndex > 0;
+    const hasStyleReference = styleReferenceImage && segmentIndex > 0;
     const styleReferenceInstruction = hasStyleReference
         ? `【最重要：スタイル統一】
 添付した「スタイル参照画像」は、このページの最初のセグメントです。
@@ -79,8 +251,7 @@ async function processImageWithAI(
 `
         : '';
 
-    const prompt = mode === 'light'
-        ? `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を新しいスタイルに変換してください。
+    const prompt = `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を編集してください。
 
 ${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
 
@@ -90,39 +261,20 @@ ${styleReferenceInstruction}【重要】この画像はページ全体の一部�
 
 【絶対厳守ルール】
 1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
-2. レイアウト固定：要素の位置、サイズ、間隔は1ピクセルも変えない
-3. 上下の端：他セグメントと繋がるため、背景色やパターンが途切れないようにする
+2. 上下の端：他セグメントと繋がるため、背景色やパターンが途切れないようにする
+3. 指定された要素のみ変更：下記の【編集指示】で指定されていない要素はそのまま維持
 
-【スタイル変更ルール】
-4. 適用スタイル：${styleDesc}
-5. テキスト書き換え：意味を保ち言い回しを変える
+${originalDesignPrompt ? `【維持すべき元のデザイン特性】
+${originalDesignPrompt}
+上記を参考に全体の雰囲気を維持してください。
 
-${tokenDescription}
-
-${customPrompt ? `【ユーザー指示】${customPrompt}` : ''}
-
-【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`
-        : `あなたはクリエイティブなWebデザイナーです。Webページの一部分（セグメント画像）を参考に新しいデザインを作成してください。
-
-${styleReferenceInstruction}【セグメント情報】
-- 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
-- 役割：${segmentInfo.role}
-
-【絶対厳守ルール】
-1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
-2. 上下の端：他セグメントと繋がるため、背景色が途切れないようにする
-
-【デザイン変更ルール】
-3. 新スタイル：${styleDesc}
-4. レイアウト再構成：要素の配置は自由に変更してよいが、セクションの役割は維持
-
-${tokenDescription}
-
-${customPrompt ? `【ユーザー指示】${customPrompt}` : ''}
+` : ''}【編集指示】
+${editPrompt}
 
 【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`;
 
-    log.info(`[AI] Processing segment ${segmentIndex + 1} with ${mode} mode${hasStyleReference ? ' (with style reference)' : ''}`);
+    log.info(`[AI] Processing segment ${segmentIndex + 1}${hasStyleReference ? ' (with style reference)' : ''}`);
+    log.info(`[AI] Edit options: people=${editOptions.people.enabled}, text=${editOptions.text.enabled}, pattern=${editOptions.pattern.enabled}, objects=${editOptions.objects.enabled}, color=${editOptions.color.enabled}, layout=${editOptions.layout.enabled}`);
 
     try {
         const base64Data = imageBuffer.toString('base64');
@@ -141,6 +293,9 @@ ${customPrompt ? `【ユーザー指示】${customPrompt}` : ''}
         parts.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
         parts.push({ text: hasStyleReference ? `↑ 処理対象画像\n\n${prompt}` : prompt });
 
+        // レイアウト変更がある場合は高めの温度、それ以外は低温度
+        const temperature = editOptions.layout.enabled ? 0.35 : 0.15;
+
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
             {
@@ -152,11 +307,7 @@ ${customPrompt ? `【ユーザー指示】${customPrompt}` : ''}
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        // 温度設定の最適化（一貫性重視）
-                        // light: 0.15（レイアウト固定、スタイルのみ変更）
-                        // heavy: 0.35（デザイン変更しつつ一貫性維持）
-                        // 参照画像がある場合はさらに低めに設定して一貫性を高める
-                        temperature: hasStyleReference ? 0.1 : (mode === 'heavy' ? 0.35 : 0.15),
+                        temperature: hasStyleReference ? 0.1 : temperature,
                     },
                     toolConfig: { functionCallingConfig: { mode: "NONE" } }
                 })
@@ -253,13 +404,27 @@ export async function POST(
         }, { status: 400 });
     }
 
-    const { style, colorScheme, layoutOption, customPrompt, mode } = validation.data;
+    const { editOptions, designDefinition } = validation.data;
 
     return createStreamResponse(async (send) => {
         log.info(`========== Starting Restyle for Page ${pageId} ==========`);
-        log.info(`Style: ${style}, Mode: ${mode}`);
+        log.info(`EditOptions: people=${editOptions.people.enabled}, text=${editOptions.text.enabled}, pattern=${editOptions.pattern.enabled}, objects=${editOptions.objects.enabled}, color=${editOptions.color.enabled}(${editOptions.color.scheme}), layout=${editOptions.layout.enabled}`);
+        log.info(`HasDesignDef: ${!!designDefinition}`);
 
-        send({ type: 'progress', step: 'init', message: 'スタイル変更を開始しています...' });
+        // 選択された編集オプションを確認
+        const enabledOptions: string[] = [];
+        if (editOptions.people.enabled) enabledOptions.push('人物');
+        if (editOptions.text.enabled) enabledOptions.push('テキスト');
+        if (editOptions.pattern.enabled) enabledOptions.push('模様');
+        if (editOptions.objects.enabled) enabledOptions.push('オブジェクト');
+        if (editOptions.color.enabled) enabledOptions.push('カラー');
+        if (editOptions.layout.enabled) enabledOptions.push('レイアウト');
+
+        if (enabledOptions.length === 0) {
+            throw new Error('編集オプションが選択されていません');
+        }
+
+        send({ type: 'progress', step: 'init', message: `${enabledOptions.join('・')}の編集を開始しています...` });
 
         // ページとセクションを取得
         const page = await prisma.page.findUnique({
@@ -291,12 +456,10 @@ export async function POST(
             throw new Error('Google API key is not configured');
         }
 
-        // デザイントークンを生成
-        send({ type: 'progress', step: 'tokens', message: 'デザイントークンを生成中...' });
-        const designTokens = generateDesignTokens(style, colorScheme, layoutOption);
-        log.success(`Design tokens generated: primary=${designTokens.colors.primary}`);
+        send({ type: 'progress', step: 'tokens', message: '編集プロンプトを生成中...' });
+        const editPrompt = generateEditPrompt(editOptions);
+        log.success(`Edit prompt generated`);
 
-        const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.professional;
         const updatedSections: any[] = [];
 
         // ========================================
@@ -326,29 +489,23 @@ export async function POST(
                 let imageBuffer = Buffer.from(imageArrayBuffer);
 
                 // 2番目以降のセグメントには最初のセグメントの結果を参照として渡す
-                // ただしsamplingモードでは元画像の忠実な再現が目的なので、参照画像は使用しない
-                const isSamplingMode = style === 'sampling';
-                const styleReference = (!isSamplingMode && i > 0 && firstSegmentResult) ? firstSegmentResult : undefined;
+                const styleReference = (i > 0 && firstSegmentResult) ? firstSegmentResult : undefined;
 
-                // AI処理
+                // AI処理（新しいeditOptions方式）
                 const aiBuffer = await processImageWithAI(
                     imageBuffer,
-                    mode,
-                    style,  // スタイルID追加
-                    styleDesc,
-                    designTokens,
+                    editOptions,
                     i,
                     totalSegments,
-                    customPrompt || '',
                     googleApiKey,
                     user?.id || null,
-                    styleReference  // 参照画像を渡す
+                    styleReference,
+                    designDefinition
                 );
 
                 if (aiBuffer) {
                     // 最初のセグメントの結果を保存（後続セグメントの参照用）
-                    // samplingモード以外の場合のみ
-                    if (i === 0 && !isSamplingMode) {
+                    if (i === 0) {
                         firstSegmentResult = aiBuffer;
                         log.success(`Section 1: Saved as style reference for subsequent sections`);
                     }
@@ -384,7 +541,7 @@ export async function POST(
                             width: processedMeta.width || section.image!.width || 0,
                             height: processedMeta.height || section.image!.height || 0,
                             sourceUrl: section.image!.filePath,
-                            sourceType: `restyle-${mode}`,
+                            sourceType: 'restyle-edit',
                         },
                     });
 

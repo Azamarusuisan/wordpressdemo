@@ -5,7 +5,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/admin/SortableItem';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, PaintBucket, RotateCw } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -799,14 +799,28 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // AIアシスタントパネル表示状態
     const [showAIPanel, setShowAIPanel] = useState(false);
 
-    // 一括スタイル変更の状態
-    const [showRestyleModal, setShowRestyleModal] = useState(false);
-    const [restyleStyle, setRestyleStyle] = useState('professional');
-    const [restyleColorScheme, setRestyleColorScheme] = useState('original');
-    const [restyleMode, setRestyleMode] = useState<'light' | 'heavy'>('light');
-    const [restyleCustomPrompt, setRestyleCustomPrompt] = useState('');
+    // 一括編集オプションの状態
+    const [editOptions, setEditOptions] = useState({
+        people: { enabled: false, mode: 'similar' as 'similar' | 'different' },
+        text: { enabled: false, mode: 'nuance' as 'nuance' | 'copywriting' | 'rewrite' },
+        pattern: { enabled: false },
+        objects: { enabled: false },
+        color: { enabled: false, scheme: 'blue' as string },
+        layout: { enabled: false },
+    });
     const [isRestyling, setIsRestyling] = useState(false);
     const [restyleProgress, setRestyleProgress] = useState({ current: 0, total: 0, message: '' });
+
+    // デザイン定義のON/OFF・手動入力
+    const [useDesignDef, setUseDesignDef] = useState(!!designDefinition);
+    const [customDesignInput, setCustomDesignInput] = useState('');
+
+    // デザイン解析が完了したらトグルをONにする
+    useEffect(() => {
+        if (designDefinition) {
+            setUseDesignDef(true);
+        }
+    }, [designDefinition]);
 
     // セグメント個別再生成の状態
     const [showRegenerateModal, setShowRegenerateModal] = useState(false);
@@ -888,10 +902,19 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         }
     };
 
-    // 一括スタイル変更の実行
+    // 一括編集の実行
     const handleRestyle = async () => {
         if (pageId === 'new') {
-            toast.error('スタイル変更する前にページを保存してください。');
+            toast.error('編集する前にページを保存してください。');
+            return;
+        }
+
+        // 少なくとも1つのオプションが選択されているか確認
+        const hasAnyOption = Object.values(editOptions).some(opt =>
+            typeof opt === 'object' && 'enabled' in opt ? opt.enabled : false
+        );
+        if (!hasAnyOption) {
+            toast.error('変更する要素を1つ以上選択してください。');
             return;
         }
 
@@ -899,14 +922,21 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         setRestyleProgress({ current: 0, total: 0, message: '開始中...' });
 
         try {
+            // デザイン定義を決定：ON → 解析結果、OFF → 手動入力（あれば）
+            let finalDesignDef = undefined;
+            if (useDesignDef && designDefinition) {
+                finalDesignDef = designDefinition;
+            } else if (!useDesignDef && customDesignInput.trim()) {
+                // 手動入力をdescriptionとして送信
+                finalDesignDef = { description: customDesignInput.trim() };
+            }
+
             const response = await fetch(`/api/pages/${pageId}/restyle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    style: restyleStyle,
-                    colorScheme: restyleColorScheme,
-                    mode: restyleMode,
-                    customPrompt: restyleCustomPrompt || undefined,
+                    editOptions,
+                    designDefinition: finalDesignDef,
                 })
             });
 
@@ -937,7 +967,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 });
                             } else if (data.type === 'complete') {
                                 toast.success(`${data.updatedCount}/${data.totalCount} セクションのスタイルを変更しました`);
-                                setShowRestyleModal(false);
+                                setShowAIPanel(false);
                                 router.refresh();
                             } else if (data.type === 'error') {
                                 throw new Error(data.error);
@@ -993,14 +1023,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     title="AIアシスタント"
                 >
                     <Sparkles className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={() => setShowRestyleModal(true)}
-                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
-                    title="一括スタイル変更"
-                    disabled={pageId === 'new' || sections.length === 0}
-                >
-                    <PaintBucket className="h-4 w-4" />
                 </button>
                 <div className="w-px h-6 bg-gray-200" />
                 <button
@@ -1153,146 +1175,315 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 "fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 transform transition-transform duration-300 z-40",
                 showAIPanel ? "translate-y-0" : "translate-y-full"
             )}>
-                <div className="max-w-4xl mx-auto p-6">
+                <div className="max-w-3xl mx-auto p-6">
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-purple-500" />
                                 ページ丸ごと編集
                             </h3>
-                            <p className="text-xs text-gray-400 mt-1">全セクションを一括でAI生成・リブランディング</p>
+                            <p className="text-xs text-gray-400 mt-1">デザインの雰囲気を維持したまま、レイアウトやカラーを変更</p>
                         </div>
                         <button onClick={() => setShowAIPanel(false)} className="p-2 text-gray-400 hover:text-gray-600">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
 
-                    {/* Design Reference Analysis */}
-                    <div className="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-xl">
-                        <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-bold text-purple-900 flex items-center">
-                                <Palette className="w-4 h-4 mr-2 text-purple-600" />
-                                デザインリファレンス (元画像から抽出)
-                            </h4>
-                            {designDefinition && (
-                                <span className="text-[10px] px-2 py-1 bg-green-100 text-green-700 rounded-full font-bold">
-                                    解析完了: {designDefinition.vibe}
-                                </span>
-                            )}
-                        </div>
-
-                        {!designDefinition ? (
-                            <button
-                                onClick={analyzeCurrentDesign}
-                                disabled={isAnalyzing || sections.length === 0}
-                                className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all group"
-                            >
-                                {isAnalyzing ? (
-                                    <Loader2 className="h-4 w-4 text-purple-600 animate-spin" />
-                                ) : (
-                                    <Wand2 className="h-4 w-4 text-purple-500 group-hover:text-purple-600" />
+                    {/* 処理中の表示 */}
+                    {isRestyling ? (
+                        <div className="py-8">
+                            <div className="flex flex-col items-center justify-center gap-4">
+                                <RefreshCw className="h-10 w-10 text-purple-600 animate-spin" />
+                                <p className="text-sm font-medium text-gray-600">{restyleProgress.message}</p>
+                                {restyleProgress.total > 0 && (
+                                    <div className="w-full max-w-xs">
+                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-purple-600 transition-all duration-300"
+                                                style={{ width: `${(restyleProgress.current / restyleProgress.total) * 100}%` }}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-400 text-center mt-2">
+                                            {restyleProgress.current} / {restyleProgress.total}
+                                        </p>
+                                    </div>
                                 )}
-                                <span className="text-sm font-bold text-purple-700">
-                                    {isAnalyzing ? '現在のデザインを解析中...' : '現在のLP画像からスタイルを抽出'}
-                                </span>
-                            </button>
-                        ) : (
-                            <div className="flex items-start gap-3 bg-white p-3 rounded-lg border border-purple-100">
-                                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
-                                    <Palette className="h-6 w-6 text-purple-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-start">
-                                        <p className="text-xs font-bold text-gray-900 mb-1">抽出されたスタイル</p>
-                                        <button
-                                            onClick={() => {
-                                                setDesignDefinition(null);
-                                                setDesignImage(null);
-                                            }}
-                                            className="text-gray-400 hover:text-red-500"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 line-clamp-2">{designDefinition.description}</p>
-                                    <div className="mt-1 flex gap-1">
-                                        <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                                            {designDefinition.colorPalette?.primary}
-                                        </span>
-                                        <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                                            {designDefinition.typography?.mood}
-                                        </span>
-                                    </div>
-                                </div>
                             </div>
-                        )}
-                        <p className="text-[10px] text-gray-400 mt-2 text-center">
-                            現在のページの画像を分析し、再生成後も元の雰囲気を維持します。
-                        </p>
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {/* デザイン定義セクション */}
+                            <div className="p-3 rounded-xl border-2 border-gray-100 bg-gray-50">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-bold text-gray-600">デザイン定義</span>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <span className="text-xs text-gray-500">{useDesignDef ? '解析結果を使用' : '手動入力'}</span>
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                checked={useDesignDef}
+                                                onChange={(e) => setUseDesignDef(e.target.checked)}
+                                                className="sr-only"
+                                            />
+                                            <div className={clsx(
+                                                "w-10 h-5 rounded-full transition-colors",
+                                                useDesignDef ? "bg-purple-600" : "bg-gray-300"
+                                            )}>
+                                                <div className={clsx(
+                                                    "w-4 h-4 bg-white rounded-full shadow transform transition-transform mt-0.5",
+                                                    useDesignDef ? "translate-x-5" : "translate-x-0.5"
+                                                )} />
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
 
-                    <div className="grid md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                            <label className="text-xs font-bold text-gray-500 mb-2 block">商材・サービス情報</label>
-                            <textarea
-                                value={aiProductInfo}
-                                onChange={(e) => setAiProductInfo(e.target.value)}
-                                placeholder="例: 熱々の冷凍餃子の販促LP。ターゲットは主婦層、シズル感を重視。価格は12個入り980円..."
-                                className="w-full h-20 rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-2 block">テイスト</label>
-                            <div className="grid grid-cols-2 gap-1">
-                                {[
-                                    { id: 'professional', label: 'ビジネス' },
-                                    { id: 'pops', label: 'ポップ' },
-                                    { id: 'luxury', label: '高級感' },
-                                    { id: 'minimal', label: 'ミニマル' },
-                                    { id: 'emotional', label: '情熱的' }
-                                ].map((t) => (
-                                    <button
-                                        key={t.id}
-                                        onClick={() => setAiTaste(t.id)}
-                                        className={clsx(
-                                            "px-2 py-1.5 text-xs font-medium rounded-lg transition-all",
-                                            aiTaste === t.id ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                        )}
-                                    >
-                                        {t.label}
-                                    </button>
-                                ))}
+                                {useDesignDef ? (
+                                    designDefinition ? (
+                                        <div className="text-xs text-gray-600 bg-white p-2 rounded-lg border border-gray-200 max-h-24 overflow-y-auto">
+                                            {designDefinition.vibe && <p><span className="font-medium">雰囲気:</span> {designDefinition.vibe}</p>}
+                                            {designDefinition.description && <p className="mt-1"><span className="font-medium">特徴:</span> {designDefinition.description}</p>}
+                                            {designDefinition.colorPalette && (
+                                                <div className="mt-1 flex items-center gap-1">
+                                                    <span className="font-medium">カラー:</span>
+                                                    {designDefinition.colorPalette.primary && (
+                                                        <span className="inline-block w-3 h-3 rounded-full border" style={{ backgroundColor: designDefinition.colorPalette.primary }} />
+                                                    )}
+                                                    {designDefinition.colorPalette.secondary && (
+                                                        <span className="inline-block w-3 h-3 rounded-full border" style={{ backgroundColor: designDefinition.colorPalette.secondary }} />
+                                                    )}
+                                                    {designDefinition.colorPalette.accent && (
+                                                        <span className="inline-block w-3 h-3 rounded-full border" style={{ backgroundColor: designDefinition.colorPalette.accent }} />
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-gray-400 italic">
+                                            解析されたデザイン定義がありません。
+                                            <button
+                                                onClick={analyzeCurrentDesign}
+                                                disabled={isAnalyzing}
+                                                className="text-purple-600 hover:underline ml-1"
+                                            >
+                                                {isAnalyzing ? '解析中...' : '今すぐ解析'}
+                                            </button>
+                                        </div>
+                                    )
+                                ) : (
+                                    <textarea
+                                        value={customDesignInput}
+                                        onChange={(e) => setCustomDesignInput(e.target.value)}
+                                        placeholder="デザインの雰囲気を入力（例：モダンでクリーンな印象、青を基調としたプロフェッショナルなデザイン）"
+                                        className="w-full text-xs p-2 border border-gray-200 rounded-lg resize-none h-16 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                )}
                             </div>
+
+                            <p className="text-xs font-bold text-gray-500">変更する要素を選択：</p>
+
+                            {/* 人物・写真 */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.people.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.people.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            people: { ...prev.people, enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">人物・写真</span>
+                                </label>
+                                {editOptions.people.enabled && (
+                                    <div className="mt-2 ml-7 flex gap-2">
+                                        {[
+                                            { id: 'similar', label: '同じ雰囲気の別人物' },
+                                            { id: 'different', label: '完全に異なるイメージ' },
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setEditOptions(prev => ({
+                                                    ...prev,
+                                                    people: { ...prev.people, mode: opt.id as 'similar' | 'different' }
+                                                }))}
+                                                className={clsx(
+                                                    "px-3 py-1.5 text-xs rounded-lg transition-all",
+                                                    editOptions.people.mode === opt.id
+                                                        ? "bg-purple-600 text-white"
+                                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* テキスト・コピー */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.text.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.text.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            text: { ...prev.text, enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">テキスト・コピー</span>
+                                </label>
+                                {editOptions.text.enabled && (
+                                    <div className="mt-2 ml-7 flex flex-wrap gap-2">
+                                        {[
+                                            { id: 'nuance', label: 'ニュアンス程度' },
+                                            { id: 'copywriting', label: 'コピーライティング改善' },
+                                            { id: 'rewrite', label: '完全に書き換え' },
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setEditOptions(prev => ({
+                                                    ...prev,
+                                                    text: { ...prev.text, mode: opt.id as 'nuance' | 'copywriting' | 'rewrite' }
+                                                }))}
+                                                className={clsx(
+                                                    "px-3 py-1.5 text-xs rounded-lg transition-all",
+                                                    editOptions.text.mode === opt.id
+                                                        ? "bg-purple-600 text-white"
+                                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 模様・パターン・背景 */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.pattern.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.pattern.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            pattern: { enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">模様・パターン・背景</span>
+                                </label>
+                            </div>
+
+                            {/* オブジェクト・アイコン */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.objects.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.objects.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            objects: { enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">オブジェクト・アイコン</span>
+                                </label>
+                            </div>
+
+                            {/* カラー・配色 */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.color.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.color.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            color: { ...prev.color, enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">カラー・配色</span>
+                                </label>
+                                {editOptions.color.enabled && (
+                                    <div className="mt-2 ml-7 flex flex-wrap gap-2">
+                                        {[
+                                            { id: 'blue', label: 'ブルー', color: 'bg-blue-500' },
+                                            { id: 'green', label: 'グリーン', color: 'bg-green-500' },
+                                            { id: 'purple', label: 'パープル', color: 'bg-purple-500' },
+                                            { id: 'orange', label: 'オレンジ', color: 'bg-orange-500' },
+                                            { id: 'monochrome', label: 'モノクロ', color: 'bg-gray-800' },
+                                        ].map((c) => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => setEditOptions(prev => ({
+                                                    ...prev,
+                                                    color: { ...prev.color, scheme: c.id }
+                                                }))}
+                                                className={clsx(
+                                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all border-2 text-xs",
+                                                    editOptions.color.scheme === c.id
+                                                        ? "border-purple-500 bg-purple-100"
+                                                        : "border-gray-100 hover:border-gray-200 bg-white"
+                                                )}
+                                            >
+                                                <span className={`h-3 w-3 rounded-full ${c.color}`} />
+                                                <span className="font-medium text-gray-700">{c.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* レイアウト・構成 */}
+                            <div className={clsx(
+                                "p-3 rounded-xl border-2 transition-all",
+                                editOptions.layout.enabled ? "border-purple-300 bg-purple-50" : "border-gray-100 bg-white"
+                            )}>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={editOptions.layout.enabled}
+                                        onChange={(e) => setEditOptions(prev => ({
+                                            ...prev,
+                                            layout: { enabled: e.target.checked }
+                                        }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-bold text-gray-800">レイアウト・構成</span>
+                                </label>
+                            </div>
+
+                            {/* 適用ボタン */}
+                            <button
+                                onClick={handleRestyle}
+                                disabled={pageId === 'new' || sections.length === 0}
+                                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 mt-4"
+                            >
+                                <Sparkles className="h-4 w-4" />
+                                選択した要素を一括変更
+                            </button>
                         </div>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-sm text-gray-600">
-                            <input
-                                type="checkbox"
-                                checked={shouldGenImages}
-                                onChange={(e) => setShouldGenImages(e.target.checked)}
-                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            />
-                            画像も再生成する
-                        </label>
-                        <button
-                            onClick={handleGenerateAI}
-                            disabled={isGenerating || !aiProductInfo || sections.length === 0}
-                            className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <RefreshCw className="h-4 w-4 animate-spin" />
-                                    生成中...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="h-4 w-4" />
-                                    ページを丸ごと生成
-                                </>
-                            )}
-                        </button>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -1733,174 +1924,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 </div>
             )}
 
-            {/* 一括スタイル変更モーダル */}
-            {showRestyleModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-6">
-                    <div className="w-full max-w-2xl overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in zoom-in duration-300">
-                        <div className="p-8">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-600 flex items-center justify-center">
-                                    <PaintBucket className="h-5 w-5 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-black text-gray-900">一括スタイル変更</h3>
-                                    <p className="text-xs text-gray-500">全セクションのデザインを統一されたスタイルに変更</p>
-                                </div>
-                            </div>
-
-                            {isRestyling ? (
-                                <div className="py-12">
-                                    <div className="flex flex-col items-center justify-center gap-4">
-                                        <div className="relative">
-                                            <RefreshCw className="h-12 w-12 text-purple-600 animate-spin" />
-                                        </div>
-                                        <p className="text-sm font-medium text-gray-600">{restyleProgress.message}</p>
-                                        {restyleProgress.total > 0 && (
-                                            <div className="w-full max-w-xs">
-                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-purple-600 transition-all duration-300"
-                                                        style={{ width: `${(restyleProgress.current / restyleProgress.total) * 100}%` }}
-                                                    />
-                                                </div>
-                                                <p className="text-xs text-gray-400 text-center mt-2">
-                                                    {restyleProgress.current} / {restyleProgress.total}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="mt-6 space-y-5">
-                                    {/* スタイル */}
-                                    <div>
-                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                            スタイル
-                                        </label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: 'sampling', label: '元のまま' },
-                                                { id: 'professional', label: 'ビジネス' },
-                                                { id: 'pops', label: 'ポップ' },
-                                                { id: 'luxury', label: '高級' },
-                                                { id: 'minimal', label: 'シンプル' },
-                                                { id: 'emotional', label: '情熱' },
-                                            ].map((s) => (
-                                                <button
-                                                    key={s.id}
-                                                    onClick={() => setRestyleStyle(s.id)}
-                                                    className={clsx(
-                                                        "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
-                                                        restyleStyle === s.id
-                                                            ? "border-purple-500 bg-purple-50 text-purple-700"
-                                                            : "border-gray-100 hover:border-gray-200 text-gray-600"
-                                                    )}
-                                                >
-                                                    {s.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* カラー */}
-                                    <div>
-                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                            カラー
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[
-                                                { id: 'original', label: 'そのまま', color: 'bg-gray-400' },
-                                                { id: 'blue', label: 'ブルー', color: 'bg-blue-500' },
-                                                { id: 'green', label: 'グリーン', color: 'bg-green-500' },
-                                                { id: 'purple', label: 'パープル', color: 'bg-purple-500' },
-                                                { id: 'orange', label: 'オレンジ', color: 'bg-orange-500' },
-                                                { id: 'monochrome', label: 'モノクロ', color: 'bg-gray-800' },
-                                            ].map((c) => (
-                                                <button
-                                                    key={c.id}
-                                                    onClick={() => setRestyleColorScheme(c.id)}
-                                                    className={clsx(
-                                                        "flex items-center gap-2 px-3 py-2 rounded-lg transition-all border-2",
-                                                        restyleColorScheme === c.id
-                                                            ? "border-purple-500 bg-purple-50"
-                                                            : "border-gray-100 hover:border-gray-200"
-                                                    )}
-                                                >
-                                                    <span className={`h-3 w-3 rounded-full ${c.color}`} />
-                                                    <span className="text-xs font-medium text-gray-700">{c.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* モード */}
-                                    <div>
-                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                            モード
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={() => setRestyleMode('light')}
-                                                className={clsx(
-                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
-                                                    restyleMode === 'light'
-                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
-                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
-                                                )}
-                                            >
-                                                色だけ変更
-                                            </button>
-                                            <button
-                                                onClick={() => setRestyleMode('heavy')}
-                                                className={clsx(
-                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
-                                                    restyleMode === 'heavy'
-                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
-                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
-                                                )}
-                                            >
-                                                全体を再構成
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* 追加指示 */}
-                                    <div>
-                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                            追加指示（任意）
-                                        </label>
-                                        <textarea
-                                            value={restyleCustomPrompt}
-                                            onChange={(e) => setRestyleCustomPrompt(e.target.value)}
-                                            placeholder="例: CTAを目立たせて、統一感を出す"
-                                            className="w-full h-20 rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {!isRestyling && (
-                                <div className="mt-8 flex gap-3">
-                                    <button
-                                        onClick={() => setShowRestyleModal(false)}
-                                        className="flex-1 rounded-2xl py-3.5 text-sm font-bold text-gray-400 hover:bg-gray-50 transition-all"
-                                    >
-                                        キャンセル
-                                    </button>
-                                    <button
-                                        onClick={handleRestyle}
-                                        disabled={sections.length === 0}
-                                        className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-pink-600 py-3.5 text-sm font-black text-white shadow-xl hover:opacity-90 disabled:opacity-50 transition-all"
-                                    >
-                                        <PaintBucket className="h-4 w-4" />
-                                        一括変更
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

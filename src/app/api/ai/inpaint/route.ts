@@ -86,14 +86,23 @@ export async function POST(request: NextRequest) {
             return `領域${i + 1}: ${getPositionDesc(m)}（左から${xPercent}%、上から${yPercent}%、幅${widthPercent}%、高さ${heightPercent}%）`;
         }).join('\n');
 
-        // インペインティング用プロンプト - 画像生成を強制
-        inpaintPrompt = `You are an image editor. Generate a new image based on the provided image with the following modification:
+        // インペインティング用プロンプト - 画像生成を強制（日本語対応強化）
+        inpaintPrompt = `あなたは画像編集の専門家です。提供された画像を編集して、新しい画像を生成してください。
 
+【修正指示】
 ${prompt}
 
-Apply this change to the area: ${areasDescription}
+【対象エリア】
+${areasDescription}
 
-Output the complete edited image. Do not describe the changes - generate the actual modified image.`;
+【重要なルール】
+1. 指定されたエリア内の要素のみを修正してください
+2. 文字・テキストの変更が指示されている場合は、正確にその文字列に置き換えてください
+3. 元の画像のスタイル、フォント、色使いをできる限り維持してください
+4. 修正箇所以外は変更しないでください
+5. 画像全体を出力してください（説明文は不要です）
+
+Generate the complete edited image now.`;
 
         // Gemini 3.0 Pro（最新画像生成モデル）を使用
         const response = await fetch(

@@ -392,11 +392,32 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             });
         }
 
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+
+        // Cost Calculation (JPY Estimation)
+        // Gemini 1.5 Flash (Text): ~0.01 JPY / 1k input chars, ~0.03 JPY / 1k output chars
+        // Gemini Image (Flash/Pro): ~0.6 JPY (Flash) - ~4.0 JPY (Pro) per image
+        // *Using conservative estimates for user display*
+
+        const textInputCost = (prompt.length / 1000) * 0.01;
+        const textOutputCost = (text.length / 1000) * 0.03;
+
+        // Image usage: successCount images
+        // Assuming mix of Pro/Flash or just strictly estimating roughly 2 JPY per image for safety/clarity
+        const imageCost = successCount * 2.0;
+
+        const totalCost = Math.ceil((textInputCost + textOutputCost + imageCost) * 100) / 100; // Round to 2 decimals
+
         return NextResponse.json({
             success: true,
             data: {
                 ...generatedData,
                 sections: sectionsWithImages
+            },
+            meta: {
+                duration: duration,
+                estimatedCost: totalCost
             }
         });
 
