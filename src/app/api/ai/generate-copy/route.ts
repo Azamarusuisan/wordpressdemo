@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
     try {
-        const { productInfo, taste, sections } = await request.json();
+        const { productInfo, taste, sections, designDefinition } = await request.json();
 
         const apiKey = await getGoogleApiKey();
         if (!apiKey) {
@@ -106,6 +106,13 @@ export async function POST(request: NextRequest) {
             【リブランディング指示：最優先！】
             1. 新商材情報: "${productInfo}"
             2. 全体のテイスト: "${taste}"
+            ${designDefinition ? `
+            3. 【重要】デザインリファレンスからの指示:
+               - Vibe: ${designDefinition.vibe}
+               - Description: ${designDefinition.description}
+               - Mood: ${designDefinition.typography?.mood}
+               このデザインの雰囲気にマッチする言葉選びとトーン＆マナーを徹底してください。
+            ` : ''}
 
             【重要：画像は「レイアウト構成のヒント」としてのみ扱うこと】
             アップロードされた画像に含まれるテキストや商材情報は、一切無視してください。

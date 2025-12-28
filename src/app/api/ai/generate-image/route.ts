@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
     try {
-        const { prompt, taste, brandInfo, aspectRatio = '9:16' } = await request.json();
+        const { prompt, taste, brandInfo, aspectRatio = '9:16', designDefinition } = await request.json();
 
         if (!prompt) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -80,12 +80,24 @@ export async function POST(request: NextRequest) {
             ? `\n\n【指定されたテイスト】${taste}\nスタイル: ${tasteStyles[taste]}`
             : '';
 
+        let designInstruction = '';
+        if (designDefinition) {
+            designInstruction = `
+\n\n【DESIGN REFERENCE - STRICTLY FOLLOW】
+Reference Vibe: ${designDefinition.vibe}
+Colors: Primary=${designDefinition.colorPalette?.primary}, Background=${designDefinition.colorPalette?.background}
+Visual Style: ${designDefinition.description}
+Mood: ${designDefinition.typography?.mood}
+Generate the image to EXACTLY match this visual style and color palette.
+`;
+        }
+
         const brandContext = brandInfo
             ? `\n\n【ブランド/商材情報】${brandInfo}`
             : '';
 
         // Gemini 3 Pro Image (Nano Banana Pro) で画像生成
-        imagePrompt = `${prompt}${styleInstruction}${brandContext}
+        imagePrompt = `${prompt}${styleInstruction}${designInstruction}${brandContext}
 
 【要件】
 - ${arConfig.prompt}を生成すること

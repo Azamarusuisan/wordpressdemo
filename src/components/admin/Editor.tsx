@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/admin/SortableItem';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2 } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, PaintBucket, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -17,22 +17,19 @@ interface EditorProps {
     initialHeaderConfig: any;
     initialSlug: string;
     initialStatus?: string;
+    initialDesignDefinition?: any | null;
 }
 
-export default function Editor({ pageId, initialSections, initialHeaderConfig, initialSlug, initialStatus = 'draft' }: EditorProps) {
+export default function Editor({ pageId, initialSections, initialHeaderConfig, initialSlug, initialStatus = 'draft', initialDesignDefinition = null }: EditorProps) {
     const router = useRouter();
     const [sections, setSections] = useState(initialSections);
     const [headerConfig, setHeaderConfig] = useState(() => {
         const base = {
-            logoText: '私のLP',
+            logoText: '',
             sticky: true,
-            ctaText: 'お問い合わせ',
+            ctaText: '',
             ctaLink: '#contact',
-            navItems: [
-                { id: '1', label: 'トップ', href: '#hero' },
-                { id: '2', label: '特徴', href: '#solution' },
-                { id: '3', label: '料金', href: '#pricing' }
-            ]
+            navItems: [] as { id: string; label: string; href: string }[]
         };
         if (!initialHeaderConfig) return base;
         return { ...base, ...initialHeaderConfig, navItems: initialHeaderConfig.navItems || base.navItems };
@@ -81,6 +78,137 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // 編集履歴（元に戻す用）
     const [editHistory, setEditHistory] = useState<Record<string, { imageId: number; image: any; timestamp: number }[]>>({});
     const [showHistoryPanel, setShowHistoryPanel] = useState<string | null>(null);
+
+    // Design Analysis State
+    const [designImage, setDesignImage] = useState<string | null>(null);
+    const [designDefinition, setDesignDefinition] = useState<any | null>(initialDesignDefinition);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const analyzeCurrentDesign = async () => {
+        setIsAnalyzing(true);
+        try {
+            // Can limit to top 3 sections to define the "vibe"
+            const uniqueSections = sections.filter(s => s.image?.filePath || s.base64).slice(0, 3);
+
+            if (uniqueSections.length === 0) {
+                toast.error('分析する画像がありません');
+                setIsAnalyzing(false);
+                return;
+            }
+
+            // Simple client-side stitching
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Load images
+            const images = await Promise.all(uniqueSections.map(async (s) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                return new Promise<HTMLImageElement>((resolve, reject) => {
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = s.base64 || s.image?.filePath || '';
+                });
+            }));
+
+            // Calculate dimensions
+            const width = 800; // standard width
+            let totalHeight = 0;
+            images.forEach(img => {
+                const scale = width / (img.width || 800);
+                totalHeight += (img.height || 0) * scale;
+            });
+
+            if (totalHeight === 0) {
+                toast.error('画像の読み込みに失敗しました');
+                return;
+            }
+
+            canvas.width = width;
+            canvas.height = totalHeight;
+
+            // Draw
+            let currentY = 0;
+            images.forEach(img => {
+                const scale = width / (img.width || 800);
+                const h = (img.height || 0) * scale;
+                ctx.drawImage(img, 0, currentY, width, h);
+                currentY += h;
+            });
+
+            const base64 = canvas.toDataURL('image/jpeg', 0.8);
+            setDesignImage(base64);
+
+            const res = await fetch('/api/ai/analyze-design', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl: base64 })
+            });
+
+            if (!res.ok) throw new Error('デザイン解析に失敗しました');
+
+            const data = await res.json();
+            setDesignDefinition(data);
+            toast.success('現在のデザインを解析しました！');
+
+        } catch (e: any) {
+            console.error(e);
+            toast.error('デザイン解析中にエラーが発生しました: ' + e.message);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    // Auto-analyze on page load if no definition exists
+    useEffect(() => {
+        const hasImages = sections.some(s => s.image?.filePath || s.base64);
+        if (!initialDesignDefinition && hasImages && pageId !== 'new') {
+            // Delay slightly to ensure component is mounted
+            const timer = setTimeout(() => {
+                analyzeCurrentDesign();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, []); // Run once on mount
+
+    const handleDesignImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsAnalyzing(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64 = reader.result as string;
+                setDesignImage(base64);
+
+                try {
+                    const res = await fetch('/api/ai/analyze-design', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageUrl: base64 })
+                    });
+
+                    if (!res.ok) throw new Error('デザイン解析に失敗しました');
+
+                    const data = await res.json();
+                    setDesignDefinition(data);
+                    toast.success('デザイン解析完了！');
+                } catch (err) {
+                    console.error(err);
+                    toast.error('デザイン解析に失敗しました。');
+                    setDesignImage(null);
+                } finally {
+                    setIsAnalyzing(false);
+                }
+            };
+        } catch (err) {
+            console.error(err);
+            setIsAnalyzing(false);
+        }
+    };
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -172,7 +300,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     role: s.role, // 役割を渡すことでリブランディングの精度を向上
                     base64: s.base64,
                     image: s.image
-                }))
+                })),
+                designDefinition // Pass Design Definition
             };
             const res = await fetch('/api/ai/generate-copy', {
                 method: 'POST',
@@ -248,7 +377,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     prompt: section.config.text,
                                     taste: aiTaste,
                                     brandInfo: aiProductInfo,
-                                    aspectRatio: aiAspectRatio
+                                    aspectRatio: aiAspectRatio,
+                                    designDefinition // Pass Design Definition
                                 })
                             });
                             const media = await imgRes.json();
@@ -644,7 +774,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         config: s.config || {}
                     })),
                     headerConfig: headerConfig,
-                    status: status
+                    status: status,
+                    designDefinition: designDefinition
                 })
             });
 
@@ -667,6 +798,163 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // AIアシスタントパネル表示状態
     const [showAIPanel, setShowAIPanel] = useState(false);
+
+    // 一括スタイル変更の状態
+    const [showRestyleModal, setShowRestyleModal] = useState(false);
+    const [restyleStyle, setRestyleStyle] = useState('professional');
+    const [restyleColorScheme, setRestyleColorScheme] = useState('original');
+    const [restyleMode, setRestyleMode] = useState<'light' | 'heavy'>('light');
+    const [restyleCustomPrompt, setRestyleCustomPrompt] = useState('');
+    const [isRestyling, setIsRestyling] = useState(false);
+    const [restyleProgress, setRestyleProgress] = useState({ current: 0, total: 0, message: '' });
+
+    // セグメント個別再生成の状態
+    const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+    const [regenerateSectionId, setRegenerateSectionId] = useState<string | null>(null);
+    const [regenerateStyle, setRegenerateStyle] = useState('professional');
+    const [regenerateColorScheme, setRegenerateColorScheme] = useState('original');
+    const [regenerateMode, setRegenerateMode] = useState<'light' | 'heavy'>('light');
+    const [regeneratePrompt, setRegeneratePrompt] = useState('');
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const [regeneratingSectionIds, setRegeneratingSectionIds] = useState<Set<string>>(new Set());
+
+    // セグメント個別再生成モーダルを開く
+    const handleOpenRegenerate = (sectionId: string) => {
+        setRegenerateSectionId(sectionId);
+        setRegeneratePrompt('');
+        setShowRegenerateModal(true);
+    };
+
+    // セグメント個別再生成の実行
+    const handleRegenerate = async () => {
+        if (!regenerateSectionId) return;
+
+        // sectionIdから実際のDBのIDを取得
+        const section = sections.find(s => s.id === regenerateSectionId);
+        if (!section) {
+            toast.error('セクションが見つかりません');
+            return;
+        }
+
+        // 実際のDB ID（数値）を使用
+        const dbSectionId = typeof section.id === 'string' && section.id.startsWith('temp-')
+            ? null
+            : parseInt(section.id);
+
+        if (!dbSectionId) {
+            toast.error('保存されていないセクションは再生成できません。先にページを保存してください。');
+            return;
+        }
+
+        setIsRegenerating(true);
+        setRegeneratingSectionIds(prev => new Set(prev).add(regenerateSectionId));
+        setShowRegenerateModal(false);
+
+        try {
+            const response = await fetch(`/api/sections/${dbSectionId}/regenerate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    style: regenerateStyle,
+                    colorScheme: regenerateColorScheme !== 'original' ? regenerateColorScheme : undefined,
+                    customPrompt: regeneratePrompt || undefined,
+                    mode: regenerateMode,
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || '再生成に失敗しました');
+            }
+
+            // セクションの画像を更新
+            setSections(prev => prev.map(s =>
+                s.id === regenerateSectionId
+                    ? { ...s, imageId: data.newImageId, image: data.media }
+                    : s
+            ));
+
+            toast.success('セクションを再生成しました');
+        } catch (error: any) {
+            toast.error(error.message || '再生成に失敗しました');
+        } finally {
+            setIsRegenerating(false);
+            setRegeneratingSectionIds(prev => {
+                const next = new Set(prev);
+                next.delete(regenerateSectionId);
+                return next;
+            });
+        }
+    };
+
+    // 一括スタイル変更の実行
+    const handleRestyle = async () => {
+        if (pageId === 'new') {
+            toast.error('スタイル変更する前にページを保存してください。');
+            return;
+        }
+
+        setIsRestyling(true);
+        setRestyleProgress({ current: 0, total: 0, message: '開始中...' });
+
+        try {
+            const response = await fetch(`/api/pages/${pageId}/restyle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    style: restyleStyle,
+                    colorScheme: restyleColorScheme,
+                    mode: restyleMode,
+                    customPrompt: restyleCustomPrompt || undefined,
+                })
+            });
+
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No response body');
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === 'progress') {
+                                setRestyleProgress({
+                                    current: data.current || 0,
+                                    total: data.total || 0,
+                                    message: data.message || ''
+                                });
+                            } else if (data.type === 'complete') {
+                                toast.success(`${data.updatedCount}/${data.totalCount} セクションのスタイルを変更しました`);
+                                setShowRestyleModal(false);
+                                router.refresh();
+                            } else if (data.type === 'error') {
+                                throw new Error(data.error);
+                            }
+                        } catch (e) {
+                            // パースエラーは無視
+                        }
+                    }
+                }
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'スタイル変更に失敗しました');
+        } finally {
+            setIsRestyling(false);
+            setRestyleProgress({ current: 0, total: 0, message: '' });
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -706,6 +994,14 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 >
                     <Sparkles className="h-4 w-4" />
                 </button>
+                <button
+                    onClick={() => setShowRestyleModal(true)}
+                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
+                    title="一括スタイル変更"
+                    disabled={pageId === 'new' || sections.length === 0}
+                >
+                    <PaintBucket className="h-4 w-4" />
+                </button>
                 <div className="w-px h-6 bg-gray-200" />
                 <button
                     onClick={() => handleSave()}
@@ -730,22 +1026,26 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             {/* 完全LPプレビュー - メインビュー */}
             <div className="flex justify-center py-20 px-4">
                 <div className="w-full max-w-md md:max-w-xl lg:max-w-2xl bg-white shadow-2xl">
-                    {/* ヘッダー */}
-                    <header className="flex h-16 items-center justify-between bg-white/90 px-4 shadow-sm backdrop-blur-md">
-                        <div className="text-xl font-bold text-gray-900">
-                            {headerConfig.logoText}
-                        </div>
-                        <nav className="hidden md:flex gap-6">
-                            {headerConfig.navItems?.map((item: any) => (
-                                <span key={item.id} className="text-sm font-medium text-gray-700">
-                                    {item.label}
+                    {/* ヘッダー - 設定がある場合のみ表示 */}
+                    {(headerConfig.logoText || headerConfig.ctaText || (headerConfig.navItems && headerConfig.navItems.length > 0)) && (
+                        <header className="flex h-16 items-center justify-between bg-white/90 px-4 shadow-sm backdrop-blur-md">
+                            <div className="text-xl font-bold text-gray-900">
+                                {headerConfig.logoText}
+                            </div>
+                            <nav className="hidden md:flex gap-6">
+                                {headerConfig.navItems?.map((item: any) => (
+                                    <span key={item.id} className="text-sm font-medium text-gray-700">
+                                        {item.label}
+                                    </span>
+                                ))}
+                            </nav>
+                            {headerConfig.ctaText && (
+                                <span className="rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white">
+                                    {headerConfig.ctaText}
                                 </span>
-                            ))}
-                        </nav>
-                        <span className="rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white">
-                            {headerConfig.ctaText}
-                        </span>
-                    </header>
+                            )}
+                        </header>
+                    )}
 
                     {/* セクション - クリックで編集 */}
                     {sections.length === 0 ? (
@@ -779,13 +1079,30 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                         />
                                         {/* ホバーオーバーレイ */}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 flex items-center justify-center">
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center gap-2">
-                                                <div className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-xl">
-                                                    <Pencil className="h-6 w-6 text-gray-800" />
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center gap-3">
+                                                <div className="flex gap-3">
+                                                    <div className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-xl">
+                                                        <Pencil className="h-6 w-6 text-gray-800" />
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleOpenRegenerate(section.id);
+                                                        }}
+                                                        className="h-14 w-14 rounded-full bg-purple-600 flex items-center justify-center shadow-xl hover:bg-purple-700 transition-colors"
+                                                        title="このセクションを再生成"
+                                                    >
+                                                        <RotateCw className="h-6 w-6 text-white" />
+                                                    </button>
                                                 </div>
-                                                <span className="text-white text-sm font-bold bg-black/60 px-4 py-1.5 rounded-full">
-                                                    クリックで編集
-                                                </span>
+                                                <div className="flex gap-2">
+                                                    <span className="text-white text-xs font-bold bg-black/60 px-3 py-1.5 rounded-full">
+                                                        編集
+                                                    </span>
+                                                    <span className="text-white text-xs font-bold bg-purple-600/80 px-3 py-1.5 rounded-full">
+                                                        再生成
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         {/* 履歴ボタン */}
@@ -806,9 +1123,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             </button>
                                         )}
                                         {/* ローディング */}
-                                        {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id)) && (
-                                            <div className="absolute inset-0 bg-purple-600/80 flex items-center justify-center">
+                                        {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id) || regeneratingSectionIds.has(section.id)) && (
+                                            <div className="absolute inset-0 bg-purple-600/80 flex flex-col items-center justify-center gap-2">
                                                 <RefreshCw className="h-10 w-10 text-white animate-spin" />
+                                                {regeneratingSectionIds.has(section.id) && (
+                                                    <span className="text-white text-sm font-bold">再生成中...</span>
+                                                )}
                                             </div>
                                         )}
                                     </>
@@ -846,6 +1166,71 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             <X className="h-5 w-5" />
                         </button>
                     </div>
+
+                    {/* Design Reference Analysis */}
+                    <div className="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-xl">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-bold text-purple-900 flex items-center">
+                                <Palette className="w-4 h-4 mr-2 text-purple-600" />
+                                デザインリファレンス (元画像から抽出)
+                            </h4>
+                            {designDefinition && (
+                                <span className="text-[10px] px-2 py-1 bg-green-100 text-green-700 rounded-full font-bold">
+                                    解析完了: {designDefinition.vibe}
+                                </span>
+                            )}
+                        </div>
+
+                        {!designDefinition ? (
+                            <button
+                                onClick={analyzeCurrentDesign}
+                                disabled={isAnalyzing || sections.length === 0}
+                                className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                            >
+                                {isAnalyzing ? (
+                                    <Loader2 className="h-4 w-4 text-purple-600 animate-spin" />
+                                ) : (
+                                    <Wand2 className="h-4 w-4 text-purple-500 group-hover:text-purple-600" />
+                                )}
+                                <span className="text-sm font-bold text-purple-700">
+                                    {isAnalyzing ? '現在のデザインを解析中...' : '現在のLP画像からスタイルを抽出'}
+                                </span>
+                            </button>
+                        ) : (
+                            <div className="flex items-start gap-3 bg-white p-3 rounded-lg border border-purple-100">
+                                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
+                                    <Palette className="h-6 w-6 text-purple-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start">
+                                        <p className="text-xs font-bold text-gray-900 mb-1">抽出されたスタイル</p>
+                                        <button
+                                            onClick={() => {
+                                                setDesignDefinition(null);
+                                                setDesignImage(null);
+                                            }}
+                                            className="text-gray-400 hover:text-red-500"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 line-clamp-2">{designDefinition.description}</p>
+                                    <div className="mt-1 flex gap-1">
+                                        <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                                            {designDefinition.colorPalette?.primary}
+                                        </span>
+                                        <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                                            {designDefinition.typography?.mood}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-2 text-center">
+                            現在のページの画像を分析し、再生成後も元の雰囲気を維持します。
+                        </p>
+                    </div>
+
                     <div className="grid md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
                             <label className="text-xs font-bold text-gray-500 mb-2 block">商材・サービス情報</label>
@@ -857,14 +1242,14 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-gray-500 mb-2 block">スタイル</label>
+                            <label className="text-xs font-bold text-gray-500 mb-2 block">テイスト</label>
                             <div className="grid grid-cols-2 gap-1">
                                 {[
                                     { id: 'professional', label: 'ビジネス' },
                                     { id: 'pops', label: 'ポップ' },
                                     { id: 'luxury', label: '高級感' },
-                                    { id: 'minimal', label: 'シンプル' },
-                                    { id: 'emotional', label: '感情的' }
+                                    { id: 'minimal', label: 'ミニマル' },
+                                    { id: 'emotional', label: '情熱的' }
                                 ].map((t) => (
                                     <button
                                         key={t.id}
@@ -1097,11 +1482,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {chatMessages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                                msg.role === 'user'
-                                    ? 'bg-gray-900 text-white'
-                                    : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user'
+                                ? 'bg-gray-900 text-white'
+                                : 'bg-gray-100 text-gray-800'
+                                }`}>
                                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                                 {/* プロンプト例がある場合は「使う」ボタンを表示 */}
                                 {msg.role === 'assistant' && extractPromptExample(msg.content) && (
@@ -1195,6 +1579,327 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     }}
                     onSave={handleInpaintSave}
                 />
+            )}
+
+            {/* セグメント個別再生成モーダル */}
+            {showRegenerateModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-6">
+                    <div className="w-full max-w-xl overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+                        <div className="p-8">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                                    <RotateCw className="h-5 w-5 text-purple-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">セクションを再生成</h3>
+                                    <p className="text-xs text-gray-500">このセクションのみを新しいスタイルで再生成</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 space-y-5">
+                                {/* スタイル */}
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        スタイル
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { id: 'sampling', label: '元のまま' },
+                                            { id: 'professional', label: 'ビジネス' },
+                                            { id: 'pops', label: 'ポップ' },
+                                            { id: 'luxury', label: '高級' },
+                                            { id: 'minimal', label: 'シンプル' },
+                                            { id: 'emotional', label: '情熱' },
+                                        ].map((s) => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => setRegenerateStyle(s.id)}
+                                                className={clsx(
+                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                    regenerateStyle === s.id
+                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                )}
+                                            >
+                                                {s.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* カラー */}
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        カラー
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { id: 'original', label: 'そのまま', color: 'bg-gray-400' },
+                                            { id: 'blue', label: 'ブルー', color: 'bg-blue-500' },
+                                            { id: 'green', label: 'グリーン', color: 'bg-green-500' },
+                                            { id: 'purple', label: 'パープル', color: 'bg-purple-500' },
+                                            { id: 'orange', label: 'オレンジ', color: 'bg-orange-500' },
+                                            { id: 'monochrome', label: 'モノクロ', color: 'bg-gray-800' },
+                                        ].map((c) => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => setRegenerateColorScheme(c.id)}
+                                                className={clsx(
+                                                    "flex items-center gap-2 px-3 py-2 rounded-lg transition-all border-2",
+                                                    regenerateColorScheme === c.id
+                                                        ? "border-purple-500 bg-purple-50"
+                                                        : "border-gray-100 hover:border-gray-200"
+                                                )}
+                                            >
+                                                <span className={`h-3 w-3 rounded-full ${c.color}`} />
+                                                <span className="text-xs font-medium text-gray-700">{c.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* モード */}
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        モード
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => setRegenerateMode('light')}
+                                            className={clsx(
+                                                "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                regenerateMode === 'light'
+                                                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                    : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                            )}
+                                        >
+                                            色だけ変更
+                                        </button>
+                                        <button
+                                            onClick={() => setRegenerateMode('heavy')}
+                                            className={clsx(
+                                                "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                regenerateMode === 'heavy'
+                                                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                    : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                            )}
+                                        >
+                                            全体を再構成
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* 追加指示 */}
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        追加指示（任意）
+                                    </label>
+                                    <textarea
+                                        value={regeneratePrompt}
+                                        onChange={(e) => setRegeneratePrompt(e.target.value)}
+                                        placeholder="例: 背景を明るく、ボタンを大きく"
+                                        className="w-full h-20 rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setShowRegenerateModal(false)}
+                                    className="flex-1 rounded-2xl py-3.5 text-sm font-bold text-gray-400 hover:bg-gray-50 transition-all"
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    onClick={handleRegenerate}
+                                    disabled={isRegenerating}
+                                    className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-purple-600 py-3.5 text-sm font-black text-white shadow-xl hover:bg-purple-700 disabled:opacity-50 transition-all"
+                                >
+                                    {isRegenerating ? (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 animate-spin" />
+                                            処理中...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RotateCw className="h-4 w-4" />
+                                            再生成
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 一括スタイル変更モーダル */}
+            {showRestyleModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-6">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in zoom-in duration-300">
+                        <div className="p-8">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-600 flex items-center justify-center">
+                                    <PaintBucket className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">一括スタイル変更</h3>
+                                    <p className="text-xs text-gray-500">全セクションのデザインを統一されたスタイルに変更</p>
+                                </div>
+                            </div>
+
+                            {isRestyling ? (
+                                <div className="py-12">
+                                    <div className="flex flex-col items-center justify-center gap-4">
+                                        <div className="relative">
+                                            <RefreshCw className="h-12 w-12 text-purple-600 animate-spin" />
+                                        </div>
+                                        <p className="text-sm font-medium text-gray-600">{restyleProgress.message}</p>
+                                        {restyleProgress.total > 0 && (
+                                            <div className="w-full max-w-xs">
+                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-purple-600 transition-all duration-300"
+                                                        style={{ width: `${(restyleProgress.current / restyleProgress.total) * 100}%` }}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-400 text-center mt-2">
+                                                    {restyleProgress.current} / {restyleProgress.total}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-6 space-y-5">
+                                    {/* スタイル */}
+                                    <div>
+                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            スタイル
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { id: 'sampling', label: '元のまま' },
+                                                { id: 'professional', label: 'ビジネス' },
+                                                { id: 'pops', label: 'ポップ' },
+                                                { id: 'luxury', label: '高級' },
+                                                { id: 'minimal', label: 'シンプル' },
+                                                { id: 'emotional', label: '情熱' },
+                                            ].map((s) => (
+                                                <button
+                                                    key={s.id}
+                                                    onClick={() => setRestyleStyle(s.id)}
+                                                    className={clsx(
+                                                        "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                        restyleStyle === s.id
+                                                            ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                            : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                    )}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* カラー */}
+                                    <div>
+                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            カラー
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[
+                                                { id: 'original', label: 'そのまま', color: 'bg-gray-400' },
+                                                { id: 'blue', label: 'ブルー', color: 'bg-blue-500' },
+                                                { id: 'green', label: 'グリーン', color: 'bg-green-500' },
+                                                { id: 'purple', label: 'パープル', color: 'bg-purple-500' },
+                                                { id: 'orange', label: 'オレンジ', color: 'bg-orange-500' },
+                                                { id: 'monochrome', label: 'モノクロ', color: 'bg-gray-800' },
+                                            ].map((c) => (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => setRestyleColorScheme(c.id)}
+                                                    className={clsx(
+                                                        "flex items-center gap-2 px-3 py-2 rounded-lg transition-all border-2",
+                                                        restyleColorScheme === c.id
+                                                            ? "border-purple-500 bg-purple-50"
+                                                            : "border-gray-100 hover:border-gray-200"
+                                                    )}
+                                                >
+                                                    <span className={`h-3 w-3 rounded-full ${c.color}`} />
+                                                    <span className="text-xs font-medium text-gray-700">{c.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* モード */}
+                                    <div>
+                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            モード
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setRestyleMode('light')}
+                                                className={clsx(
+                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                    restyleMode === 'light'
+                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                )}
+                                            >
+                                                色だけ変更
+                                            </button>
+                                            <button
+                                                onClick={() => setRestyleMode('heavy')}
+                                                className={clsx(
+                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                    restyleMode === 'heavy'
+                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                )}
+                                            >
+                                                全体を再構成
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 追加指示 */}
+                                    <div>
+                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            追加指示（任意）
+                                        </label>
+                                        <textarea
+                                            value={restyleCustomPrompt}
+                                            onChange={(e) => setRestyleCustomPrompt(e.target.value)}
+                                            placeholder="例: CTAを目立たせて、統一感を出す"
+                                            className="w-full h-20 rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isRestyling && (
+                                <div className="mt-8 flex gap-3">
+                                    <button
+                                        onClick={() => setShowRestyleModal(false)}
+                                        className="flex-1 rounded-2xl py-3.5 text-sm font-bold text-gray-400 hover:bg-gray-50 transition-all"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleRestyle}
+                                        disabled={sections.length === 0}
+                                        className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-pink-600 py-3.5 text-sm font-black text-white shadow-xl hover:opacity-90 disabled:opacity-50 transition-all"
+                                    >
+                                        <PaintBucket className="h-4 w-4" />
+                                        一括変更
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

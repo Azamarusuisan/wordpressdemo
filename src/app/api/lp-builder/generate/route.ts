@@ -54,7 +54,8 @@ async function generateSectionImage(
     businessInfo: any,
     apiKey: string,
     userId: string | null,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    designDefinition?: any // Added Design Definition
 ): Promise<number | null> {
     const promptGenerator = SECTION_IMAGE_PROMPTS[sectionType];
     if (!promptGenerator) {
@@ -72,9 +73,21 @@ async function generateSectionImage(
         'energetic': '赤やオレンジの暖色系、ダイナミック、感情に訴えかけるスタイル'
     };
 
-    const styleInstruction = businessInfo.tone && tasteStyles[businessInfo.tone]
+    let styleInstruction = businessInfo.tone && tasteStyles[businessInfo.tone]
         ? `\nスタイル: ${tasteStyles[businessInfo.tone]}`
         : '';
+
+    // Override with Design Definition if present
+    if (designDefinition) {
+        styleInstruction = `
+\n【DESIGN INSTRUCTION - STRICTLY FOLLOW】
+Reference Design Vibe: ${designDefinition.vibe}
+Colors: Primary=${designDefinition.colorPalette.primary}, Background=${designDefinition.colorPalette.background}
+Style: ${designDefinition.description}
+Mood: ${designDefinition.typography.mood}
+The generated image MUST match this specific visual style.
+`;
+    }
 
     const fullPrompt = `${imagePrompt}${styleInstruction}
 
@@ -270,6 +283,28 @@ export async function POST(req: NextRequest) {
             tone: businessInfo.tone,
         });
 
+        // Design Definition Injection
+        const designDefinition = body.designDefinition;
+        if (designDefinition) {
+            prompt += `\n\n【IMPORTANT: DESIGN INSTRUCTION】
+You MUST strictly follow the "Design Definition" below for the visual style, color palette, and component structure.
+The user wants to REPLICATE the design style of a specific reference image.
+
+<Design Definition>
+- Vibe: ${designDefinition.vibe}
+- Description: ${designDefinition.description}
+- Color Palette: Primary=${designDefinition.colorPalette.primary}, Secondary=${designDefinition.colorPalette.secondary}, Background=${designDefinition.colorPalette.background}
+- Typography: ${designDefinition.typography.style} (${designDefinition.typography.mood})
+- Layout: ${designDefinition.layout.style} (Density: ${designDefinition.layout.density})
+</Design Definition>
+
+Use these colors and styles in your Tailwind classes.
+For example, if the background is dark, use 'bg-slate-900' or similar.
+If the layout is 'Hero-focused', ensure the Hero section is dominant.
+`;
+        }
+
+
         // Call Gemini API for text content
         const result = await model.generateContent([
             { text: SYSTEM_PROMPT },
@@ -306,7 +341,9 @@ export async function POST(req: NextRequest) {
                 section.type,
                 businessInfo,
                 GOOGLE_API_KEY,
-                user?.id || null
+                user?.id || null,
+                3, // maxRetries
+                body.designDefinition // Pass Design Definition
             );
 
             sectionsWithImages.push({

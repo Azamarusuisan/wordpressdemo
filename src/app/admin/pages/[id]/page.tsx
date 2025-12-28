@@ -41,6 +41,23 @@ export default async function PageEditor({ params }: { params: { id: string } })
         try {
             if (page.headerConfig) initialHeaderConfig = JSON.parse(page.headerConfig);
         } catch { }
+
+        // Parse designDefinition if exists
+        let initialDesignDefinition = null;
+        try {
+            if (page.designDefinition) initialDesignDefinition = JSON.parse(page.designDefinition);
+        } catch { }
+
+        return (
+            <Editor
+                pageId={params.id}
+                initialSections={initialSections}
+                initialHeaderConfig={initialHeaderConfig}
+                initialSlug={page.slug || ''}
+                initialStatus={page.status || 'draft'}
+                initialDesignDefinition={initialDesignDefinition}
+            />
+        );
     }
 
     return (
@@ -48,8 +65,9 @@ export default async function PageEditor({ params }: { params: { id: string } })
             pageId={params.id}
             initialSections={initialSections}
             initialHeaderConfig={initialHeaderConfig}
-            initialSlug={!isNew ? (await prisma.page.findUnique({ where: { id: parseInt(params.id) } }))?.slug || '' : 'new'}
-            initialStatus={!isNew ? (await prisma.page.findUnique({ where: { id: parseInt(params.id) } }))?.status || 'draft' : 'draft'}
+            initialSlug="new"
+            initialStatus="draft"
+            initialDesignDefinition={null}
         />
     );
 }

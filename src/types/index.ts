@@ -165,6 +165,53 @@ export interface BusinessInfo {
     style: 'professional' | 'pops' | 'luxury' | 'minimal' | 'emotional';
 }
 
+// ========================================
+// Design Token Types (for consistent styling across segments)
+// ========================================
+
+export interface DesignTokens {
+    // Colors
+    colors: {
+        primary: string;      // メインカラー (例: #3B82F6)
+        secondary: string;    // サブカラー (例: #1E40AF)
+        accent: string;       // アクセントカラー (例: #60A5FA)
+        background: string;   // 背景色 (例: #FFFFFF)
+        text: string;         // テキスト色 (例: #1F2937)
+        muted: string;        // 薄いテキスト色 (例: #6B7280)
+    };
+    // Typography
+    typography: {
+        headingStyle: 'gothic' | 'mincho' | 'rounded';  // 見出しフォントスタイル
+        bodyStyle: 'gothic' | 'mincho' | 'rounded';     // 本文フォントスタイル
+        headingWeight: 'normal' | 'medium' | 'bold' | 'extrabold';
+        lineHeight: 'tight' | 'normal' | 'relaxed';
+    };
+    // Spacing & Layout
+    spacing: {
+        density: 'compact' | 'normal' | 'spacious';     // 余白の密度
+        sectionPadding: 'small' | 'medium' | 'large';   // セクション間パディング
+    };
+    // Components
+    components: {
+        buttonStyle: 'rounded' | 'pill' | 'square';     // ボタン形状
+        buttonRadius: string;                            // 具体的な角丸 (例: 8px)
+        shadowDepth: 'none' | 'subtle' | 'medium' | 'strong';
+        borderStyle: 'none' | 'subtle' | 'prominent';
+    };
+    // Effects
+    effects: {
+        gradients: boolean;           // グラデーション使用
+        animations: boolean;          // アニメーション使用
+        glassmorphism: boolean;       // ガラス効果
+    };
+}
+
+export interface DesignTokensGenerationResult {
+    success: boolean;
+    tokens?: DesignTokens;
+    error?: string;
+}
+
 // LP Builder Section (for editing)
 export interface LPSection {
     id: string;

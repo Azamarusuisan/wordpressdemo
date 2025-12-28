@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 // スタイル定義
 const STYLE_OPTIONS = [
-    { id: 'sampling', label: '元デザイン維持', icon: '📐' },
+    { id: 'sampling', label: '元のまま', icon: '📐' },
     { id: 'professional', label: 'ビジネス', icon: '💼' },
     { id: 'pops', label: 'ポップ', icon: '🎨' },
     { id: 'luxury', label: '高級', icon: '✨' },
@@ -17,19 +17,19 @@ const STYLE_OPTIONS = [
 
 // カラースキーム定義
 const COLOR_SCHEMES = [
-    { id: 'original', label: 'オリジナル維持', colors: ['#gray', '#gray'] },
-    { id: 'blue', label: 'ブルー系', colors: ['#3B82F6', '#1E40AF'] },
-    { id: 'green', label: 'グリーン系', colors: ['#22C55E', '#15803D'] },
-    { id: 'purple', label: 'パープル系', colors: ['#A855F7', '#7C3AED'] },
-    { id: 'orange', label: 'オレンジ系', colors: ['#F97316', '#EA580C'] },
+    { id: 'original', label: 'そのまま', colors: ['#gray', '#gray'] },
+    { id: 'blue', label: 'ブルー', colors: ['#3B82F6', '#1E40AF'] },
+    { id: 'green', label: 'グリーン', colors: ['#22C55E', '#15803D'] },
+    { id: 'purple', label: 'パープル', colors: ['#A855F7', '#7C3AED'] },
+    { id: 'orange', label: 'オレンジ', colors: ['#F97316', '#EA580C'] },
     { id: 'monochrome', label: 'モノクロ', colors: ['#1F2937', '#6B7280'] },
 ];
 
 // レイアウト変更オプション
 const LAYOUT_OPTIONS = [
-    { id: 'keep', label: 'レイアウト維持', description: '元のレイアウトを維持' },
-    { id: 'modernize', label: 'モダン化', description: '余白を増やしすっきりと' },
-    { id: 'compact', label: 'コンパクト', description: '情報密度を高める' },
+    { id: 'keep', label: '維持', description: '現状のまま' },
+    { id: 'modernize', label: '広め', description: '余白を増やす' },
+    { id: 'compact', label: '狭め', description: '余白を減らす' },
 ];
 
 interface ImportProgress {
@@ -247,9 +247,9 @@ export function PagesHeader() {
                                         </p>
                                     </div>
 
-                                    {/* Import Mode */}
+                                    {/* 変換モード */}
                                     <div>
-                                        <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2"><span>インポートモード</span></label>
+                                        <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2"><span>変換モード</span></label>
                                         <div className="flex gap-2">
                                             <button
                                                 type="button"
@@ -261,7 +261,7 @@ export function PagesHeader() {
                                                     }`}
                                             >
                                                 <Copy className="h-4 w-4" />
-                                                <span>Original</span>
+                                                <span>そのまま</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -273,7 +273,7 @@ export function PagesHeader() {
                                                     }`}
                                             >
                                                 <Palette className="h-4 w-4" />
-                                                <span>スタイル変更</span>
+                                                <span>色だけ変更</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -285,13 +285,13 @@ export function PagesHeader() {
                                                     }`}
                                             >
                                                 <Wand2 className="h-4 w-4" />
-                                                <span>再デザイン</span>
+                                                <span>全体を再構成</span>
                                             </button>
                                         </div>
                                         <p className="mt-2 text-[10px] text-muted-foreground">
-                                            {importMode === 'faithful' && 'そのままキャプチャします。変更なし。'}
-                                            {importMode === 'light' && '📐 レイアウト固定｜色・フォント・ボタン形状を変更。構造は維持。'}
-                                            {importMode === 'heavy' && '🎨 レイアウト自由｜配置も含めて完全に新しいデザインを生成。'}
+                                            {importMode === 'faithful' && '変更なし。元のデザインをそのまま取り込みます。'}
+                                            {importMode === 'light' && '配置は維持して、色・フォント・装飾のみ変更します。'}
+                                            {importMode === 'heavy' && 'レイアウトも含めて新しいデザインに作り変えます。'}
                                         </p>
                                     </div>
 
@@ -300,13 +300,13 @@ export function PagesHeader() {
                                         <div className="space-y-4 animate-in slide-in-from-top-2 duration-200 border-t border-border pt-4">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Wand2 className="h-4 w-4 text-primary" />
-                                                <span className="text-sm font-bold text-foreground">デザイン変更オプション</span>
+                                                <span className="text-sm font-bold text-foreground">デザイン設定</span>
                                             </div>
 
                                             {/* Style Select */}
                                             <div>
                                                 <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>スタイルターゲット</span>
+                                                    <span>スタイル</span>
                                                 </label>
                                                 <div className="flex gap-2 flex-wrap">
                                                     {STYLE_OPTIONS.map((opt) => (
@@ -330,7 +330,7 @@ export function PagesHeader() {
                                             {/* Color Scheme */}
                                             <div>
                                                 <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>カラースキーム</span>
+                                                    <span>カラー</span>
                                                 </label>
                                                 <div className="grid grid-cols-3 gap-2">
                                                     {COLOR_SCHEMES.map((scheme) => (
@@ -360,7 +360,7 @@ export function PagesHeader() {
                                             {importMode === 'heavy' && (
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                        <span>レイアウト調整</span>
+                                                        <span>レイアウト</span>
                                                     </label>
                                                     <div className="flex gap-2">
                                                         {LAYOUT_OPTIONS.map((opt) => (
@@ -387,13 +387,13 @@ export function PagesHeader() {
                                             {/* Custom Prompt */}
                                             <div>
                                                 <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>追加の変更指示（任意）</span>
+                                                    <span>追加指示（任意）</span>
                                                 </label>
                                                 <textarea
                                                     value={customPrompt}
                                                     onChange={(e) => setCustomPrompt(e.target.value)}
                                                     disabled={isImporting}
-                                                    placeholder="例: ヘッダーを大きくして、CTAボタンを目立たせてください。フォントは丸みのあるものに変更。"
+                                                    placeholder="例: ヘッダーを大きく、CTAボタンを目立たせて"
                                                     className="w-full h-20 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 resize-none"
                                                 />
                                                 <p className="mt-1 text-[10px] text-muted-foreground">

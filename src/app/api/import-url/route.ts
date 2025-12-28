@@ -9,6 +9,12 @@ import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { importUrlSchema, validateRequest } from '@/lib/validations';
+import {
+    generateDesignTokens,
+    extractDesignTokensFromImage,
+    tokensToPromptDescription,
+} from '@/lib/design-tokens';
+import { DesignTokens } from '@/types';
 
 // カラーログ
 const log = {
@@ -68,6 +74,7 @@ interface DesignOptions {
     colorScheme?: string;
     layoutOption?: string;
     customPrompt?: string;
+    designTokens?: DesignTokens;  // 事前生成されたデザイントークン
 }
 
 // AI画像変換処理
@@ -78,37 +85,63 @@ async function processImageWithAI(
     segmentIndex: number,
     totalSegments: number,
     apiKey: string,
-    userId: string | null
+    userId: string | null,
+    styleReferenceImage?: Buffer  // 最初のセグメントの結果を参照として渡す
 ): Promise<Buffer | null> {
     const startTime = createTimer();
-    const { style, colorScheme, layoutOption, customPrompt } = designOptions;
+    const { style, colorScheme, layoutOption, customPrompt, designTokens } = designOptions;
     const styleDesc = STYLE_DESCRIPTIONS[style] || STYLE_DESCRIPTIONS.professional;
     const colorDesc = colorScheme ? COLOR_SCHEME_DESCRIPTIONS[colorScheme] || '' : '';
     // lightモードではレイアウト固定なのでlayoutOptionは無視
     const layoutDesc = (importMode === 'heavy' && layoutOption) ? LAYOUT_DESCRIPTIONS[layoutOption] || '' : '';
 
+    // デザイントークンがある場合は詳細なスタイル指示を生成
+    const tokenDescription = designTokens ? tokensToPromptDescription(designTokens) : '';
+
     // カスタムプロンプトとオプションを組み合わせる
     const additionalInstructions = [
+        tokenDescription,  // デザイントークンを最優先で含める
         colorDesc,
         layoutDesc,
         customPrompt ? `ユーザー指示：${customPrompt}` : ''
-    ].filter(Boolean).join('\n');
+    ].filter(Boolean).join('\n\n');
 
     // セグメント位置と役割の定義（セグメント独立処理のため詳細に）
     const segmentInfo = segmentIndex === 0
         ? { position: 'ヘッダー・ヒーローセクション', role: 'ナビゲーション、ロゴ、メインビジュアル、キャッチコピーを含む最重要セクション' }
         : segmentIndex === totalSegments - 1
-        ? { position: 'フッターセクション', role: 'CTA、問い合わせ、著作権表示などページの締めくくり' }
-        : { position: `コンテンツセクション（${segmentIndex + 1}/${totalSegments}）`, role: '商品説明、特徴、お客様の声などの本文コンテンツ' };
+            ? { position: 'フッターセクション', role: 'CTA、問い合わせ、著作権表示などページの締めくくり' }
+            : { position: `コンテンツセクション（${segmentIndex + 1}/${totalSegments}）`, role: '商品説明、特徴、お客様の声などの本文コンテンツ' };
 
     // samplingモードの場合は特別に厳格なプロンプト
     const isSamplingMode = style === 'sampling';
+
+    // 参照画像がある場合（2番目以降のセグメント）は一貫性指示を追加
+    // ただしsamplingモードでは元画像の忠実な再現が目的なので、参照画像は使用しない
+    const hasStyleReference = !isSamplingMode && styleReferenceImage && segmentIndex > 0;
+    const styleReferenceInstruction = hasStyleReference
+        ? `【最重要：スタイル統一】
+添付した「スタイル参照画像」は、このページの最初のセグメントです。
+以下を参照画像と完全に統一してください：
+- 背景色・グラデーション
+- ボタンの色・形状・角丸
+- フォントスタイル
+- アイコンのスタイル
+- シャドウの強さ
+- 装飾要素のスタイル
+
+`
+        : '';
 
     const prompt = importMode === 'light'
         ? (isSamplingMode
             ? `この画像をほぼそのまま再現してください。
 
 【最重要】入力画像を可能な限り忠実にコピーしてください。
+
+【セグメント情報】
+- 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
+- 役割：${segmentInfo.role}
 
 【許可される変更】
 - テキストの言い回しのみ微調整（例：「詳しくはこちら」→「もっと見る」）
@@ -120,10 +153,12 @@ async function processImageWithAI(
 - 要素の追加・削除禁止
 - 背景の変更禁止
 
+${tokenDescription ? `【元画像から抽出したデザイン情報 - 必ず維持】\n${tokenDescription}` : ''}
+
 【出力】入力画像とほぼ同一の画像を出力。テキストの言い回しのみ変更可。`
             : `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を新しいスタイルに変換してください。
 
-【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
 
 【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
@@ -137,14 +172,13 @@ async function processImageWithAI(
 【スタイル変更ルール】
 4. 適用スタイル：${styleDesc}
 5. テキスト書き換え：意味を保ち言い回しを変える（例：「今すぐ始める」→「スタートする」）
-6. 色の統一：全セグメントで同じカラーパレットを使用する
-7. 形状の統一：ボタンは全て同じ角丸、シャドウは同じ深さ、フォントは同じウェイト
-${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
+
+${additionalInstructions}
 
 【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`)
         : `あなたはクリエイティブなWebデザイナーです。Webページの一部分（セグメント画像）を参考に新しいデザインを作成してください。
 
-【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
 
 【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
@@ -159,15 +193,29 @@ ${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
 4. 新スタイル：${styleDesc}
 5. レイアウト再構成：要素の配置は自由に変更してよいが、セクションの役割は維持
 6. テキスト書き換え：意味を保ち新鮮な言い回しに変更
-7. デザインシステム統一：色、フォント、ボタン形状、余白リズムを全セグメントで統一
-${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
+
+${additionalInstructions}
 
 【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`;
 
-    log.info(`[AI] Processing segment ${segmentIndex + 1} with ${importMode} mode, style: ${style}`);
+    log.info(`[AI] Processing segment ${segmentIndex + 1} with ${importMode} mode, style: ${style}${hasStyleReference ? ' (with style reference)' : ''}`);
 
     try {
         const base64Data = imageBuffer.toString('base64');
+
+        // API リクエストのパーツを構築
+        const parts: Array<{ inlineData?: { mimeType: string; data: string }; text?: string }> = [];
+
+        // 参照画像がある場合、最初に追加（スタイル参照として）
+        if (hasStyleReference && styleReferenceImage) {
+            const refBase64 = styleReferenceImage.toString('base64');
+            parts.push({ inlineData: { mimeType: 'image/png', data: refBase64 } });
+            parts.push({ text: '↑ スタイル参照画像（このスタイルに合わせてください）' });
+        }
+
+        // 処理対象の画像を追加
+        parts.push({ inlineData: { mimeType: 'image/png', data: base64Data } });
+        parts.push({ text: hasStyleReference ? `↑ 処理対象画像\n\n${prompt}` : prompt });
 
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
@@ -176,15 +224,16 @@ ${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{
-                        parts: [
-                            { inlineData: { mimeType: 'image/png', data: base64Data } },
-                            { text: prompt }
-                        ]
+                        parts
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        // sampling: 最小、light: 低め、heavy: 創造性重視
-                        temperature: isSamplingMode ? 0.1 : (importMode === 'heavy' ? 0.8 : 0.3)
+                        // 温度設定の最適化（一貫性重視）
+                        // sampling: 0.1（最小 - 忠実度重視）
+                        // light: 0.15（低 - レイアウト固定、スタイルのみ変更）
+                        // heavy: 0.4（中程度 - デザイン変更しつつ一貫性維持）
+                        // 参照画像がある場合はさらに低めに設定して一貫性を高める
+                        temperature: isSamplingMode ? 0.1 : hasStyleReference ? 0.1 : (importMode === 'heavy' ? 0.35 : 0.15)
                     },
                     toolConfig: { functionCallingConfig: { mode: "NONE" } }
                 })
@@ -198,9 +247,9 @@ ${additionalInstructions ? `8. 追加指示：${additionalInstructions}` : ''}
         }
 
         const data = await response.json();
-        const parts = data.candidates?.[0]?.content?.parts || [];
+        const responseParts = data.candidates?.[0]?.content?.parts || [];
 
-        for (const part of parts) {
+        for (const part of responseParts) {
             if (part.inlineData?.data) {
                 log.success(`[AI] Segment ${segmentIndex + 1} processed successfully`);
 
@@ -359,7 +408,7 @@ export async function POST(request: NextRequest) {
 
                 for (let y = 0; y < maxScroll; y += scrollStep) {
                     window.scrollTo(0, y);
-                    await delay(50);
+                    await delay(100); // Increased from 50ms to 100ms for better image loading
 
                     const newHeight = Math.max(
                         document.body.scrollHeight,
@@ -369,41 +418,99 @@ export async function POST(request: NextRequest) {
                 }
 
                 window.scrollTo(0, maxScroll);
-                await delay(300);
+                await delay(500); // Increased from 300ms
             });
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 800)); // Increased from 500ms
         }
 
         await page.evaluate(() => window.scrollTo(0, 0));
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2500));
 
-        // Remove popups
+        // Force load ALL images (including lazy-loaded ones)
+        log.info('Force loading all images...');
+        await page.evaluate(async () => {
+            // 1. Force lazy images to load by removing lazy attributes
+            const lazyImages = document.querySelectorAll('img[loading="lazy"], img[data-src], img[data-lazy]');
+            lazyImages.forEach(img => {
+                const imgEl = img as HTMLImageElement;
+                // Move data-src to src if present
+                if (imgEl.dataset.src) {
+                    imgEl.src = imgEl.dataset.src;
+                }
+                if (imgEl.dataset.lazy) {
+                    imgEl.src = imgEl.dataset.lazy;
+                }
+                // Remove lazy loading
+                imgEl.removeAttribute('loading');
+                imgEl.loading = 'eager';
+            });
+
+            // 2. Force all images to load
+            const allImages = Array.from(document.querySelectorAll('img'));
+            console.log(`[IMPORT] Found ${allImages.length} images to load`);
+
+            await Promise.all(allImages.map(img => {
+                if (img.complete && img.naturalHeight > 0) return Promise.resolve();
+                return new Promise((resolve) => {
+                    img.onload = () => { console.log(`[IMPORT] Loaded: ${img.src?.substring(0, 50)}`); resolve(undefined); };
+                    img.onerror = resolve;
+                    setTimeout(resolve, 5000); // 5 seconds timeout
+                });
+            }));
+
+            // 3. Force CSS background images to load
+            const allElements = document.querySelectorAll('*');
+            const bgUrls: string[] = [];
+            allElements.forEach(el => {
+                const style = window.getComputedStyle(el);
+                const bgImage = style.backgroundImage;
+                if (bgImage && bgImage !== 'none') {
+                    const match = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
+                    if (match && match[1]) {
+                        bgUrls.push(match[1]);
+                    }
+                }
+            });
+
+            console.log(`[IMPORT] Found ${bgUrls.length} background images`);
+
+            // Preload background images
+            await Promise.all(bgUrls.slice(0, 50).map(url => { // Limit to 50 to avoid timeout
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    img.src = url;
+                    setTimeout(resolve, 3000);
+                });
+            }));
+        });
+
+        log.info('Images loaded, waiting for render...');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Extra wait for rendering
+
+        // Remove popups - LESS AGGRESSIVE to avoid removing legitimate content
         log.info('Removing popups...');
         await page.evaluate(() => {
+            // Only target very specific popup/modal patterns
             const modalSelectors = [
-                '[class*="modal"]', '[class*="Modal"]', '[class*="popup"]', '[class*="Popup"]',
-                '[class*="overlay"]', '[class*="Overlay"]', '[class*="dialog"]', '[class*="Dialog"]',
-                '[class*="lightbox"]', '[class*="cookie"]', '[class*="Cookie"]', '[class*="banner"]',
-                '[class*="consent"]', '[class*="gdpr"]', '[class*="newsletter"]', '[class*="subscribe"]',
-                '[class*="notification"]', '[id*="modal"]', '[id*="popup"]', '[id*="overlay"]',
-                '[id*="cookie"]', '[id*="dialog"]', '[role="dialog"]', '[role="alertdialog"]',
-                'div[style*="position: fixed"]', 'div[style*="position:fixed"]',
+                '[class*="cookie"]', '[class*="Cookie"]',
+                '[class*="consent"]', '[class*="gdpr"]', '[class*="GDPR"]',
+                '[role="dialog"]', '[role="alertdialog"]',
+                '[class*="newsletter-popup"]', '[class*="subscribe-popup"]',
+                '[id*="cookie"]', '[id*="consent"]',
             ];
 
             modalSelectors.forEach(selector => {
                 try {
                     document.querySelectorAll(selector).forEach(el => {
                         const element = el as HTMLElement;
-                        const rect = element.getBoundingClientRect();
                         const computedStyle = window.getComputedStyle(element);
-                        const isHeader = rect.top < 100 && rect.height < 150;
-                        const isNav = element.tagName === 'NAV' || element.tagName === 'HEADER';
                         const zIndex = parseInt(computedStyle.zIndex) || 0;
-                        const isHighZIndex = zIndex > 100;
-                        const coversScreen = rect.width > window.innerWidth * 0.5 && rect.height > window.innerHeight * 0.5;
-
-                        if (!isHeader && !isNav && (isHighZIndex || coversScreen)) {
+                        // Only remove if it's a high z-index overlay (likely a popup)
+                        if (zIndex > 1000) {
+                            console.log(`[IMPORT] Removing popup: ${element.tagName}.${element.className}`);
                             element.remove();
                         }
                     });
@@ -417,36 +524,134 @@ export async function POST(request: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Fix fixed/sticky elements for proper fullPage screenshot
-        log.info('Converting fixed/sticky elements to static...');
+        // These elements repeat at every viewport position, corrupting the final image
+        log.info('Disabling fixed/sticky elements to prevent repetition...');
         await page.evaluate(() => {
-            // Convert fixed/sticky elements to static to prevent them from repeating in fullPage screenshot
-            const fixedElements = document.querySelectorAll('*');
-            fixedElements.forEach(el => {
+            // Collect ALL fixed/sticky elements in document order
+            const fixedElements: HTMLElement[] = [];
+            const allElements = document.querySelectorAll('*');
+
+            allElements.forEach(el => {
                 const element = el as HTMLElement;
                 const computedStyle = window.getComputedStyle(element);
                 const position = computedStyle.position;
 
                 if (position === 'fixed' || position === 'sticky') {
-                    const rect = element.getBoundingClientRect();
-                    // Keep header-like elements at top, but make them static
-                    if (rect.top < 200) {
-                        element.style.position = 'absolute';
-                        element.style.top = '0';
-                    } else {
-                        // For other fixed elements (like floating CTAs), convert to static
-                        element.style.position = 'static';
-                    }
+                    fixedElements.push(element);
                 }
             });
+
+            console.log(`[IMPORT] Found ${fixedElements.length} fixed/sticky elements`);
+
+            // COMPLETELY REMOVE fixed elements from DOM
+            fixedElements.forEach((element) => {
+                console.log(`[IMPORT] Removing from DOM: ${element.tagName}.${element.className}`);
+                element.remove();
+            });
+
+            // Inject global CSS to hide any remaining fixed/sticky elements
+            // This catches elements that might be dynamically added or have inline styles
+            const style = document.createElement('style');
+            style.id = 'import-fix-fixed';
+            style.textContent = `
+                [style*="position: fixed"],
+                [style*="position:fixed"],
+                [style*="position: sticky"],
+                [style*="position:sticky"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('[IMPORT] Injected global CSS to hide fixed elements');
+
+            // Force body/html settings
+            document.body.style.overflow = 'visible';
+            document.body.style.overflowX = 'hidden';
+            document.body.style.position = 'static';
+            document.documentElement.style.overflow = 'visible';
+            document.documentElement.style.overflowX = 'hidden';
+            document.documentElement.style.position = 'static';
         });
 
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Take screenshot
-        send({ type: 'progress', step: 'screenshot', message: 'スクリーンショットを撮影中...' });
-        log.info('Taking full page screenshot...');
-        const fullScreenshot = await page.screenshot({ fullPage: true }) as Buffer;
+        // Take screenshots manually by scrolling viewport-by-viewport
+        // This avoids Puppeteer's buggy fullPage implementation that repeats fixed elements
+        send({ type: 'progress', step: 'screenshot', message: 'スクロールしながら撮影中...' });
+        log.info('Taking manual viewport screenshots (avoiding fullPage bug)...');
+
+        // Get full document height
+        const documentHeight = await page.evaluate(() => {
+            return Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight,
+                document.body.offsetHeight,
+                document.documentElement.offsetHeight
+            );
+        });
+
+        const viewportHeight = deviceConfig.height * deviceConfig.deviceScaleFactor;
+        const viewportWidth = deviceConfig.width * deviceConfig.deviceScaleFactor;
+        const numCaptures = Math.ceil(documentHeight / deviceConfig.height);
+
+        log.info(`Document height: ${documentHeight}px, Viewport: ${deviceConfig.width}x${deviceConfig.height}, Captures needed: ${numCaptures}`);
+
+        const viewportBuffers: Buffer[] = [];
+
+        for (let i = 0; i < numCaptures; i++) {
+            const scrollY = i * deviceConfig.height;
+
+            // Scroll to position
+            await page.evaluate((y) => window.scrollTo(0, y), scrollY);
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Remove fixed elements AGAIN before each capture (in case JS re-added them)
+            await page.evaluate(() => {
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(el => {
+                    const element = el as HTMLElement;
+                    const computedStyle = window.getComputedStyle(element);
+                    if (computedStyle.position === 'fixed' || computedStyle.position === 'sticky') {
+                        element.style.display = 'none';
+                    }
+                });
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Take viewport screenshot
+            const viewportShot = await page.screenshot({ fullPage: false }) as Buffer;
+            viewportBuffers.push(viewportShot);
+
+            log.info(`Captured viewport ${i + 1}/${numCaptures} at scrollY=${scrollY}`);
+        }
+
         await browser.close();
+
+        // Stitch all viewport screenshots together using sharp
+        log.info('Stitching viewport screenshots...');
+        const stitchedHeight = viewportHeight * numCaptures;
+
+        const compositeOperations = viewportBuffers.map((buffer, index) => ({
+            input: buffer,
+            top: index * viewportHeight,
+            left: 0
+        }));
+
+        const fullScreenshot = await sharp({
+            create: {
+                width: viewportWidth,
+                height: stitchedHeight,
+                channels: 4,
+                background: { r: 255, g: 255, b: 255, alpha: 1 }
+            }
+        })
+            .composite(compositeOperations)
+            .png()
+            .toBuffer();
+
+        log.info('Stitching complete!');
 
         // Debug save
         const debugDir = '/tmp/import-debug';
@@ -462,7 +667,7 @@ export async function POST(request: NextRequest) {
             throw new Error('Screenshot failed: zero dimensions captured.');
         }
 
-        log.info(`Screenshot dimensions: ${width}x${height}px`);
+        log.info(`Final screenshot dimensions: ${width}x${height}px`);
 
         const baseSegmentHeight = 800;
         const segmentHeight = baseSegmentHeight * deviceConfig.deviceScaleFactor;
@@ -482,6 +687,54 @@ export async function POST(request: NextRequest) {
             log.info(`AI processing enabled (mode: ${importMode}, style: ${style})`);
         }
 
+        // ========================================
+        // デザイントークン先行生成（一貫性保証）
+        // ========================================
+        //
+        // 処理フロー:
+        // - faithful: AI処理なし（スクショそのまま）
+        // - sampling: AI処理あり（元デザイン維持、テキスト言い回しのみ変更）→ 元画像からトークン抽出
+        // - それ以外: AI処理あり（スタイル変更）→ スタイル設定からトークン生成
+        //
+        let designTokens: DesignTokens | undefined;
+
+        if (importMode !== 'faithful' && googleApiKey) {
+            send({
+                type: 'progress',
+                step: 'tokens',
+                message: 'デザイントークンを生成中...',
+            });
+
+            log.info('Generating design tokens for consistent styling...');
+
+            if (style === 'sampling') {
+                // samplingモード: 元画像からデザイントークンを抽出（元デザインを忠実に維持するため）
+                log.info('Sampling mode: extracting tokens from original image...');
+                const thumbnailBuffer = await sharp(fullScreenshot)
+                    .resize({ width: 800, height: 800, fit: 'inside' })
+                    .png()
+                    .toBuffer();
+
+                const extractResult = await extractDesignTokensFromImage(thumbnailBuffer, googleApiKey);
+                if (extractResult.success && extractResult.tokens) {
+                    designTokens = extractResult.tokens;
+                    log.success('Design tokens extracted from original image');
+                } else {
+                    // 抽出失敗時はデフォルトトークンを使用
+                    designTokens = generateDesignTokens('sampling', colorScheme, layoutOption);
+                    log.info('Could not extract tokens from image, using default sampling tokens');
+                }
+            } else {
+                // その他のスタイル: スタイル設定からトークンを生成
+                designTokens = generateDesignTokens(style, colorScheme, layoutOption);
+                log.info(`Base tokens generated from style: ${style}`);
+            }
+
+            // designOptionsにトークンを追加（全モードで使用）
+            designOptions.designTokens = designTokens;
+            log.success(`Design tokens ready: primary=${designTokens.colors.primary}, button=${designTokens.components.buttonStyle}`);
+        }
+
         send({
             type: 'progress',
             step: 'segments',
@@ -490,6 +743,12 @@ export async function POST(request: NextRequest) {
             current: 0
         });
 
+        // ========================================
+        // 参照画像方式：最初のセグメントの結果を保存
+        // 後続セグメントに渡してスタイル一貫性を確保
+        // ========================================
+        let firstSegmentResult: Buffer | null = null;
+
         // Process each segment
         for (let i = 0; i < numSegments; i++) {
             const top = i * segmentHeight;
@@ -497,14 +756,17 @@ export async function POST(request: NextRequest) {
 
             if (currentSegHeight <= 0) continue;
 
-            // samplingモードはAI処理をスキップ（スクショそのまま使用）
-            const shouldProcessWithAI = importMode !== 'faithful' && style !== 'sampling' && googleApiKey;
+            // AI処理の判定
+            // - faithful: スクショそのまま（AI処理なし）
+            // - light/heavy + sampling: 元デザイン維持でテキスト言い回しのみ変更（AI処理あり）
+            // - light/heavy + その他スタイル: スタイル変更（AI処理あり）
+            const shouldProcessWithAI = importMode !== 'faithful' && googleApiKey;
 
             send({
                 type: 'progress',
                 step: 'processing',
                 message: shouldProcessWithAI
-                    ? `セグメント ${i + 1}/${numSegments} をAI処理中...`
+                    ? `セグメント ${i + 1}/${numSegments} をAI処理中...${i > 0 && firstSegmentResult ? '（参照画像あり）' : ''}`
                     : `セグメント ${i + 1}/${numSegments} を保存中...`,
                 total: numSegments,
                 current: i + 1
@@ -517,9 +779,14 @@ export async function POST(request: NextRequest) {
                 .png()
                 .toBuffer();
 
-            // AI processing if needed (samplingモードはスキップ)
+            // AI processing if needed
             if (shouldProcessWithAI && googleApiKey) {
-                log.info(`Segment ${i + 1}: Applying AI transformation...`);
+                // 2番目以降のセグメントには最初のセグメントの結果を参照として渡す
+                // ただしsamplingモードでは元画像の忠実な再現が目的なので、参照画像は使用しない
+                const isSamplingMode = style === 'sampling';
+                const styleReference = (!isSamplingMode && i > 0 && firstSegmentResult) ? firstSegmentResult : undefined;
+
+                log.info(`Segment ${i + 1}: Applying AI transformation...${styleReference ? ' (with style reference from segment 1)' : ''}`);
                 const aiBuffer = await processImageWithAI(
                     buffer,
                     importMode as 'light' | 'heavy',
@@ -527,11 +794,20 @@ export async function POST(request: NextRequest) {
                     i,
                     numSegments,
                     googleApiKey,
-                    user?.id || null
+                    user?.id || null,
+                    styleReference  // 参照画像を渡す
                 );
 
                 if (aiBuffer) {
                     buffer = aiBuffer;
+
+                    // 最初のセグメントの結果を保存（後続セグメントの参照用）
+                    // samplingモード以外の場合のみ
+                    if (i === 0 && !isSamplingMode) {
+                        firstSegmentResult = aiBuffer;
+                        log.success(`Segment 1: Saved as style reference for subsequent segments`);
+                    }
+
                     log.success(`Segment ${i + 1}: AI transformation complete`);
                 } else {
                     log.error(`Segment ${i + 1}: AI transformation failed, using original`);

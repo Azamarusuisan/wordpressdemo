@@ -111,6 +111,8 @@ export const pageSectionsUpdateSchema = z.object({
         config: z.record(z.string(), z.unknown()).nullable().optional(),
     })),
     headerConfig: z.record(z.string(), z.unknown()).optional(),
+    status: z.enum(['draft', 'published']).optional(),
+    designDefinition: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 export type PageSectionsUpdateInput = z.infer<typeof pageSectionsUpdateSchema>;

@@ -20,7 +20,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }, { status: 400 });
     }
 
-    const { sections, headerConfig } = validation.data;
+    const { sections, headerConfig, status, designDefinition } = validation.data;
 
     try {
         await prisma.$transaction([
@@ -30,6 +30,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                 data: {
                     updatedAt: new Date(),
                     headerConfig: headerConfig ? JSON.stringify(headerConfig) : undefined,
+                    status: status || undefined,
+                    designDefinition: designDefinition ? JSON.stringify(designDefinition) : undefined,
                     sections: {
                         create: sections.map((sec, index: number) => ({
                             role: sec.role,
