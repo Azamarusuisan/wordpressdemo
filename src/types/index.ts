@@ -5,6 +5,18 @@
 // Section Types
 export type SectionType = 'hero' | 'features' | 'pricing' | 'faq' | 'cta' | 'testimonials';
 
+// Clickable Area Types (for image hotspots/buttons)
+export interface ClickableArea {
+    id: string;
+    x: number;      // 0-1 relative coordinate (from left)
+    y: number;      // 0-1 relative coordinate (from top)
+    width: number;  // 0-1 relative width
+    height: number; // 0-1 relative height
+    actionType: 'url' | 'email' | 'phone' | 'scroll';
+    actionValue: string;  // URL, email address, phone number, or section ID
+    label?: string;       // Hover text / button label
+}
+
 export interface SectionProperties {
     title?: string;
     subtitle?: string;
@@ -12,6 +24,7 @@ export interface SectionProperties {
     text?: string;
     backgroundColor?: string;
     textColor?: string;
+    clickableAreas?: ClickableArea[];
 }
 
 export interface SectionImage {

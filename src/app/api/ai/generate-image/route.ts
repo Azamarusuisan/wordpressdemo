@@ -53,6 +53,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { prompt, taste, brandInfo, aspectRatio = '9:16', designDefinition } = await request.json();
 
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
 
         const arConfig = ASPECT_RATIOS[aspectRatio] || ASPECT_RATIOS['9:16'];
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
         }
@@ -158,11 +162,11 @@ Generate the image to EXACTLY match this visual style and color palette.
 
             const fallbackData = await fallbackResponse.json();
             modelUsed = 'gemini-2.5-flash-preview-image-generation';
-            const fallbackResult = await processImageResponse(fallbackData, arConfig, user?.id || null);
+            const fallbackResult = await processImageResponse(fallbackData, arConfig, user.id);
 
             // ログ記録（フォールバック成功）
             await logGeneration({
-                userId: user?.id || null,
+                userId: user.id,
                 type: 'image',
                 endpoint: '/api/ai/generate-image',
                 model: modelUsed,
@@ -176,11 +180,11 @@ Generate the image to EXACTLY match this visual style and color palette.
         }
 
         const data = await response.json();
-        const result = await processImageResponse(data, arConfig, user?.id || null);
+        const result = await processImageResponse(data, arConfig, user.id);
 
         // ログ記録（プライマリ成功）
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'image',
             endpoint: '/api/ai/generate-image',
             model: modelUsed,
@@ -197,7 +201,7 @@ Generate the image to EXACTLY match this visual style and color palette.
 
         // ログ記録（エラー）
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'image',
             endpoint: '/api/ai/generate-image',
             model: modelUsed,

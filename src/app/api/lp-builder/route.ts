@@ -61,44 +61,42 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { pageId, title, sections } = body;
 
+        // セクションデータを整形
+        const sectionData = (sections || []).map((s: any, index: number) => ({
+            order: index,
+            role: s.type || s.role || 'section',
+            imageId: s.imageId || null,
+            config: JSON.stringify({
+                type: s.type,
+                name: s.name,
+                properties: s.properties || {},
+            }),
+        }));
+
         if (pageId) {
             // 既存ページを更新
-            const existingPage = await prisma.page.findFirst({
-                where: { id: pageId, userId: user.id }
+            await prisma.page.update({
+                where: { id: pageId },
+                data: {
+                    title: title || 'Untitled',
+                    updatedAt: new Date(),
+                },
             });
 
-            if (!existingPage) {
-                return NextResponse.json({ error: "Page not found" }, { status: 404 });
-            }
-
-            // セクションを削除して再作成
+            // 既存セクションを削除して再作成
             await prisma.pageSection.deleteMany({
-                where: { pageId }
+                where: { pageId: pageId },
             });
 
             // 新しいセクションを作成
-            for (let i = 0; i < sections.length; i++) {
-                const section = sections[i];
-                await prisma.pageSection.create({
-                    data: {
-                        pageId,
-                        order: i,
-                        role: section.type || section.role || 'custom',
-                        config: JSON.stringify({
-                            type: section.type,
-                            name: section.name,
-                            properties: section.properties || section.data,
-                        }),
-                        imageId: section.imageId || null,
-                    }
+            if (sectionData.length > 0) {
+                await prisma.pageSection.createMany({
+                    data: sectionData.map((s: any) => ({
+                        ...s,
+                        pageId: pageId,
+                    })),
                 });
             }
-
-            // ページタイトルを更新
-            await prisma.page.update({
-                where: { id: pageId },
-                data: { title: title || existingPage.title }
-            });
 
             return NextResponse.json({ success: true, pageId });
         } else {
@@ -107,42 +105,23 @@ export async function POST(request: Request) {
             const newPage = await prisma.page.create({
                 data: {
                     userId: user.id,
-                    title: title || '新規LP',
-                    slug,
+                    title: title || 'Untitled Page',
+                    slug: slug,
                     status: 'draft',
-                    headerConfig: JSON.stringify({
-                        logoText: title || '新規LP',
-                        sticky: true,
-                        ctaText: 'お問い合わせ',
-                        ctaLink: '#contact',
-                        navItems: []
-                    }),
-                    formConfig: JSON.stringify({})
-                }
+                    templateId: 'simple',
+                    headerConfig: JSON.stringify({}),
+                    formConfig: JSON.stringify({}),
+                    sections: {
+                        create: sectionData,
+                    },
+                },
             });
 
-            // セクションを作成
-            for (let i = 0; i < sections.length; i++) {
-                const section = sections[i];
-                await prisma.pageSection.create({
-                    data: {
-                        pageId: newPage.id,
-                        order: i,
-                        role: section.type || 'custom',
-                        config: JSON.stringify({
-                            type: section.type,
-                            name: section.name,
-                            properties: section.properties || section.data,
-                        }),
-                        imageId: section.imageId || null,
-                    }
-                });
-            }
-
-            return NextResponse.json({ success: true, pageId: newPage.id, slug });
+            return NextResponse.json({ success: true, pageId: newPage.id, slug: newPage.slug });
         }
+
     } catch (error) {
         console.error("Error saving LP:", error);
-        return NextResponse.json({ error: "Failed to save LP" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to save page" }, { status: 500 });
     }
 }

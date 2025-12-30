@@ -4,49 +4,60 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Images, Settings, LogOut, FileText, Navigation, Crown, History, BarChart3 } from 'lucide-react';
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { useUserSettings } from '@/lib/hooks/useAdminData';
 
+// ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
 const navItems = [
-    { name: 'Pages', href: '/admin/pages', icon: FileText },
-    { name: 'Media', href: '/admin/media', icon: Images },
-    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3 },
-    { name: 'History', href: '/admin/import-history', icon: History },
-    { name: 'Navigation', href: '/admin/navigation', icon: Navigation },
-    { name: 'Builder', href: '/admin/lp-builder', icon: LayoutDashboard },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
-];
+    { name: 'Pages', href: '/admin/pages', icon: FileText, prefetchUrl: '/api/pages' },
+    { name: 'Media', href: '/admin/media', icon: Images, prefetchUrl: '/api/media' },
+    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3, prefetchUrl: '/api/admin/stats?days=30' },
+    { name: 'History', href: '/admin/import-history', icon: History, prefetchUrl: null },
+    { name: 'Navigation', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation' },
+    { name: 'Builder', href: '/admin/lp-builder', icon: LayoutDashboard, prefetchUrl: '/api/lp-builder' },
+    { name: 'Settings', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings' },
+] as const;
+
+// データプリフェッチ用のキャッシュ
+const prefetchCache = new Set<string>();
 
 export function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
-    const [plan, setPlan] = useState<'normal' | 'premium'>('normal');
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+    // SWRでユーザー設定を取得（キャッシュ済み）
+    const { data: userSettings } = useUserSettings();
+    const plan = userSettings?.plan || 'normal';
+
+    // ユーザー情報取得
     useEffect(() => {
         const supabase = createClient();
-
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-        };
-        getUser();
-
-        const fetchPlan = async () => {
-            try {
-                const res = await fetch('/api/user/settings');
-                const data = await res.json();
-                setPlan(data.plan || 'normal');
-            } catch (e) {
-                console.error('Failed to fetch plan', e);
-            }
-        };
-        fetchPlan();
+        supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
     }, []);
 
-    const handleLogout = async () => {
+    // データプリフェッチ（ホバー時）
+    const handleMouseEnter = useCallback((prefetchUrl: string | null) => {
+        if (!prefetchUrl || prefetchCache.has(prefetchUrl)) return;
+
+        // キャッシュに追加してからフェッチ
+        prefetchCache.add(prefetchUrl);
+        fetch(prefetchUrl).catch(() => {
+            // エラー時はキャッシュから削除して再試行可能に
+            prefetchCache.delete(prefetchUrl);
+        });
+    }, []);
+
+    // Next.jsルートプリフェッチ
+    const handleRouteMouseEnter = useCallback((href: string) => {
+        router.prefetch(href);
+    }, [router]);
+
+    // ログアウト処理（メモ化）
+    const handleLogout = useCallback(async () => {
         setIsLoggingOut(true);
         try {
             const supabase = createClient();
@@ -60,7 +71,12 @@ export function Sidebar() {
         } finally {
             setIsLoggingOut(false);
         }
-    };
+    }, [router]);
+
+    // アクティブ状態の計算をメモ化
+    const activeItem = useMemo(() => {
+        return navItems.find(item => pathname.startsWith(item.href))?.href;
+    }, [pathname]);
 
     return (
         <div className="flex h-screen w-64 flex-col border-r border-border bg-background">
@@ -75,11 +91,16 @@ export function Sidebar() {
                 <div className="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Menu</div>
                 {navItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = pathname.startsWith(item.href);
+                    const isActive = activeItem === item.href;
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
+                            prefetch={true}
+                            onMouseEnter={() => {
+                                handleRouteMouseEnter(item.href);
+                                handleMouseEnter(item.prefetchUrl);
+                            }}
                             className={clsx(
                                 'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200',
                                 isActive

@@ -21,6 +21,12 @@ interface InpaintRequest {
     prompt: string;         // 修正指示
 }
 
+interface InpaintHistoryData {
+    originalImage: string;
+    masks: MaskArea[];
+    prompt: string;
+}
+
 export async function POST(request: NextRequest) {
     const startTime = createTimer();
     let inpaintPrompt = '';
@@ -28,6 +34,10 @@ export async function POST(request: NextRequest) {
     // ユーザー認証
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     try {
         const { imageUrl, imageBase64, mask, masks, prompt }: InpaintRequest = await request.json();
@@ -39,7 +49,7 @@ export async function POST(request: NextRequest) {
         // 複数選択か単一選択か判定
         const allMasks: MaskArea[] = masks && masks.length > 0 ? masks : (mask ? [mask] : []);
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user?.id || null);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({
                 error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。'
@@ -146,15 +156,23 @@ Generate the complete edited image now.`;
         const estimatedCost = estimateImageCost(modelUsed, 1);
         const durationMs = Date.now() - startTime;
 
-        const result = await processInpaintResponse(data, user?.id || null, {
-            model: modelUsed,
-            estimatedCost,
-            durationMs
-        });
+        // 履歴用データを準備
+        const historyData: InpaintHistoryData = {
+            originalImage: imageUrl || `data:${mimeType};base64,${base64Data.substring(0, 50)}...`, // URLがない場合は識別子
+            masks: allMasks,
+            prompt: prompt,
+        };
+
+        const result = await processInpaintResponse(
+            data,
+            user.id,
+            { model: modelUsed, estimatedCost, durationMs },
+            historyData
+        );
 
         // ログ記録（成功）
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'inpaint',
             endpoint: '/api/ai/inpaint',
             model: modelUsed,
@@ -171,7 +189,7 @@ Generate the complete edited image now.`;
 
         // ログ記録（エラー）
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'inpaint',
             endpoint: '/api/ai/inpaint',
             model: 'gemini-3-pro-image-preview',
@@ -191,7 +209,12 @@ interface CostInfo {
     durationMs: number;
 }
 
-async function processInpaintResponse(data: any, userId: string | null, costInfo?: CostInfo) {
+async function processInpaintResponse(
+    data: any,
+    userId: string | null,
+    costInfo?: CostInfo,
+    historyData?: InpaintHistoryData
+) {
     console.log('Gemini Response:', JSON.stringify(data, null, 2));
 
     const parts = data.candidates?.[0]?.content?.parts || [];
@@ -254,10 +277,28 @@ async function processInpaintResponse(data: any, userId: string | null, costInfo
         },
     });
 
+    // インペイント履歴を保存
+    let history = null;
+    if (historyData) {
+        history = await prisma.inpaintHistory.create({
+            data: {
+                userId,
+                originalImage: historyData.originalImage,
+                resultImage: publicUrl,
+                prompt: historyData.prompt,
+                masks: JSON.stringify(historyData.masks),
+                model: costInfo?.model || 'unknown',
+                estimatedCost: costInfo?.estimatedCost || null,
+                durationMs: costInfo?.durationMs || null,
+            },
+        });
+    }
+
     return NextResponse.json({
         success: true,
         media,
         textResponse,
+        history,
         costInfo: costInfo ? {
             model: costInfo.model,
             estimatedCost: costInfo.estimatedCost,

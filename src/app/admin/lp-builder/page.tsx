@@ -5,27 +5,78 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay } from 'lucide-react';
+import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay, MousePointer } from 'lucide-react';
 import { GeminiGeneratorModal } from '@/components/lp-builder/GeminiGeneratorModal';
 import { SortableSection } from '@/components/lp-builder/SortableSection';
+import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
 import { SECTION_TEMPLATES, SectionTemplate } from '@/components/lp-builder/constants';
 import toast from 'react-hot-toast';
-import type { LPSection, ExistingPage } from '@/types';
+import type { LPSection, ExistingPage, ClickableArea } from '@/types';
+
+// Button Editor Wrapper Component
+function ButtonEditorWrapper({
+    sectionId,
+    sections,
+    onClose,
+    onSave,
+}: {
+    sectionId: string;
+    sections: LPSection[];
+    onClose: () => void;
+    onSave: (sectionId: string, areas: ClickableArea[]) => void;
+}) {
+    const editingSection = sections.find(s => s.id === sectionId);
+    const imageUrl = editingSection?.properties.image as string | undefined;
+
+    // If no image, show a placeholder canvas
+    // Use encodeURIComponent instead of btoa to handle non-ASCII characters (Japanese, etc.)
+    const svgContent = `
+        <svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+            <rect fill="#f3f4f6" width="100%" height="100%"/>
+            <text x="50%" y="45%" font-family="system-ui" font-size="24" fill="#9ca3af" text-anchor="middle">
+                ${editingSection?.properties.title || 'Section Preview'}
+            </text>
+            <text x="50%" y="55%" font-family="system-ui" font-size="14" fill="#d1d5db" text-anchor="middle">
+                Drag to define clickable button areas
+            </text>
+        </svg>
+    `;
+    const placeholderImage = 'data:image/svg+xml,' + encodeURIComponent(svgContent);
+
+    // Callback for saving clickable areas
+    const handleSaveClickableAreas = React.useCallback((areas: ClickableArea[]) => {
+        onSave(sectionId, areas);
+    }, [sectionId, onSave]);
+
+    return (
+        <ImageInpaintEditor
+            imageUrl={imageUrl || placeholderImage}
+            onClose={onClose}
+            onSave={onClose}
+            clickableAreas={(editingSection?.properties.clickableAreas as ClickableArea[]) || []}
+            onSaveClickableAreas={handleSaveClickableAreas}
+            initialMode="button"
+            sectionId={sectionId}
+        />
+    );
+}
 
 function DroppableTemplate({ template, onAdd }: { template: SectionTemplate; onAdd: () => void }) {
     return (
         <button
             onClick={onAdd}
-            className="group relative flex flex-col items-center gap-3 rounded-lg border border-transparent bg-white/50 p-4 transition-all hover:bg-white hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-100/50"
+            className="group relative flex flex-col items-center gap-3 rounded-2xl border border-transparent bg-white/40 p-5 transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-100/50 hover:-translate-y-0.5"
         >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 text-2xl text-gray-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors duration-300">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-100 text-2xl text-gray-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors duration-300 shadow-sm border border-transparent group-hover:border-indigo-100/50">
                 {template.icon}
             </div>
             <div className="text-center w-full">
-                <p className="text-xs font-bold text-foreground tracking-wide">{template.name}</p>
+                <p className="text-xs font-bold text-foreground tracking-wide font-manrope">{template.name}</p>
             </div>
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-2">
-                <Plus className="h-3 w-3 text-indigo-500" />
+                <div className="bg-indigo-50 p-1 rounded-md">
+                    <Plus className="h-3 w-3 text-indigo-500" />
+                </div>
             </div>
         </button>
     );
@@ -43,6 +94,7 @@ export default function LPBuilderPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+    const [buttonEditorSectionId, setButtonEditorSectionId] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -172,6 +224,19 @@ export default function LPBuilderPage() {
         );
     };
 
+    // Save clickable areas for a section
+    const saveClickableAreas = (sectionId: string, areas: ClickableArea[]) => {
+        setSections((prev) =>
+            prev.map((s) =>
+                s.id === sectionId
+                    ? { ...s, properties: { ...s.properties, clickableAreas: areas } }
+                    : s
+            )
+        );
+        setButtonEditorSectionId(null);
+        toast.success(`${areas.length}個のボタンを保存しました`);
+    };
+
     // Apply Gemini Generated Result
     const handleGeminiGenerated = (generatedSections: any[], meta?: { duration: number, estimatedCost: number }) => {
         const newSections = generatedSections.map((s: any, idx: number) => ({
@@ -256,10 +321,10 @@ export default function LPBuilderPage() {
         <div className="flex h-screen w-full bg-[#f4f4f5] font-sans text-[#1c1c1c] overflow-hidden">
 
             {/* 1. Left Sidebar: Navigation & Elements */}
-            <div className="w-[280px] flex flex-col bg-white border-r border-gray-200 z-20">
-                <div className="h-16 flex items-center px-6 border-b border-gray-100">
-                    <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
-                        <div className="w-5 h-5 bg-black rounded-sm"></div>
+            <div className="w-[300px] flex flex-col bg-white/80 backdrop-blur-xl border-r border-gray-100 z-20 shadow-[4px_0_24px_-4px_rgba(0,0,0,0.02)]">
+                <div className="h-16 flex items-center px-6 border-b border-gray-100/50">
+                    <div className="flex items-center gap-2 font-bold text-lg tracking-tight font-manrope">
+                        <div className="w-5 h-5 bg-black rounded-md shadow-sm shadow-black/20"></div>
                         ZettA<span className="text-gray-400 font-light">I</span>
                     </div>
                 </div>
@@ -302,10 +367,10 @@ export default function LPBuilderPage() {
             </div>
 
             {/* 2. Middle: Canvas Area */}
-            <div className="flex-1 flex flex-col min-w-0 bg-[#f8f9fa] relative">
+            <div className="flex-1 flex flex-col min-w-0 bg-[#f4f4f5] relative">
 
                 {/* Top Toolbar */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white/50 backdrop-blur-sm z-10">
+                <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200/50 bg-white/60 backdrop-blur-xl z-10 sticky top-0 supports-[backdrop-filter]:bg-white/60">
                     <div className="flex items-center gap-4">
                         <div className="relative group">
                             <button
@@ -399,12 +464,13 @@ export default function LPBuilderPage() {
                             </div>
                         ) : sections.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
-                                <div className="bg-white p-6 rounded-2xl shadow-xl shadow-black/5 border border-gray-100 mb-8 max-w-sm">
-                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                        <Layout className="w-6 h-6 text-gray-400" />
+                                <div className="bg-white/50 backdrop-blur-md p-8 rounded-3xl shadow-2xl shadow-indigo-100/50 border border-white/60 mb-8 max-w-sm relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm ring-1 ring-gray-100 group-hover:scale-110 transition-transform duration-300">
+                                        <Layout className="w-8 h-8 text-gray-400 group-hover:text-indigo-500 transition-colors" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2">Start Building</h3>
-                                    <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Start Building</h3>
+                                    <p className="text-sm text-gray-500 leading-relaxed mb-8 relative z-10 font-medium">
                                         Your canvas is empty. Use the AI generator or drag components from the left sidebar.
                                     </p>
                                     <button
@@ -550,7 +616,34 @@ export default function LPBuilderPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-12">
+                            <hr className="border-gray-100" />
+
+                            {/* Button Settings */}
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-900">
+                                    <MousePointer className="h-3 w-3 text-gray-400" />
+                                    Interactive Buttons
+                                </label>
+
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setButtonEditorSectionId(selectedSection.id)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100/80 transition-all"
+                                    >
+                                        <MousePointer className="h-3 w-3" />
+                                        {(selectedSection.properties.clickableAreas as ClickableArea[] | undefined)?.length
+                                            ? `Edit Buttons (${(selectedSection.properties.clickableAreas as ClickableArea[]).length})`
+                                            : 'Add Clickable Buttons'}
+                                    </button>
+                                    {(selectedSection.properties.clickableAreas as ClickableArea[] | undefined)?.length ? (
+                                        <p className="text-[10px] text-gray-500 text-center">
+                                            {(selectedSection.properties.clickableAreas as ClickableArea[]).length} buttons configured
+                                        </p>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            <div className="pt-8">
                                 <button
                                     onClick={() => deleteSection(selectedSection.id)}
                                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-red-100 bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100/80 transition-all"
@@ -577,6 +670,16 @@ export default function LPBuilderPage() {
                 onGenerated={handleGeminiGenerated}
             />
 
+            {/* Button Editor Modal */}
+            {buttonEditorSectionId && (
+                <ButtonEditorWrapper
+                    sectionId={buttonEditorSectionId}
+                    sections={sections}
+                    onClose={() => setButtonEditorSectionId(null)}
+                    onSave={saveClickableAreas}
+                />
+            )}
+
             {/* Preview Modal */}
             <AnimatePresence>
                 {showPreview && (
@@ -598,22 +701,47 @@ export default function LPBuilderPage() {
                             </div>
                             <div className="flex-1 overflow-y-auto bg-white">
                                 <div className="mx-auto max-w-full">
-                                    {sections.map((section) => (
-                                        <div
-                                            key={section.id}
-                                            className="px-6 py-20 lg:px-20 text-center"
-                                            style={{
-                                                backgroundColor: section.properties.backgroundColor,
-                                                color: section.properties.textColor,
-                                            }}
-                                        >
-                                            <div className="max-w-4xl mx-auto">
-                                                <h2 className="text-4xl lg:text-5xl font-bold mb-6 tracking-tight">{section.properties.title}</h2>
-                                                <p className="text-xl opacity-80 mb-8 font-light">{section.properties.subtitle}</p>
-                                                <p className="max-w-2xl mx-auto leading-relaxed opacity-90">{section.properties.description}</p>
+                                    {sections.map((section) => {
+                                        const clickableAreas = (section.properties.clickableAreas as ClickableArea[] | undefined) || [];
+                                        return (
+                                            <div
+                                                key={section.id}
+                                                className="px-6 py-20 lg:px-20 text-center relative"
+                                                style={{
+                                                    backgroundColor: section.properties.backgroundColor,
+                                                    color: section.properties.textColor,
+                                                }}
+                                            >
+                                                <div className="max-w-4xl mx-auto">
+                                                    <h2 className="text-4xl lg:text-5xl font-bold mb-6 tracking-tight">{section.properties.title}</h2>
+                                                    <p className="text-xl opacity-80 mb-8 font-light">{section.properties.subtitle}</p>
+                                                    <p className="max-w-2xl mx-auto leading-relaxed opacity-90">{section.properties.description}</p>
+                                                </div>
+
+                                                {/* Clickable Areas Preview */}
+                                                {clickableAreas.length > 0 && (
+                                                    <div className="absolute inset-0 pointer-events-none">
+                                                        {clickableAreas.map((area, idx) => (
+                                                            <div
+                                                                key={area.id}
+                                                                className="absolute border-2 border-dashed border-blue-400 bg-blue-500/10 rounded flex items-center justify-center"
+                                                                style={{
+                                                                    left: `${area.x * 100}%`,
+                                                                    top: `${area.y * 100}%`,
+                                                                    width: `${area.width * 100}%`,
+                                                                    height: `${area.height * 100}%`,
+                                                                }}
+                                                            >
+                                                                <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded font-bold shadow">
+                                                                    {area.label || `Button ${idx + 1}`}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

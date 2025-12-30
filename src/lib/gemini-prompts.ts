@@ -203,7 +203,7 @@ export const TESTIMONIALS_SECTION_PROMPT = `
 export const FULL_LP_PROMPT = `
 【タスク】LP全体の構成とコンテンツを生成
 
-【入力情報】
+【入力情報 - 基本】
 - ビジネス名: {{businessName}}
 - 業種: {{industry}}
 - サービス/製品: {{service}}
@@ -213,47 +213,136 @@ export const FULL_LP_PROMPT = `
 - 価格帯: {{priceRange}}
 - トーン: {{tone}}
 
+【入力情報 - 詳細コンテキスト】
+- ターゲットの悩み・課題: {{painPoints}}
+- よくある懸念・不安: {{concerns}}
+- 契約・購入プロセス: {{process}}
+- 主な機能・特徴: {{mainFeatures}}
+- 特別オファー: {{offer}}
+- 緊急性を促すメッセージ: {{urgency}}
+- 保証内容: {{guarantee}}
+- 期待される成果: {{results}}
+
+【セクション別生成指示】
+
+■ Hero（ヒーロー）
+- headlineは感情に訴えかける（AIDMAのAttention）
+- subheadlineで具体的なベネフィットを伝える
+- ctaTextは「今すぐ〜」「無料で〜」など行動を促す
+
+■ Features（特徴）
+- 必ず3つの特徴を生成
+- 各特徴はターゲットの悩み({{painPoints}})を解決することを示す
+- 具体的な数字があれば活用する
+
+■ Testimonials（お客様の声）
+- 3つの体験談を生成
+- 具体的な数字（〇%アップ、〇日で等）を含める
+- {{results}}に基づいた成果を記載
+
+■ Pricing（料金）
+- 3つのプランを生成
+- 真ん中のプランをhighlighted: trueにする（アンカリング効果）
+- {{priceRange}}を参考に現実的な価格設定
+
+■ FAQ（よくある質問）
+- 4〜6個の質問を生成
+- {{concerns}}に基づいた購入障壁を取り除く質問を優先
+- 回答は安心感を与える内容に
+
+■ CTA（行動喚起）
+- {{urgency}}で緊急性を表現
+- {{guarantee}}でリスクリバーサルを明示
+- CTAは具体的な行動を示す
+
 【出力JSON形式】
 {
   "colorScheme": {
-    "primary": "#HEX",
-    "secondary": "#HEX",
-    "accent": "#HEX",
-    "background": "#HEX",
-    "text": "#HEX"
+    "primary": "#HEX（メインカラー）",
+    "secondary": "#HEX（サブカラー）",
+    "accent": "#HEX（アクセント）",
+    "background": "#HEX（背景色）",
+    "text": "#HEX（テキスト色）"
   },
   "sections": [
     {
       "type": "hero",
-      "data": { /* heroセクションのデータ */ }
+      "data": {
+        "headline": "メインキャッチコピー",
+        "subheadline": "サブコピー",
+        "ctaText": "CTAボタンテキスト",
+        "ctaLink": "#contact",
+        "backgroundColor": "#HEX",
+        "textColor": "#HEX"
+      }
     },
     {
       "type": "features",
-      "data": { /* featuresセクションのデータ */ }
+      "data": {
+        "title": "セクションタイトル",
+        "subtitle": "サブタイトル",
+        "features": [
+          { "icon": "絵文字", "title": "特徴1", "description": "説明" },
+          { "icon": "絵文字", "title": "特徴2", "description": "説明" },
+          { "icon": "絵文字", "title": "特徴3", "description": "説明" }
+        ],
+        "backgroundColor": "#HEX"
+      }
     },
     {
       "type": "testimonials",
-      "data": { /* testimonialsセクションのデータ */ }
+      "data": {
+        "title": "お客様の声",
+        "subtitle": "サブタイトル",
+        "testimonials": [
+          { "name": "名前", "company": "会社名", "role": "役職", "quote": "体験談", "rating": 5 }
+        ],
+        "backgroundColor": "#HEX"
+      }
     },
     {
       "type": "pricing",
-      "data": { /* pricingセクションのデータ */ }
+      "data": {
+        "title": "料金プラン",
+        "subtitle": "サブタイトル",
+        "plans": [
+          { "name": "プラン名", "price": "¥X,XXX", "period": "/月", "description": "説明", "features": ["機能1"], "highlighted": false, "ctaText": "CTAテキスト" }
+        ],
+        "backgroundColor": "#HEX"
+      }
     },
     {
       "type": "faq",
-      "data": { /* faqセクションのデータ */ }
+      "data": {
+        "title": "よくあるご質問",
+        "subtitle": "サブタイトル",
+        "items": [
+          { "question": "質問", "answer": "回答" }
+        ],
+        "backgroundColor": "#HEX"
+      }
     },
     {
       "type": "cta",
-      "data": { /* ctaセクションのデータ */ }
+      "data": {
+        "headline": "アクションを促す見出し",
+        "description": "説明文（緊急性・保証を含む）",
+        "ctaText": "メインCTA",
+        "ctaLink": "#contact",
+        "secondaryCtaText": "サブCTA",
+        "secondaryCtaLink": "#features",
+        "backgroundColor": "#HEX",
+        "textColor": "#HEX"
+      }
     }
   ]
 }
 
-【ポイント】
-- カラースキームは業種とトーンに合わせる
-- セクション順序はコンバージョン最適化を考慮
+【重要ポイント】
+- カラースキームは業種({{industry}})とトーン({{tone}})に最適化
+- セクション順序はコンバージョン最適化を考慮（Hero → Features → Testimonials → Pricing → FAQ → CTA）
 - 全体で一貫したメッセージングを維持
+- JSON以外の出力は不要
 `;
 
 // ===== ユーティリティ関数 =====

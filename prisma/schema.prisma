@@ -98,3 +98,19 @@ model UserSettings {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model InpaintHistory {
+  id            Int      @id @default(autoincrement())
+  userId        String?  // Supabase Auth user ID
+  originalImage String   // 変更前の画像URL
+  resultImage   String   // 変更後の画像URL
+  prompt        String   // 編集指示
+  masks         String   // JSON: 選択範囲の座標 [{x, y, width, height}, ...]
+  model         String   // 使用モデル名
+  estimatedCost Float?   // 推定費用 (USD)
+  durationMs    Int?     // 処理時間 (ms)
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { productInfo, taste, sections, designDefinition } = await request.json();
 
@@ -179,7 +183,7 @@ export async function POST(request: NextRequest) {
         if (!jsonMatch) {
             // 失敗ログの記録
             await logGeneration({
-                userId: user?.id || null,
+                userId: user.id,
                 type: 'copy',
                 endpoint: '/api/ai/generate-copy',
                 model: 'gemini-2.0-flash',
@@ -196,7 +200,7 @@ export async function POST(request: NextRequest) {
 
         // 成功ログの記録
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'copy',
             endpoint: '/api/ai/generate-copy',
             model: 'gemini-2.0-flash',
@@ -210,7 +214,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('Gemini Copy Generation Final Error:', error);
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'copy',
             endpoint: '/api/ai/generate-copy',
             model: 'gemini-2.0-flash',

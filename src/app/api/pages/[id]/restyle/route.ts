@@ -394,6 +394,10 @@ export async function POST(
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const validation = restyleSchema.safeParse(body);
 
@@ -451,7 +455,7 @@ export async function POST(
         log.info(`Found ${totalSegments} sections with images`);
 
         // API キーを取得
-        const googleApiKey = await getGoogleApiKeyForUser(user?.id || null);
+        const googleApiKey = await getGoogleApiKeyForUser(user.id);
         if (!googleApiKey) {
             throw new Error('Google API key is not configured');
         }
@@ -498,7 +502,7 @@ export async function POST(
                     i,
                     totalSegments,
                     googleApiKey,
-                    user?.id || null,
+                    user.id,
                     styleReference,
                     designDefinition
                 );

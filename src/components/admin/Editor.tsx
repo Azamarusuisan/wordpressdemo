@@ -5,7 +5,8 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/admin/SortableItem';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign } from 'lucide-react';
+import type { ClickableArea } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -83,6 +84,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [designImage, setDesignImage] = useState<string | null>(null);
     const [designDefinition, setDesignDefinition] = useState<any | null>(initialDesignDefinition);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    // API消費量メーター
+    const [apiCost, setApiCost] = useState<{ todayCost: number; monthCost: number } | null>(null);
 
     const analyzeCurrentDesign = async () => {
         setIsAnalyzing(true);
@@ -171,6 +175,36 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             return () => clearTimeout(timer);
         }
     }, []); // Run once on mount
+
+    // API消費量を取得
+    useEffect(() => {
+        const fetchApiCost = async () => {
+            try {
+                // 今日のコスト
+                const todayRes = await fetch('/api/admin/stats?days=1');
+                const todayData = await todayRes.json();
+
+                // 今月のコスト
+                const now = new Date();
+                const daysThisMonth = now.getDate();
+                const monthRes = await fetch(`/api/admin/stats?days=${daysThisMonth}`);
+                const monthData = await monthRes.json();
+
+                setApiCost({
+                    todayCost: todayData.summary?.totalCost || 0,
+                    monthCost: monthData.summary?.totalCost || 0
+                });
+            } catch (error) {
+                console.error('Failed to fetch API cost:', error);
+            }
+        };
+
+        fetchApiCost();
+
+        // 30秒ごとに更新
+        const interval = setInterval(fetchApiCost, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleDesignImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -626,6 +660,28 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         }, 100);
     };
 
+    // クリッカブルエリア（ボタン配置）を保存
+    const handleSaveClickableAreas = async (areas: ClickableArea[]) => {
+        if (!inpaintSectionId) return;
+
+        // 更新されたセクションを作成
+        const updatedSections = sections.map(s =>
+            s.id === inpaintSectionId
+                ? { ...s, config: { ...s.config, clickableAreas: areas } }
+                : s
+        );
+
+        setSections(updatedSections);
+
+        setShowInpaintModal(false);
+        setInpaintSectionId(null);
+        setInpaintImageUrl(null);
+
+        // データベースに保存
+        await handleSave(updatedSections);
+        toast.success(`${areas.length}個のボタンを保存しました`);
+    };
+
     // 特定のバージョンに戻す
     const handleRestoreVersion = (sectionId: string, historyIndex: number) => {
         const history = editHistory[sectionId];
@@ -1024,6 +1080,22 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 >
                     <Sparkles className="h-4 w-4" />
                 </button>
+                <div className="w-px h-6 bg-gray-200" />
+                {/* API消費メーター（1ドル=150円固定） */}
+                {apiCost && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+                        <span className="text-emerald-600 font-bold text-sm">¥</span>
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-500">今日</span>
+                                <span className="font-bold text-emerald-700">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-gray-500">今月</span>
+                                <span className="font-bold text-teal-700">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="w-px h-6 bg-gray-200" />
                 <button
                     onClick={() => handleSave()}
@@ -1760,7 +1832,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             </div>
 
             {/* インペインティング（部分編集）モーダル */}
-            {showInpaintModal && inpaintImageUrl && (
+            {showInpaintModal && inpaintImageUrl && inpaintSectionId && (
                 <ImageInpaintEditor
                     imageUrl={inpaintImageUrl}
                     onClose={() => {
@@ -1769,6 +1841,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         setInpaintImageUrl(null);
                     }}
                     onSave={handleInpaintSave}
+                    sectionId={inpaintSectionId}
+                    clickableAreas={sections.find(s => s.id === inpaintSectionId)?.config?.clickableAreas || []}
+                    onSaveClickableAreas={handleSaveClickableAreas}
                 />
             )}
 

@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import useSWR from 'swr';
+import dynamic from 'next/dynamic';
 import {
     Activity,
     DollarSign,
@@ -11,9 +13,30 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { StatCard } from '@/components/admin/dashboard/StatCard';
-import { DailyUsageChart } from '@/components/admin/dashboard/DailyUsageChart';
-import { ModelBreakdownChart } from '@/components/admin/dashboard/ModelBreakdownChart';
-import { TypeBreakdownChart } from '@/components/admin/dashboard/TypeBreakdownChart';
+
+// チャートコンポーネントを遅延ロード（初期表示を高速化）
+const DailyUsageChart = dynamic(
+    () => import('@/components/admin/dashboard/DailyUsageChart').then(mod => mod.DailyUsageChart),
+    { loading: () => <ChartSkeleton />, ssr: false }
+);
+const ModelBreakdownChart = dynamic(
+    () => import('@/components/admin/dashboard/ModelBreakdownChart').then(mod => mod.ModelBreakdownChart),
+    { loading: () => <ChartSkeleton />, ssr: false }
+);
+const TypeBreakdownChart = dynamic(
+    () => import('@/components/admin/dashboard/TypeBreakdownChart').then(mod => mod.TypeBreakdownChart),
+    { loading: () => <ChartSkeleton />, ssr: false }
+);
+
+// チャート用スケルトンコンポーネント
+function ChartSkeleton() {
+    return (
+        <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm animate-pulse">
+            <div className="h-6 w-32 bg-gray-200 rounded mb-6" />
+            <div className="h-64 bg-gray-100 rounded-xl" />
+        </div>
+    );
+}
 
 interface StatsData {
     period: {
@@ -39,33 +62,30 @@ interface StatsData {
     };
 }
 
+// フェッチャー関数
+const fetcher = (url: string) => fetch(url).then(res => {
+    if (!res.ok) throw new Error('Failed to fetch stats');
+    return res.json();
+});
+
 export default function ApiUsageDashboard() {
-    const [stats, setStats] = useState<StatsData | null>(null);
-    const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState(30);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchStats = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`/api/admin/stats?days=${period}`);
-            if (!res.ok) {
-                throw new Error('Failed to fetch stats');
-            }
-            const data = await res.json();
-            setStats(data);
-        } catch (e: any) {
-            console.error('Failed to fetch stats:', e);
-            setError(e.message);
-        } finally {
-            setLoading(false);
+    // SWRでデータを取得（キャッシュ済み、タブ切り替え時に即表示）
+    const { data: stats, error, isLoading: loading, mutate } = useSWR<StatsData>(
+        `/api/admin/stats?days=${period}`,
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 60000,
+            keepPreviousData: true,
         }
-    };
+    );
 
-    useEffect(() => {
-        fetchStats();
-    }, [period]);
+    // 再取得関数（メモ化）
+    const fetchStats = useCallback(() => {
+        mutate();
+    }, [mutate]);
 
     if (loading) {
         return (

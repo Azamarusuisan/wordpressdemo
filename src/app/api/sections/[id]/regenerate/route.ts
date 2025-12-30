@@ -52,6 +52,10 @@ export async function POST(
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const validation = regenerateSchema.safeParse(body);
 
@@ -92,7 +96,7 @@ export async function POST(
         }
 
         // API キーを取得
-        const googleApiKey = await getGoogleApiKeyForUser(user?.id || null);
+        const googleApiKey = await getGoogleApiKeyForUser(user.id);
         if (!googleApiKey) {
             return Response.json({ error: 'Google API key is not configured' }, { status: 400 });
         }
@@ -282,7 +286,7 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
         }
 
         await logGeneration({
-            userId: user?.id || null,
+            userId: user.id,
             type: 'import-arrange',
             endpoint: '/api/sections/[id]/regenerate',
             model: 'gemini-3-pro-image-preview',

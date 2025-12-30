@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { sections, headerConfig, ...rest } = body;
 
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     const page = await prisma.page.create({
         data: {
-            userId: user?.id || null,
+            userId: user.id,
             title: rest.title || 'New Page ' + new Date().toLocaleDateString(),
             slug: rest.slug || 'page-' + Date.now(),
             status: 'draft',

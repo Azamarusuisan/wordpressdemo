@@ -1,12 +1,22 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check } from 'lucide-react';
+import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer } from 'lucide-react';
+import { InpaintHistoryPanel } from './InpaintHistoryPanel';
+import type { ClickableArea } from '@/types';
+
+type EditorMode = 'inpaint' | 'button';
 
 interface ImageInpaintEditorProps {
     imageUrl: string;
     onClose: () => void;
     onSave: (newImageUrl: string) => void;
+    // For clickable area mode
+    clickableAreas?: ClickableArea[];
+    onSaveClickableAreas?: (areas: ClickableArea[]) => void;
+    initialMode?: EditorMode;
+    // 追加: セクションID（ボタン保存用）
+    sectionId?: string;
 }
 
 interface SelectionRect {
@@ -17,7 +27,21 @@ interface SelectionRect {
     height: number;
 }
 
-export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEditorProps) {
+interface ClickableAreaDraft extends SelectionRect {
+    actionType: 'url' | 'email' | 'phone' | 'scroll';
+    actionValue: string;
+    label: string;
+}
+
+export function ImageInpaintEditor({
+    imageUrl,
+    onClose,
+    onSave,
+    clickableAreas: initialClickableAreas = [],
+    onSaveClickableAreas,
+    initialMode = 'inpaint',
+    sectionId,
+}: ImageInpaintEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -35,6 +59,19 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
     const [tool, setTool] = useState<'select' | 'pan'>('select');
     const [costInfo, setCostInfo] = useState<{ model: string; estimatedCost: number; durationMs: number } | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+
+    // Editor mode state
+    const [editorMode, setEditorMode] = useState<EditorMode>(initialMode);
+    // 初期状態は空（画像読み込み後にピクセル座標に変換して設定）
+    const [buttonAreas, setButtonAreas] = useState<ClickableAreaDraft[]>([]);
+    const [selectedButtonId, setSelectedButtonId] = useState<string | null>(null);
+
+    // Drag/Resize state for button mode
+    const [dragMode, setDragMode] = useState<'none' | 'move' | 'resize'>('none');
+    const [resizeHandle, setResizeHandle] = useState<'nw' | 'ne' | 'sw' | 'se' | null>(null);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [dragOriginal, setDragOriginal] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
     // 画像を読み込み
     useEffect(() => {
@@ -54,12 +91,26 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                     y: (containerHeight - img.height * newScale) / 2
                 });
             }
+
+            // 既存のクリッカブルエリアを相対座標からピクセル座標に変換
+            if (initialClickableAreas.length > 0) {
+                setButtonAreas(initialClickableAreas.map(area => ({
+                    id: area.id,
+                    x: area.x * img.width,
+                    y: area.y * img.height,
+                    width: area.width * img.width,
+                    height: area.height * img.height,
+                    actionType: area.actionType,
+                    actionValue: area.actionValue,
+                    label: area.label || '',
+                })));
+            }
         };
         img.onerror = () => {
             setError('画像の読み込みに失敗しました');
         };
         img.src = imageUrl;
-    }, [imageUrl]);
+    }, [imageUrl, initialClickableAreas]);
 
     // キャンバスに描画
     useEffect(() => {
@@ -84,12 +135,12 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
         ctx.drawImage(image, 0, 0);
         ctx.restore();
 
-        // 全ての選択範囲を描画
-        const allSelections = currentSelection
-            ? [...selections, currentSelection]
-            : selections;
+        // 描画する選択範囲を決定
+        const areasToRender = editorMode === 'inpaint'
+            ? (currentSelection ? [...selections, currentSelection] : selections)
+            : (currentSelection ? [...buttonAreas, currentSelection as ClickableAreaDraft] : buttonAreas);
 
-        allSelections.forEach((sel: SelectionRect, index: number) => {
+        areasToRender.forEach((sel, index: number) => {
             const scaledSel = {
                 x: offset.x + sel.x * scale,
                 y: offset.y + sel.y * scale,
@@ -97,51 +148,85 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                 height: sel.height * scale
             };
 
-            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-            const color = colors[index % colors.length];
+            // モードに応じて色を変更
+            const inpaintColors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            const buttonColor = '#3b82f6'; // Blue for buttons
+            const isSelected = editorMode === 'button' && sel.id === selectedButtonId;
+            const color = editorMode === 'inpaint'
+                ? inpaintColors[index % inpaintColors.length]
+                : (isSelected ? '#2563eb' : buttonColor);
 
             // Glow Effect
             ctx.save();
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = isSelected ? 15 : 10;
             ctx.shadowColor = color;
             ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = isSelected ? 4 : 3;
             ctx.strokeRect(scaledSel.x, scaledSel.y, scaledSel.width, scaledSel.height);
             ctx.restore();
+
+            // Semi-transparent fill for button mode
+            if (editorMode === 'button') {
+                ctx.fillStyle = isSelected ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
+                ctx.fillRect(scaledSel.x, scaledSel.y, scaledSel.width, scaledSel.height);
+            }
 
             // Border
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 1;
             ctx.strokeRect(scaledSel.x, scaledSel.y, scaledSel.width, scaledSel.height);
 
-            // Number Label with premium pill shape
-            ctx.fillStyle = color;
-            const labelWidth = 28;
+            // Label
+            const labelWidth = editorMode === 'button' ? 60 : 28;
             const labelHeight = 20;
             const labelX = scaledSel.x;
             const labelY = scaledSel.y - labelHeight - 4;
 
-            // Draw rounded rect for label
+            ctx.fillStyle = color;
             ctx.beginPath();
             ctx.roundRect(labelX, labelY, labelWidth, labelHeight, 6);
             ctx.fill();
 
             ctx.fillStyle = 'white';
-            ctx.font = 'black 12px sans-serif';
+            ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`${index + 1}`, labelX + labelWidth / 2, labelY + 14);
 
-            // Subtle corner accents
+            if (editorMode === 'button') {
+                const draft = sel as ClickableAreaDraft;
+                const labelText = draft.label || `Button ${index + 1}`;
+                ctx.fillText(labelText.substring(0, 8), labelX + labelWidth / 2, labelY + 14);
+            } else {
+                ctx.fillText(`${index + 1}`, labelX + labelWidth / 2, labelY + 14);
+            }
+
+            // Corner accents
             const accentSize = 8;
             ctx.fillStyle = 'white';
-            // Top-left
             ctx.fillRect(scaledSel.x - 2, scaledSel.y - 2, accentSize, 2);
             ctx.fillRect(scaledSel.x - 2, scaledSel.y - 2, 2, accentSize);
-            // Top-right
             ctx.fillRect(scaledSel.x + scaledSel.width - accentSize + 2, scaledSel.y - 2, accentSize, 2);
             ctx.fillRect(scaledSel.x + scaledSel.width, scaledSel.y - 2, 2, accentSize);
+
+            // Resize handles for selected button
+            if (editorMode === 'button' && isSelected) {
+                const handleSize = 10;
+                const handles = [
+                    { x: scaledSel.x, y: scaledSel.y }, // nw
+                    { x: scaledSel.x + scaledSel.width, y: scaledSel.y }, // ne
+                    { x: scaledSel.x, y: scaledSel.y + scaledSel.height }, // sw
+                    { x: scaledSel.x + scaledSel.width, y: scaledSel.y + scaledSel.height }, // se
+                ];
+
+                handles.forEach(handle => {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+                });
+            }
         });
-    }, [image, selections, currentSelection, scale, offset]);
+    }, [image, selections, currentSelection, scale, offset, editorMode, buttonAreas, selectedButtonId]);
 
     const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
@@ -153,7 +238,46 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
         return { x, y };
     }, [offset, scale]);
 
+    // ボタン領域のヒットテスト
+    const hitTestButton = useCallback((coords: { x: number; y: number }): { buttonId: string | null; handle: 'nw' | 'ne' | 'sw' | 'se' | 'move' | null } => {
+        if (editorMode !== 'button') return { buttonId: null, handle: null };
+
+        // リサイズハンドルのサイズ（ピクセル単位、最大15px）
+        const handleSize = Math.min(15, 8 / scale);
+
+        for (let i = buttonAreas.length - 1; i >= 0; i--) {
+            const area = buttonAreas[i];
+
+            // リサイズハンドルのチェック（角）
+            const handles: { key: 'nw' | 'ne' | 'sw' | 'se'; x: number; y: number }[] = [
+                { key: 'nw', x: area.x, y: area.y },
+                { key: 'ne', x: area.x + area.width, y: area.y },
+                { key: 'sw', x: area.x, y: area.y + area.height },
+                { key: 'se', x: area.x + area.width, y: area.y + area.height },
+            ];
+
+            for (const handle of handles) {
+                if (Math.abs(coords.x - handle.x) < handleSize && Math.abs(coords.y - handle.y) < handleSize) {
+                    return { buttonId: area.id, handle: handle.key };
+                }
+            }
+
+            // 領域内のチェック（移動）
+            if (coords.x >= area.x && coords.x <= area.x + area.width &&
+                coords.y >= area.y && coords.y <= area.y + area.height) {
+                return { buttonId: area.id, handle: 'move' };
+            }
+        }
+
+        return { buttonId: null, handle: null };
+    }, [editorMode, buttonAreas, scale]);
+
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        // まず全ての状態をリセット
+        setDragMode('none');
+        setResizeHandle(null);
+        setDragOriginal(null);
+
         if (tool === 'pan') {
             setIsPanning(true);
             setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -161,6 +285,35 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
         }
 
         const coords = getCanvasCoords(e);
+
+        // 画像範囲外のクリックは無視
+        if (!image || coords.x < 0 || coords.y < 0 || coords.x > image.width || coords.y > image.height) {
+            return;
+        }
+
+        // ボタンモードの場合、既存ボタンのヒットテスト
+        if (editorMode === 'button') {
+            const hit = hitTestButton(coords);
+            if (hit.buttonId && hit.handle) {
+                const area = buttonAreas.find(a => a.id === hit.buttonId);
+                if (area) {
+                    setSelectedButtonId(hit.buttonId);
+                    setDragStart(coords);
+                    setDragOriginal({ x: area.x, y: area.y, width: area.width, height: area.height });
+
+                    if (hit.handle === 'move') {
+                        setDragMode('move');
+                    } else {
+                        setDragMode('resize');
+                        setResizeHandle(hit.handle);
+                    }
+                    return;
+                }
+            }
+            // 既存ボタン以外をクリックした場合、選択解除
+            setSelectedButtonId(null);
+        }
+
         setIsSelecting(true);
         setStartPoint(coords);
         setCurrentSelection(null);
@@ -175,9 +328,54 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
             return;
         }
 
+        const coords = getCanvasCoords(e);
+
+        // ボタンのドラッグ/リサイズ処理
+        if (editorMode === 'button' && dragMode !== 'none' && selectedButtonId && dragOriginal && image) {
+            const dx = coords.x - dragStart.x;
+            const dy = coords.y - dragStart.y;
+
+            setButtonAreas(prev => prev.map(area => {
+                if (area.id !== selectedButtonId) return area;
+
+                if (dragMode === 'move') {
+                    // 移動
+                    return {
+                        ...area,
+                        x: Math.max(0, Math.min(dragOriginal.x + dx, image.width - area.width)),
+                        y: Math.max(0, Math.min(dragOriginal.y + dy, image.height - area.height)),
+                    };
+                } else if (dragMode === 'resize' && resizeHandle) {
+                    // リサイズ
+                    let newX = dragOriginal.x;
+                    let newY = dragOriginal.y;
+                    let newWidth = dragOriginal.width;
+                    let newHeight = dragOriginal.height;
+
+                    if (resizeHandle.includes('w')) {
+                        newX = Math.max(0, dragOriginal.x + dx);
+                        newWidth = Math.max(20, dragOriginal.width - dx);
+                    }
+                    if (resizeHandle.includes('e')) {
+                        newWidth = Math.max(20, Math.min(dragOriginal.width + dx, image.width - dragOriginal.x));
+                    }
+                    if (resizeHandle.includes('n')) {
+                        newY = Math.max(0, dragOriginal.y + dy);
+                        newHeight = Math.max(20, dragOriginal.height - dy);
+                    }
+                    if (resizeHandle.includes('s')) {
+                        newHeight = Math.max(20, Math.min(dragOriginal.height + dy, image.height - dragOriginal.y));
+                    }
+
+                    return { ...area, x: newX, y: newY, width: newWidth, height: newHeight };
+                }
+                return area;
+            }));
+            return;
+        }
+
         if (!isSelecting || !image) return;
 
-        const coords = getCanvasCoords(e);
         const newSelection: SelectionRect = {
             id: 'temp',
             x: Math.max(0, Math.min(startPoint.x, coords.x)),
@@ -189,9 +387,38 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
     };
 
     const handleMouseUp = () => {
+        // パンニング終了
+        if (isPanning) {
+            setIsPanning(false);
+            return;
+        }
+
+        // ドラッグモードをリセット
+        if (dragMode !== 'none') {
+            setDragMode('none');
+            setResizeHandle(null);
+            setDragOriginal(null);
+            setIsSelecting(false);
+            return;
+        }
+
         if (currentSelection && currentSelection.width > 10 && currentSelection.height > 10) {
-            // 選択範囲を確定して追加
-            setSelections(prev => [...prev, { ...currentSelection, id: Date.now().toString() }]);
+            const newId = Date.now().toString();
+            if (editorMode === 'inpaint') {
+                // 選択範囲を確定して追加
+                setSelections(prev => [...prev, { ...currentSelection, id: newId }]);
+            } else {
+                // ボタンモード: ボタンエリアを追加
+                const newButtonArea: ClickableAreaDraft = {
+                    ...currentSelection,
+                    id: newId,
+                    actionType: 'url',
+                    actionValue: '',
+                    label: '',
+                };
+                setButtonAreas(prev => [...prev, newButtonArea]);
+                setSelectedButtonId(newId);
+            }
         }
         setCurrentSelection(null);
         setIsSelecting(false);
@@ -202,8 +429,102 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
         setSelections(prev => prev.filter(s => s.id !== id));
     };
 
+    const removeButtonArea = (id: string) => {
+        setButtonAreas(prev => prev.filter(b => b.id !== id));
+        if (selectedButtonId === id) {
+            setSelectedButtonId(null);
+        }
+    };
+
+    const updateButtonArea = (id: string, updates: Partial<ClickableAreaDraft>) => {
+        setButtonAreas(prev =>
+            prev.map(b => (b.id === id ? { ...b, ...updates } : b))
+        );
+    };
+
     const clearAllSelections = () => {
         setSelections([]);
+    };
+
+    const clearAllButtonAreas = () => {
+        setButtonAreas([]);
+        setSelectedButtonId(null);
+    };
+
+    // ボタンエリアを保存
+    const handleSaveClickableAreas = () => {
+        console.log('[ボタン保存] 開始', {
+            buttonAreas: buttonAreas.length,
+            image: !!image,
+            sectionId,
+            windowFn: !!window.__saveClickableAreas
+        });
+
+        if (!image) {
+            setError('画像が読み込まれていません');
+            return;
+        }
+        if (buttonAreas.length === 0) {
+            setError('ボタンを追加してください。画像上をドラッグしてボタン領域を作成してください。');
+            return;
+        }
+
+        // URLバリデーション
+        const emptyUrlAreas = buttonAreas.filter(area => !area.actionValue.trim());
+        if (emptyUrlAreas.length > 0) {
+            setError(`${emptyUrlAreas.length}個のボタンにURL/値が設定されていません。すべてのボタンに値を入力してください。`);
+            setSelectedButtonId(emptyUrlAreas[0].id);
+            return;
+        }
+
+        // URL形式のバリデーション（urlタイプのみ）
+        const invalidUrls = buttonAreas.filter(area => {
+            if (area.actionType === 'url') {
+                return !area.actionValue.startsWith('http://') &&
+                       !area.actionValue.startsWith('https://') &&
+                       !area.actionValue.startsWith('#') &&
+                       !area.actionValue.startsWith('/');
+            }
+            if (area.actionType === 'email') {
+                return !area.actionValue.includes('@');
+            }
+            // phone と scroll はバリデーションなし
+            return false;
+        });
+
+        if (invalidUrls.length > 0) {
+            const firstInvalid = invalidUrls[0];
+            const errorMsg = firstInvalid.actionType === 'url'
+                ? 'URLは http://, https://, #, / で始まる必要があります'
+                : 'メールアドレスに@が含まれていません';
+            setError(errorMsg);
+            setSelectedButtonId(firstInvalid.id);
+            return;
+        }
+
+        setError(null);
+
+        // 0-1 の相対座標に変換
+        const areas: ClickableArea[] = buttonAreas.map(area => ({
+            id: area.id,
+            x: area.x / image.width,
+            y: area.y / image.height,
+            width: area.width / image.width,
+            height: area.height / image.height,
+            actionType: area.actionType,
+            actionValue: area.actionValue,
+            label: area.label || undefined,
+        }));
+
+        // 保存処理: propsで渡されたコールバックを優先
+        if (onSaveClickableAreas) {
+            console.log('[ボタン保存] props callback を呼び出し', { areas });
+            onSaveClickableAreas(areas);
+            onClose();
+        } else {
+            setError('保存機能が利用できません。ページをリロードしてください。');
+            return;
+        }
     };
 
     // インペインティング実行
@@ -321,13 +642,47 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                 )}
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-md text-primary border border-primary/20">
-                            <Wand2 className="w-5 h-5" />
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-md border ${editorMode === 'inpaint' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                {editorMode === 'inpaint' ? <Wand2 className="w-5 h-5" /> : <MousePointer className="w-5 h-5" />}
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-foreground">
+                                    {editorMode === 'inpaint' ? '画像部分編集' : 'ボタン設定'}
+                                </h2>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    {editorMode === 'inpaint'
+                                        ? '画像の一部を選択してAIで編集・修正します（複数選択可）'
+                                        : '画像上にクリッカブルなボタン領域を設定します'}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-foreground">画象部分編集</h2>
-                            <p className="text-xs text-muted-foreground font-medium">画像の一部を選択してAIで編集・修正します（複数選択可）</p>
+
+                        {/* Mode Tabs */}
+                        <div className="flex items-center bg-surface-100 rounded-lg p-1 border border-border">
+                            <button
+                                onClick={() => setEditorMode('inpaint')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                    editorMode === 'inpaint'
+                                        ? 'bg-background text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                <Wand2 className="w-4 h-4" />
+                                インペイント
+                            </button>
+                            <button
+                                onClick={() => setEditorMode('button')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                    editorMode === 'button'
+                                        ? 'bg-background text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                <MousePointer className="w-4 h-4" />
+                                ボタン設定
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -346,6 +701,18 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
                                 </div>
                             </div>
                         )}
+                        {/* History Toggle Button */}
+                        <button
+                            onClick={() => setShowHistory(!showHistory)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
+                                showHistory
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-surface-100 text-muted-foreground border-border hover:text-foreground hover:bg-surface-200'
+                            }`}
+                        >
+                            <History className="w-4 h-4" />
+                            <span className="text-xs font-bold">履歴</span>
+                        </button>
                         <button
                             onClick={onClose}
                             className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-surface-100"
@@ -427,108 +794,272 @@ export function ImageInpaintEditor({ imageUrl, onClose, onSave }: ImageInpaintEd
 
                     {/* Side Panel */}
                     <div className="w-80 bg-background border-l border-border p-6 flex flex-col z-20 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.05)]">
-                        <div className="mb-6">
-                            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-1">編集設定</h3>
-                            <p className="text-xs text-muted-foreground">編集したい領域を選択してください。</p>
-                        </div>
+                        {editorMode === 'inpaint' ? (
+                            <>
+                                {/* Inpaint Mode Content */}
+                                <div className="mb-6">
+                                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-1">編集設定</h3>
+                                    <p className="text-xs text-muted-foreground">編集したい領域を選択してください。</p>
+                                </div>
 
-                        {/* Selections List */}
-                        {selections.length > 0 ? (
-                            <div className="mb-6 flex-1 overflow-hidden flex flex-col">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-bold text-foreground">{selections.length} 箇所の選択範囲</p>
+                                {/* Selections List */}
+                                {selections.length > 0 ? (
+                                    <div className="mb-6 flex-1 overflow-hidden flex flex-col">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-xs font-bold text-foreground">{selections.length} 箇所の選択範囲</p>
+                                            <button
+                                                onClick={clearAllSelections}
+                                                className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
+                                            >
+                                                全て削除
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2 overflow-y-auto pr-1">
+                                            {selections.map((sel, index) => {
+                                                const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500'];
+                                                return (
+                                                    <div key={sel.id} className="flex items-center justify-between p-3 bg-surface-50 border border-border rounded-md hover:border-primary/30 transition-colors group">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
+                                                                {index + 1}
+                                                            </span>
+                                                            <span className="text-xs font-medium text-muted-foreground">
+                                                                {Math.round(sel.width)} x {Math.round(sel.height)} px
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => removeSelection(sel.id)}
+                                                            className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-6 p-6 bg-surface-50 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
+                                        <div className="w-10 h-10 bg-surface-100 rounded-full flex items-center justify-center mb-3">
+                                            <Plus className="w-5 h-5 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-sm font-bold text-foreground">範囲を選択</p>
+                                        <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />編集エリアを指定します。</p>
+                                    </div>
+                                )}
+
+                                {/* Prompt Input */}
+                                <div className="mb-6 mt-auto">
+                                    <label className="block text-xs font-bold text-foreground uppercase tracking-widest mb-3">
+                                        編集プロンプト
+                                    </label>
+                                    <textarea
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
+                                        placeholder="例: テキストを消す、背景を青空にする..."
+                                        className="w-full h-32 px-4 py-3 rounded-md border border-input bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none shadow-sm"
+                                    />
+                                </div>
+
+                                {/* Error Message */}
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md">
+                                        <p className="text-xs text-red-600 font-bold flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                                            {error}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3 pt-6 border-t border-border">
                                     <button
-                                        onClick={clearAllSelections}
-                                        className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
+                                        onClick={handleInpaint}
+                                        disabled={isLoading || selections.length === 0 || !prompt.trim()}
+                                        className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                                     >
-                                        全て削除
+                                        {isLoading ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                生成中...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Wand2 className="w-4 h-4" />
+                                                実行する ({selections.length})
+                                            </>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={onClose}
+                                        disabled={isLoading}
+                                        className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all disabled:opacity-50"
+                                    >
+                                        キャンセル
                                     </button>
                                 </div>
-                                <div className="space-y-2 overflow-y-auto pr-1">
-                                    {selections.map((sel, index) => {
-                                        const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500'];
-                                        return (
-                                            <div key={sel.id} className="flex items-center justify-between p-3 bg-surface-50 border border-border rounded-md hover:border-primary/30 transition-colors group">
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
-                                                        {index + 1}
-                                                    </span>
-                                                    <span className="text-xs font-medium text-muted-foreground">
-                                                        {Math.round(sel.width)} x {Math.round(sel.height)} px
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    onClick={() => removeSelection(sel.id)}
-                                                    className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            </>
                         ) : (
-                            <div className="mb-6 p-6 bg-surface-50 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
-                                <div className="w-10 h-10 bg-surface-100 rounded-full flex items-center justify-center mb-3">
-                                    <Plus className="w-5 h-5 text-muted-foreground" />
+                            <>
+                                {/* Button Mode Content */}
+                                <div className="mb-6">
+                                    <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-1">ボタン設定</h3>
+                                    <p className="text-xs text-muted-foreground">クリッカブルな領域を追加してください。</p>
                                 </div>
-                                <p className="text-sm font-bold text-foreground">範囲を選択</p>
-                                <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />編集エリアを指定します。</p>
-                            </div>
-                        )}
 
-                        {/* Prompt Input */}
-                        <div className="mb-6 mt-auto">
-                            <label className="block text-xs font-bold text-foreground uppercase tracking-widest mb-3">
-                                編集プロンプト
-                            </label>
-                            <textarea
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="例: テキストを消す、背景を青空にする..."
-                                className="w-full h-32 px-4 py-3 rounded-md border border-input bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none shadow-sm"
+                                {/* Button Areas List */}
+                                {buttonAreas.length > 0 ? (
+                                    <div className="mb-6 flex-1 overflow-hidden flex flex-col">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-xs font-bold text-foreground">{buttonAreas.length} 個のボタン</p>
+                                            <button
+                                                onClick={clearAllButtonAreas}
+                                                className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
+                                            >
+                                                全て削除
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2 overflow-y-auto pr-1 max-h-40">
+                                            {buttonAreas.map((area, index) => (
+                                                <div
+                                                    key={area.id}
+                                                    onClick={() => setSelectedButtonId(area.id)}
+                                                    className={`flex items-center justify-between p-3 rounded-md border transition-colors cursor-pointer group ${
+                                                        selectedButtonId === area.id
+                                                            ? 'bg-blue-50 border-blue-300'
+                                                            : 'bg-surface-50 border-border hover:border-blue-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-5 h-5 rounded bg-blue-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                                                            {index + 1}
+                                                        </span>
+                                                        <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                                                            {area.label || `ボタン ${index + 1}`}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeButtonArea(area.id);
+                                                        }}
+                                                        className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-6 p-6 bg-blue-50 border border-dashed border-blue-200 rounded-lg flex flex-col items-center justify-center text-center">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                            <MousePointer className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <p className="text-sm font-bold text-foreground">ボタンを追加</p>
+                                        <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />ボタン領域を指定します。</p>
+                                    </div>
+                                )}
+
+                                {/* Selected Button Settings */}
+                                {selectedButtonId && buttonAreas.find(a => a.id === selectedButtonId) && (
+                                    <div className="mb-6 p-4 bg-surface-50 border border-border rounded-lg space-y-4">
+                                        <h4 className="text-xs font-bold text-foreground uppercase tracking-widest">ボタン詳細設定</h4>
+
+                                        {/* Label */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">ラベル</label>
+                                            <input
+                                                type="text"
+                                                value={buttonAreas.find(a => a.id === selectedButtonId)?.label || ''}
+                                                onChange={(e) => updateButtonArea(selectedButtonId, { label: e.target.value })}
+                                                placeholder="例: 今すぐ購入"
+                                                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+
+                                        {/* Action Type */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">アクションタイプ</label>
+                                            <select
+                                                value={buttonAreas.find(a => a.id === selectedButtonId)?.actionType || 'url'}
+                                                onChange={(e) => updateButtonArea(selectedButtonId, { actionType: e.target.value as 'url' | 'email' | 'phone' | 'scroll' })}
+                                                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            >
+                                                <option value="url">URL リンク</option>
+                                                <option value="email">メールアドレス</option>
+                                                <option value="phone">電話番号</option>
+                                                <option value="scroll">セクションへスクロール</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Action Value */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' && 'リンク先URL'}
+                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' && 'メールアドレス'}
+                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' && '電話番号'}
+                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'scroll' && 'セクションID'}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={buttonAreas.find(a => a.id === selectedButtonId)?.actionValue || ''}
+                                                onChange={(e) => updateButtonArea(selectedButtonId, { actionValue: e.target.value })}
+                                                placeholder={
+                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' ? 'https://example.com' :
+                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' ? 'info@example.com' :
+                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' ? '03-1234-5678' :
+                                                    '#section-id'
+                                                }
+                                                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Error Message */}
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md">
+                                        <p className="text-xs text-red-600 font-bold flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                                            {error}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3 pt-6 border-t border-border mt-auto">
+                                    <button
+                                        onClick={handleSaveClickableAreas}
+                                        className="w-full py-3 px-4 bg-blue-600 text-white font-bold text-sm rounded-md hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                    >
+                                        <Link className="w-4 h-4" />
+                                        ボタンを保存 ({buttonAreas.length})
+                                    </button>
+
+                                    <button
+                                        onClick={onClose}
+                                        className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all"
+                                    >
+                                        キャンセル
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* History Panel */}
+                    {showHistory && (
+                        <div className="w-80 border-l border-border bg-background animate-in slide-in-from-right duration-200">
+                            <InpaintHistoryPanel
+                                originalImage={imageUrl}
+                                onSelectHistory={(history) => {
+                                    // 履歴から画像を選択した場合、その結果画像を使用
+                                    onSave(history.resultImage);
+                                }}
+                                onClose={() => setShowHistory(false)}
                             />
                         </div>
-
-                        {/* Error Message */}
-                        {error && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md">
-                                <p className="text-xs text-red-600 font-bold flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
-                                    {error}
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="space-y-3 pt-6 border-t border-border">
-                            <button
-                                onClick={handleInpaint}
-                                disabled={isLoading || selections.length === 0 || !prompt.trim()}
-                                className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        生成中...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Wand2 className="w-4 h-4" />
-                                        実行する ({selections.length})
-                                    </>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={onClose}
-                                disabled={isLoading}
-                                className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all disabled:opacity-50"
-                            >
-                                キャンセル
-                            </button>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

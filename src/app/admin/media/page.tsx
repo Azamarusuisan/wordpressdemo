@@ -1,13 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { Upload, X, Image as ImageIcon, Search, Sparkles, Wand2, Download, Copy, RefreshCw, Eye, Info, Check, Pencil } from 'lucide-react';
-import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
 import toast from 'react-hot-toast';
+import { useMedia } from '@/lib/hooks/useAdminData';
+import { LazyImage } from '@/components/ui/LazyImage';
+
+// 重いコンポーネントを遅延ロード
+const ImageInpaintEditor = dynamic(
+    () => import('@/components/lp-builder/ImageInpaintEditor').then(mod => mod.ImageInpaintEditor),
+    {
+        loading: () => (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
+            </div>
+        ),
+        ssr: false
+    }
+);
 
 export default function MediaLibrary() {
-    const [media, setMedia] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    // SWRでメディアを取得（キャッシュ済み、タブ切り替え時に即表示）
+    const { data: media = [], isLoading: loading, mutate: refreshMedia } = useMedia();
+
     const [uploading, setUploading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -26,23 +42,8 @@ export default function MediaLibrary() {
     const [showInpaintEditor, setShowInpaintEditor] = useState(false);
     const [inpaintTarget, setInpaintTarget] = useState<any>(null);
 
-    const fetchMedia = async () => {
-        try {
-            const res = await fetch('/api/media');
-            const data = await res.json();
-            setMedia(data);
-        } catch (error) {
-            console.error('Failed to fetch media:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchMedia();
-    }, []);
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ファイルアップロード処理（メモ化）
+    const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
         setUploading(true);
         const files = Array.from(e.target.files);
@@ -57,12 +58,13 @@ export default function MediaLibrary() {
             }
         }
 
-        await fetchMedia();
+        await refreshMedia();
         setUploading(false);
         e.target.value = '';
-    };
+    }, [refreshMedia]);
 
-    const handleAnalyze = async (item: any) => {
+    // 画像解析（メモ化）
+    const handleAnalyze = useCallback(async (item: any) => {
         setIsAnalyzing(true);
         setAnalysisResult(null);
         try {
@@ -79,9 +81,10 @@ export default function MediaLibrary() {
         } finally {
             setIsAnalyzing(false);
         }
-    };
+    }, []);
 
-    const handleDownload = async (item: any) => {
+    // ダウンロード処理（メモ化）
+    const handleDownload = useCallback(async (item: any) => {
         const response = await fetch(item.filePath);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -92,9 +95,10 @@ export default function MediaLibrary() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-    };
+    }, []);
 
-    const handleGenerateAI = async () => {
+    // AI画像生成（メモ化）
+    const handleGenerateAI = useCallback(async () => {
         if (!aiPrompt) return;
         setIsGenerating(true);
         try {
@@ -106,7 +110,7 @@ export default function MediaLibrary() {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
-            await fetchMedia();
+            await refreshMedia();
             setShowAIModal(false);
             setAiPrompt('');
             toast.success('画像を生成しました');
@@ -115,29 +119,37 @@ export default function MediaLibrary() {
         } finally {
             setIsGenerating(false);
         }
-    };
+    }, [aiPrompt, refreshMedia]);
 
-    const copyToClipboard = (text: string) => {
+    // クリップボードコピー（メモ化）
+    const copyToClipboard = useCallback((text: string) => {
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-    };
+    }, []);
 
-    const handleOpenInpaint = (item: any) => {
+    // インペイントエディタを開く（メモ化）
+    const handleOpenInpaint = useCallback((item: any) => {
         setInpaintTarget(item);
         setShowInpaintEditor(true);
-        setSelectedMedia(null); // Close detail sidebar
-    };
+        setSelectedMedia(null);
+    }, []);
 
-    const handleInpaintSave = async (newImageUrl: string) => {
+    // インペイント保存処理（メモ化）
+    const handleInpaintSave = useCallback(async (newImageUrl: string) => {
         setShowInpaintEditor(false);
         setInpaintTarget(null);
-        await fetchMedia(); // Refresh media list
-    };
+        await refreshMedia();
+    }, [refreshMedia]);
 
-    const filteredMedia = media.filter(item =>
-        item.filePath.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // フィルタリング結果をメモ化（検索パフォーマンス向上）
+    const filteredMedia = useMemo(() => {
+        if (!searchTerm) return media;
+        const term = searchTerm.toLowerCase();
+        return media.filter((item: any) =>
+            item.filePath.toLowerCase().includes(term)
+        );
+    }, [media, searchTerm]);
 
     return (
         <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
@@ -247,7 +259,7 @@ export default function MediaLibrary() {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {filteredMedia.map((item) => (
+                    {filteredMedia.map((item: any) => (
                         <div
                             key={item.id}
                             className="group relative aspect-square overflow-hidden rounded-md border border-border bg-white cursor-pointer hover:border-primary/50 transition-all"
@@ -256,10 +268,12 @@ export default function MediaLibrary() {
                                 setAnalysisResult(null);
                             }}
                         >
-                            <img
+                            {/* 遅延ロード画像コンポーネント */}
+                            <LazyImage
                                 src={item.filePath}
                                 alt={item.filePath}
                                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                placeholderClassName="bg-gray-100 animate-pulse"
                             />
 
                             {/* Hover Overlay */}

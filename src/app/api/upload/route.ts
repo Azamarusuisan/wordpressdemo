@@ -8,6 +8,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Create DB Record
     const media = await prisma.mediaImage.create({
         data: {
-            userId: user?.id || null,
+            userId: user.id,
             filePath: publicUrl,
             mime: file.type,
             width: 0,

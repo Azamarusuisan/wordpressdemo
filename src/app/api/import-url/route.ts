@@ -322,6 +322,10 @@ export async function POST(request: NextRequest) {
     const supabaseAuth = await createClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
+    if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Validate input
@@ -680,7 +684,7 @@ export async function POST(request: NextRequest) {
         // Get API key if needed
         let googleApiKey: string | null = null;
         if (importMode !== 'faithful') {
-            googleApiKey = await getGoogleApiKeyForUser(user?.id || null);
+            googleApiKey = await getGoogleApiKeyForUser(user.id);
             if (!googleApiKey) {
                 throw new Error('Google API key is not configured. アレンジモードを使用するには設定画面でAPIキーを設定してください。');
             }
@@ -794,7 +798,7 @@ export async function POST(request: NextRequest) {
                     i,
                     numSegments,
                     googleApiKey,
-                    user?.id || null,
+                    user.id,
                     styleReference  // 参照画像を渡す
                 );
 
