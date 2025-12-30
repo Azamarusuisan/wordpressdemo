@@ -5,16 +5,29 @@
 // Section Types
 export type SectionType = 'hero' | 'features' | 'pricing' | 'faq' | 'cta' | 'testimonials';
 
-// Clickable Area Types (for image hotspots/buttons)
+// Form Field Configuration (for form-input action type)
+export interface FormFieldConfig {
+    id: string;
+    fieldName: string;      // Internal field name (e.g., 'name', 'email')
+    fieldLabel: string;     // Display label (e.g., 'お名前', 'メールアドレス')
+    fieldType: 'text' | 'email' | 'tel' | 'textarea';
+    required: boolean;
+    placeholder?: string;
+}
+
+// Clickable Area Types (for image hotspots/buttons/forms)
 export interface ClickableArea {
     id: string;
     x: number;      // 0-1 relative coordinate (from left)
     y: number;      // 0-1 relative coordinate (from top)
     width: number;  // 0-1 relative width
     height: number; // 0-1 relative height
-    actionType: 'url' | 'email' | 'phone' | 'scroll';
+    actionType: 'url' | 'email' | 'phone' | 'scroll' | 'form-input';
     actionValue: string;  // URL, email address, phone number, or section ID
     label?: string;       // Hover text / button label
+    // Form-input specific fields
+    formTitle?: string;           // Form modal title
+    formFields?: FormFieldConfig[]; // Form fields configuration
 }
 
 export interface SectionProperties {

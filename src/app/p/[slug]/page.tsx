@@ -3,14 +3,14 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ClickableArea } from '@/types';
+import { ContactForm } from '@/components/public/ContactForm';
+import { InteractiveAreaOverlay } from '@/components/public/InteractiveAreaOverlay';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
     const page = await prisma.page.findUnique({ where: { slug: params.slug }, select: { title: true } });
     if (!page) return { title: 'Not Found' };
     return { title: page.title };
 }
-
-import { ContactForm } from '@/components/public/ContactForm';
 
 export default async function PublicPage({ params }: { params: { slug: string } }) {
     const id = parseInt(params.slug);
@@ -145,21 +145,6 @@ export default async function PublicPage({ params }: { params: { slug: string } 
                                 filter: `brightness(${config.brightness}%) grayscale(${config.grayscale}%)`,
                             };
 
-                            // Build href for clickable areas
-                            const buildHref = (area: ClickableArea): string => {
-                                switch (area.actionType) {
-                                    case 'email':
-                                        return `mailto:${area.actionValue}`;
-                                    case 'phone':
-                                        return `tel:${area.actionValue.replace(/[-\s]/g, '')}`;
-                                    case 'scroll':
-                                        return area.actionValue.startsWith('#') ? area.actionValue : `#${area.actionValue}`;
-                                    case 'url':
-                                    default:
-                                        return area.actionValue;
-                                }
-                            };
-
                             return (
                                 <>
                                     <div className="absolute inset-0 z-10 pointer-events-none" style={{ backgroundColor: config.overlayColor, opacity: (config.overlayOpacity || 0) / 100 }}></div>
@@ -171,27 +156,12 @@ export default async function PublicPage({ params }: { params: { slug: string } 
                                         )}
                                     </div>
 
-                                    {/* Clickable Areas Overlay */}
+                                    {/* Clickable Areas Overlay (with form support) */}
                                     {config.clickableAreas && config.clickableAreas.length > 0 && (
-                                        <div className="absolute inset-0 z-30">
-                                            {config.clickableAreas.map((area) => (
-                                                <a
-                                                    key={area.id}
-                                                    href={buildHref(area)}
-                                                    target={area.actionType === 'url' && !area.actionValue.startsWith('#') ? '_blank' : undefined}
-                                                    rel={area.actionType === 'url' && !area.actionValue.startsWith('#') ? 'noopener noreferrer' : undefined}
-                                                    title={area.label}
-                                                    className="absolute block cursor-pointer transition-all duration-200 hover:bg-white/10 hover:ring-2 hover:ring-white/50 rounded-sm"
-                                                    style={{
-                                                        left: `${area.x * 100}%`,
-                                                        top: `${area.y * 100}%`,
-                                                        width: `${area.width * 100}%`,
-                                                        height: `${area.height * 100}%`,
-                                                    }}
-                                                    aria-label={area.label || 'Interactive button'}
-                                                />
-                                            ))}
-                                        </div>
+                                        <InteractiveAreaOverlay
+                                            areas={config.clickableAreas}
+                                            pageSlug={params.slug}
+                                        />
                                     )}
 
                                     {section.image ? (

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer } from 'lucide-react';
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
-import type { ClickableArea } from '@/types';
+import type { ClickableArea, FormFieldConfig } from '@/types';
 
 type EditorMode = 'inpaint' | 'button';
 
@@ -28,9 +28,11 @@ interface SelectionRect {
 }
 
 interface ClickableAreaDraft extends SelectionRect {
-    actionType: 'url' | 'email' | 'phone' | 'scroll';
+    actionType: 'url' | 'email' | 'phone' | 'scroll' | 'form-input';
     actionValue: string;
     label: string;
+    formTitle?: string;
+    formFields?: FormFieldConfig[];
 }
 
 export function ImageInpaintEditor({
@@ -103,6 +105,8 @@ export function ImageInpaintEditor({
                     actionType: area.actionType,
                     actionValue: area.actionValue,
                     label: area.label || '',
+                    formTitle: area.formTitle,
+                    formFields: area.formFields,
                 })));
             }
         };
@@ -469,42 +473,45 @@ export function ImageInpaintEditor({
             return;
         }
 
-        // URLバリデーション
-        const emptyUrlAreas = buttonAreas.filter(area => !area.actionValue.trim());
-        if (emptyUrlAreas.length > 0) {
-            setError(`${emptyUrlAreas.length}個のボタンにURL/値が設定されていません。すべてのボタンに値を入力してください。`);
-            setSelectedButtonId(emptyUrlAreas[0].id);
-            return;
-        }
+        // バリデーション（タイプ別）
+        for (const area of buttonAreas) {
+            if (area.actionType === 'form-input') {
+                // フォームの場合：フィールドが必要
+                if (!area.formFields || area.formFields.length === 0) {
+                    setError('フォームには少なくとも1つのフィールドが必要です。');
+                    setSelectedButtonId(area.id);
+                    return;
+                }
+            } else {
+                // その他の場合：actionValueが必要
+                if (!area.actionValue.trim()) {
+                    setError('URL/値が設定されていません。');
+                    setSelectedButtonId(area.id);
+                    return;
+                }
 
-        // URL形式のバリデーション（urlタイプのみ）
-        const invalidUrls = buttonAreas.filter(area => {
-            if (area.actionType === 'url') {
-                return !area.actionValue.startsWith('http://') &&
-                       !area.actionValue.startsWith('https://') &&
-                       !area.actionValue.startsWith('#') &&
-                       !area.actionValue.startsWith('/');
+                // URL形式のバリデーション
+                if (area.actionType === 'url') {
+                    if (!area.actionValue.startsWith('http://') &&
+                        !area.actionValue.startsWith('https://') &&
+                        !area.actionValue.startsWith('#') &&
+                        !area.actionValue.startsWith('/')) {
+                        setError('URLは http://, https://, #, / で始まる必要があります');
+                        setSelectedButtonId(area.id);
+                        return;
+                    }
+                }
+                if (area.actionType === 'email' && !area.actionValue.includes('@')) {
+                    setError('メールアドレスに@が含まれていません');
+                    setSelectedButtonId(area.id);
+                    return;
+                }
             }
-            if (area.actionType === 'email') {
-                return !area.actionValue.includes('@');
-            }
-            // phone と scroll はバリデーションなし
-            return false;
-        });
-
-        if (invalidUrls.length > 0) {
-            const firstInvalid = invalidUrls[0];
-            const errorMsg = firstInvalid.actionType === 'url'
-                ? 'URLは http://, https://, #, / で始まる必要があります'
-                : 'メールアドレスに@が含まれていません';
-            setError(errorMsg);
-            setSelectedButtonId(firstInvalid.id);
-            return;
         }
 
         setError(null);
 
-        // 0-1 の相対座標に変換
+        // 0-1 の相対座標に変換（form-input用のフィールドも含める）
         const areas: ClickableArea[] = buttonAreas.map(area => ({
             id: area.id,
             x: area.x / image.width,
@@ -514,6 +521,8 @@ export function ImageInpaintEditor({
             actionType: area.actionType,
             actionValue: area.actionValue,
             label: area.label || undefined,
+            formTitle: area.formTitle,
+            formFields: area.formFields,
         }));
 
         // 保存処理: propsで渡されたコールバックを優先
@@ -983,37 +992,152 @@ export function ImageInpaintEditor({
                                             <label className="block text-xs font-medium text-muted-foreground mb-1.5">アクションタイプ</label>
                                             <select
                                                 value={buttonAreas.find(a => a.id === selectedButtonId)?.actionType || 'url'}
-                                                onChange={(e) => updateButtonArea(selectedButtonId, { actionType: e.target.value as 'url' | 'email' | 'phone' | 'scroll' })}
+                                                onChange={(e) => {
+                                                    const newType = e.target.value as 'url' | 'email' | 'phone' | 'scroll' | 'form-input';
+                                                    const updates: Partial<ClickableAreaDraft> = { actionType: newType };
+                                                    // form-input選択時にデフォルトフィールドを設定
+                                                    if (newType === 'form-input' && !buttonAreas.find(a => a.id === selectedButtonId)?.formFields?.length) {
+                                                        updates.formTitle = 'お問い合わせ';
+                                                        updates.formFields = [
+                                                            { id: `field-${Date.now()}`, fieldName: 'name', fieldLabel: 'お名前', fieldType: 'text', required: true },
+                                                            { id: `field-${Date.now() + 1}`, fieldName: 'email', fieldLabel: 'メールアドレス', fieldType: 'email', required: true },
+                                                        ];
+                                                    }
+                                                    updateButtonArea(selectedButtonId, updates);
+                                                }}
                                                 className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                             >
                                                 <option value="url">URL リンク</option>
                                                 <option value="email">メールアドレス</option>
                                                 <option value="phone">電話番号</option>
                                                 <option value="scroll">セクションへスクロール</option>
+                                                <option value="form-input">フォーム入力</option>
                                             </select>
                                         </div>
 
-                                        {/* Action Value */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' && 'リンク先URL'}
-                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' && 'メールアドレス'}
-                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' && '電話番号'}
-                                                {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'scroll' && 'セクションID'}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={buttonAreas.find(a => a.id === selectedButtonId)?.actionValue || ''}
-                                                onChange={(e) => updateButtonArea(selectedButtonId, { actionValue: e.target.value })}
-                                                placeholder={
-                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' ? 'https://example.com' :
-                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' ? 'info@example.com' :
-                                                    buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' ? '03-1234-5678' :
-                                                    '#section-id'
-                                                }
-                                                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                            />
-                                        </div>
+                                        {/* Action Value (for non-form types) */}
+                                        {buttonAreas.find(a => a.id === selectedButtonId)?.actionType !== 'form-input' && (
+                                            <div>
+                                                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                                                    {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' && 'リンク先URL'}
+                                                    {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' && 'メールアドレス'}
+                                                    {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' && '電話番号'}
+                                                    {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'scroll' && 'セクションID'}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={buttonAreas.find(a => a.id === selectedButtonId)?.actionValue || ''}
+                                                    onChange={(e) => updateButtonArea(selectedButtonId, { actionValue: e.target.value })}
+                                                    placeholder={
+                                                        buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'url' ? 'https://example.com' :
+                                                        buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'email' ? 'info@example.com' :
+                                                        buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'phone' ? '03-1234-5678' :
+                                                        '#section-id'
+                                                    }
+                                                    className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Form Fields Configuration (for form-input type) */}
+                                        {buttonAreas.find(a => a.id === selectedButtonId)?.actionType === 'form-input' && (
+                                            <div className="space-y-3 pt-2 border-t border-border">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">フォームタイトル</label>
+                                                    <input
+                                                        type="text"
+                                                        value={buttonAreas.find(a => a.id === selectedButtonId)?.formTitle || ''}
+                                                        onChange={(e) => updateButtonArea(selectedButtonId, { formTitle: e.target.value })}
+                                                        placeholder="お問い合わせ"
+                                                        className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium text-muted-foreground mb-2">フォームフィールド</label>
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {(buttonAreas.find(a => a.id === selectedButtonId)?.formFields || []).map((field, idx) => (
+                                                            <div key={field.id} className="flex items-center gap-2 p-2 bg-surface-100 rounded-md">
+                                                                <input
+                                                                    type="text"
+                                                                    value={field.fieldLabel}
+                                                                    onChange={(e) => {
+                                                                        const currentArea = buttonAreas.find(a => a.id === selectedButtonId);
+                                                                        if (!currentArea?.formFields) return;
+                                                                        const newFields = [...currentArea.formFields];
+                                                                        newFields[idx] = { ...newFields[idx], fieldLabel: e.target.value };
+                                                                        updateButtonArea(selectedButtonId, { formFields: newFields });
+                                                                    }}
+                                                                    className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background"
+                                                                    placeholder="ラベル"
+                                                                />
+                                                                <select
+                                                                    value={field.fieldType}
+                                                                    onChange={(e) => {
+                                                                        const currentArea = buttonAreas.find(a => a.id === selectedButtonId);
+                                                                        if (!currentArea?.formFields) return;
+                                                                        const newFields = [...currentArea.formFields];
+                                                                        newFields[idx] = { ...newFields[idx], fieldType: e.target.value as 'text' | 'email' | 'tel' | 'textarea' };
+                                                                        updateButtonArea(selectedButtonId, { formFields: newFields });
+                                                                    }}
+                                                                    className="px-2 py-1 text-xs rounded border border-input bg-background"
+                                                                >
+                                                                    <option value="text">テキスト</option>
+                                                                    <option value="email">メール</option>
+                                                                    <option value="tel">電話</option>
+                                                                    <option value="textarea">長文</option>
+                                                                </select>
+                                                                <label className="flex items-center gap-1 text-xs">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={field.required}
+                                                                        onChange={(e) => {
+                                                                            const currentArea = buttonAreas.find(a => a.id === selectedButtonId);
+                                                                            if (!currentArea?.formFields) return;
+                                                                            const newFields = [...currentArea.formFields];
+                                                                            newFields[idx] = { ...newFields[idx], required: e.target.checked };
+                                                                            updateButtonArea(selectedButtonId, { formFields: newFields });
+                                                                        }}
+                                                                        className="rounded"
+                                                                    />
+                                                                    必須
+                                                                </label>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const currentArea = buttonAreas.find(a => a.id === selectedButtonId);
+                                                                        if (!currentArea?.formFields) return;
+                                                                        const newFields = currentArea.formFields.filter((_, i) => i !== idx);
+                                                                        updateButtonArea(selectedButtonId, { formFields: newFields });
+                                                                    }}
+                                                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                                >
+                                                                    <Trash2 className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const currentArea = buttonAreas.find(a => a.id === selectedButtonId);
+                                                            const newField: FormFieldConfig = {
+                                                                id: `field-${Date.now()}`,
+                                                                fieldName: `field_${(currentArea?.formFields?.length || 0) + 1}`,
+                                                                fieldLabel: '新しいフィールド',
+                                                                fieldType: 'text',
+                                                                required: false,
+                                                            };
+                                                            updateButtonArea(selectedButtonId, {
+                                                                formFields: [...(currentArea?.formFields || []), newField]
+                                                            });
+                                                        }}
+                                                        className="mt-2 w-full py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                                                    >
+                                                        <Plus className="w-3 h-3" />
+                                                        フィールドを追加
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
