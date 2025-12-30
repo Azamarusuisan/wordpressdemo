@@ -1,9 +1,29 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer } from 'lucide-react';
+import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles } from 'lucide-react';
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
 import type { ClickableArea, FormFieldConfig } from '@/types';
+
+// デザイン定義の型
+interface DesignDefinition {
+    colorPalette: {
+        primary: string;
+        secondary: string;
+        accent: string;
+        background: string;
+    };
+    typography: {
+        style: string;
+        mood: string;
+    };
+    layout: {
+        density: string;
+        style: string;
+    };
+    vibe: string;
+    description: string;
+}
 
 type EditorMode = 'inpaint' | 'button';
 
@@ -62,6 +82,12 @@ export function ImageInpaintEditor({
     const [costInfo, setCostInfo] = useState<{ model: string; estimatedCost: number; durationMs: number } | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+
+    // 参考デザイン画像機能
+    const [referenceImage, setReferenceImage] = useState<string | null>(null);
+    const [referenceDesign, setReferenceDesign] = useState<DesignDefinition | null>(null);
+    const [isAnalyzingDesign, setIsAnalyzingDesign] = useState(false);
+    const referenceInputRef = useRef<HTMLInputElement>(null);
 
     // Editor mode state
     const [editorMode, setEditorMode] = useState<EditorMode>(initialMode);
@@ -560,6 +586,12 @@ export function ImageInpaintEditor({
                 height: sel.height / image.height
             }));
 
+            // 参考画像がある場合はリサイズしてから送信
+            let resizedReferenceImage: string | undefined;
+            if (referenceImage) {
+                resizedReferenceImage = await resizeImageForUpload(referenceImage, 1024);
+            }
+
             const response = await fetch('/api/ai/inpaint', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -567,7 +599,9 @@ export function ImageInpaintEditor({
                     imageUrl,
                     masks, // 複数のマスク
                     mask: masks[0], // 後方互換性のため
-                    prompt: prompt.trim()
+                    prompt: prompt.trim(),
+                    referenceDesign: referenceDesign || undefined, // 参考デザイン定義
+                    referenceImageBase64: resizedReferenceImage // 参考デザイン画像（リサイズ済みBase64）
                 })
             });
 
@@ -599,6 +633,88 @@ export function ImageInpaintEditor({
 
     const handleZoomIn = () => setScale(prev => Math.min(prev * 1.2, 3));
     const handleZoomOut = () => setScale(prev => Math.max(prev / 1.2, 0.2));
+
+    // 参考デザイン画像のアップロード処理
+    const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // ファイルをBase64に変換
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target?.result as string;
+            setReferenceImage(base64);
+
+            // デザイン解析を実行
+            setIsAnalyzingDesign(true);
+            setError(null);
+
+            try {
+                const response = await fetch('/api/ai/analyze-design', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageUrl: base64 })
+                });
+
+                if (!response.ok) {
+                    throw new Error('デザイン解析に失敗しました');
+                }
+
+                const designData = await response.json();
+                setReferenceDesign(designData);
+            } catch (err: any) {
+                setError(err.message || 'デザイン解析エラー');
+                setReferenceImage(null);
+            } finally {
+                setIsAnalyzingDesign(false);
+            }
+        };
+        reader.readAsDataURL(file);
+
+        // inputをリセット（同じファイルを再度選択可能に）
+        if (referenceInputRef.current) {
+            referenceInputRef.current.value = '';
+        }
+    };
+
+    // 参考デザインをクリア
+    const clearReferenceDesign = () => {
+        setReferenceImage(null);
+        setReferenceDesign(null);
+    };
+
+    // 画像をリサイズする（最大サイズを制限）
+    const resizeImageForUpload = (base64: string, maxSize: number = 1024): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                // リサイズが必要かチェック
+                if (img.width <= maxSize && img.height <= maxSize) {
+                    resolve(base64);
+                    return;
+                }
+
+                // アスペクト比を維持してリサイズ
+                const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+                const newWidth = Math.round(img.width * ratio);
+                const newHeight = Math.round(img.height * ratio);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                } else {
+                    resolve(base64);
+                }
+            };
+            img.onerror = () => resolve(base64);
+            img.src = base64;
+        });
+    };
+
     const handleReset = () => {
         if (image && containerRef.current) {
             const containerWidth = containerRef.current.clientWidth - 40;
@@ -857,6 +973,106 @@ export function ImageInpaintEditor({
                                     </div>
                                 )}
 
+                                {/* Reference Design Image */}
+                                <div className="mb-6">
+                                    <label className="block text-xs font-bold text-foreground uppercase tracking-widest mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Palette className="w-3.5 h-3.5" />
+                                            参考デザイン（任意）
+                                        </div>
+                                    </label>
+
+                                    <input
+                                        ref={referenceInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleReferenceImageUpload}
+                                        className="hidden"
+                                    />
+
+                                    {!referenceImage ? (
+                                        <button
+                                            onClick={() => referenceInputRef.current?.click()}
+                                            disabled={isAnalyzingDesign}
+                                            className="w-full p-4 border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center gap-2 group"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-surface-100 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                                <ImagePlus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                                            </div>
+                                            <span className="text-xs text-muted-foreground group-hover:text-foreground">
+                                                参考画像をアップロード
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                デザインスタイルを自動解析します
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <div className="relative">
+                                            {/* 参考画像プレビュー */}
+                                            <div className="relative rounded-lg overflow-hidden border border-border">
+                                                <img
+                                                    src={referenceImage}
+                                                    alt="参考デザイン"
+                                                    className="w-full h-24 object-cover"
+                                                />
+                                                {isAnalyzingDesign && (
+                                                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                                                        <div className="flex items-center gap-2 text-primary">
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                            <span className="text-xs font-medium">解析中...</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={clearReferenceDesign}
+                                                    className="absolute top-2 right-2 p-1.5 bg-background/90 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            {/* デザイン解析結果 */}
+                                            {referenceDesign && (
+                                                <div className="mt-3 p-3 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg border border-primary/10">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                                        <span className="text-xs font-bold text-foreground">解析済みスタイル</span>
+                                                    </div>
+
+                                                    {/* カラーパレット */}
+                                                    <div className="flex items-center gap-1 mb-2">
+                                                        {Object.entries(referenceDesign.colorPalette).map(([key, color]) => (
+                                                            <div
+                                                                key={key}
+                                                                className="w-5 h-5 rounded-full border border-white shadow-sm"
+                                                                style={{ backgroundColor: color }}
+                                                                title={`${key}: ${color}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Vibe タグ */}
+                                                    <div className="flex flex-wrap gap-1 mb-2">
+                                                        {referenceDesign.vibe.split(/[,、\s]+/).filter(Boolean).slice(0, 4).map((tag, i) => (
+                                                            <span
+                                                                key={i}
+                                                                className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium rounded-full"
+                                                            >
+                                                                {tag.trim()}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* 説明 */}
+                                                    <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                                                        {referenceDesign.description}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Prompt Input */}
                                 <div className="mb-6 mt-auto">
                                     <label className="block text-xs font-bold text-foreground uppercase tracking-widest mb-3">
@@ -865,9 +1081,17 @@ export function ImageInpaintEditor({
                                     <textarea
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
-                                        placeholder="例: テキストを消す、背景を青空にする..."
+                                        placeholder={referenceDesign
+                                            ? "例: 参考デザインのスタイルで背景を変更..."
+                                            : "例: テキストを消す、背景を青空にする..."}
                                         className="w-full h-32 px-4 py-3 rounded-md border border-input bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none shadow-sm"
                                     />
+                                    {referenceDesign && (
+                                        <p className="mt-2 text-[10px] text-primary flex items-center gap-1">
+                                            <Sparkles className="w-3 h-3" />
+                                            参考デザインのスタイルが編集に反映されます
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Error Message */}
@@ -883,13 +1107,18 @@ export function ImageInpaintEditor({
                                 <div className="space-y-3 pt-6 border-t border-border">
                                     <button
                                         onClick={handleInpaint}
-                                        disabled={isLoading || selections.length === 0 || !prompt.trim()}
+                                        disabled={isLoading || isAnalyzingDesign || selections.length === 0 || !prompt.trim()}
                                         className="w-full py-3 px-4 bg-primary text-primary-foreground font-bold text-sm rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                                     >
                                         {isLoading ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                 生成中...
+                                            </>
+                                        ) : isAnalyzingDesign ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                デザイン解析中...
                                             </>
                                         ) : (
                                             <>

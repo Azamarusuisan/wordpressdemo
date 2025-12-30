@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import AdmZip from 'adm-zip';
+import { generateExportCSS } from '@/lib/export-styles';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             }[config.position as 'top' | 'middle' | 'bottom'] || 'top-1/2 -translate-y-1/2 items-center';
 
             const colorClasses = config.textColor === 'black' ? 'text-black' : 'text-white';
-            const shadowClasses = config.textColor === 'black' ? '' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]';
+            const shadowClasses = config.textColor === 'black' ? '' : 'drop-shadow-text';
 
             let imagePath = '';
             if (section.image && section.image.filePath) {
@@ -124,11 +125,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${page.title}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./style.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Noto Sans JP', sans-serif; scroll-behavior: smooth; }
-    </style>
 </head>
 <body class="min-h-screen bg-gray-50 flex flex-col">
     <header class="${headerConfig.sticky ? 'sticky top-0' : 'relative'} z-50 flex h-16 items-center justify-between bg-white/90 px-4 shadow-sm backdrop-blur-md md:px-8">
@@ -183,6 +181,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     </footer>
 </body>
 </html>`;
+
+        // CSSファイルを追加
+        const cssContent = generateExportCSS();
+        zip.addFile('style.css', Buffer.from(cssContent));
 
         zip.addFile('index.html', Buffer.from(htmlContent));
 
