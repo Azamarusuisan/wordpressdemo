@@ -663,8 +663,9 @@ export function ImageInpaintEditor({
                 const designData = await response.json();
                 setReferenceDesign(designData);
             } catch (err: any) {
-                setError(err.message || 'デザイン解析エラー');
-                setReferenceImage(null);
+                // 解析失敗でも参考画像は保持（AIに直接送信できるため）
+                console.warn('デザイン解析失敗:', err.message);
+                // エラーは表示しない（参考画像自体は使用可能）
             } finally {
                 setIsAnalyzingDesign(false);
             }
@@ -1032,7 +1033,7 @@ export function ImageInpaintEditor({
                                             </div>
 
                                             {/* デザイン解析結果 */}
-                                            {referenceDesign && (
+                                            {referenceDesign ? (
                                                 <div className="mt-3 p-3 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg border border-primary/10">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <Sparkles className="w-3.5 h-3.5 text-primary" />
@@ -1066,6 +1067,12 @@ export function ImageInpaintEditor({
                                                     {/* 説明 */}
                                                     <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                                                         {referenceDesign.description}
+                                                    </p>
+                                                </div>
+                                            ) : !isAnalyzingDesign && (
+                                                <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                                    <p className="text-[10px] text-amber-700">
+                                                        スタイル解析はスキップされましたが、画像はAIに送信されます
                                                     </p>
                                                 </div>
                                             )}
