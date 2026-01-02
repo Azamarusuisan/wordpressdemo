@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone } from 'lucide-react';
+import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone, Scissors } from 'lucide-react';
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
 import type { ClickableArea, FormFieldConfig, ViewportType } from '@/types';
 
@@ -88,10 +88,16 @@ export function ImageInpaintEditor({
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-    const [tool, setTool] = useState<'select' | 'pan'>('select');
+    const [tool, setTool] = useState<'select' | 'pan' | 'cut'>('select');
     const [costInfo, setCostInfo] = useState<{ model: string; estimatedCost: number; durationMs: number } | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+
+    // カット機能用state
+    const [cutStartY, setCutStartY] = useState<number | null>(null);
+    const [cutEndY, setCutEndY] = useState<number | null>(null);
+    const [isCutting, setIsCutting] = useState(false);
+    const [showCutConfirm, setShowCutConfirm] = useState(false);
 
     // Mobile canvas refs and state (for dual mode)
     const mobileCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -304,7 +310,56 @@ export function ImageInpaintEditor({
                 });
             }
         });
-    }, [image, selections, currentSelection, scale, offset, editorMode, buttonAreas, selectedButtonId]);
+
+        // カット選択範囲の描画
+        if ((cutStartY !== null && cutEndY !== null) || isCutting) {
+            const startY = cutStartY ?? 0;
+            const endY = cutEndY ?? startY;
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+
+            const scaledMinY = offset.y + minY * scale;
+            const scaledMaxY = offset.y + maxY * scale;
+            const scaledWidth = image.width * scale;
+
+            // カット範囲を赤く半透明で塗りつぶし
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+            ctx.fillRect(offset.x, scaledMinY, scaledWidth, scaledMaxY - scaledMinY);
+
+            // 上下のボーダーライン
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(offset.x, scaledMinY);
+            ctx.lineTo(offset.x + scaledWidth, scaledMinY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(offset.x, scaledMaxY);
+            ctx.lineTo(offset.x + scaledWidth, scaledMaxY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // カット範囲の高さ表示
+            const cutHeight = Math.round(maxY - minY);
+            if (cutHeight > 20) {
+                const labelText = `カット: ${cutHeight}px`;
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 12px sans-serif';
+                const textWidth = ctx.measureText(labelText).width;
+                const labelX = offset.x + (scaledWidth - textWidth - 16) / 2;
+                const labelY = scaledMinY + (scaledMaxY - scaledMinY) / 2 - 10;
+
+                ctx.beginPath();
+                ctx.roundRect(labelX, labelY, textWidth + 16, 24, 6);
+                ctx.fill();
+
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText(labelText, labelX + (textWidth + 16) / 2, labelY + 16);
+            }
+        }
+    }, [image, selections, currentSelection, scale, offset, editorMode, buttonAreas, selectedButtonId, cutStartY, cutEndY, isCutting]);
 
     // モバイルキャンバスに描画（デュアルモード時のみ）
     useEffect(() => {
@@ -453,6 +508,15 @@ export function ImageInpaintEditor({
             return;
         }
 
+        // カットツールの場合
+        if (tool === 'cut') {
+            console.log('[Cut] Start at Y:', coords.y);
+            setIsCutting(true);
+            setCutStartY(coords.y);
+            setCutEndY(coords.y);
+            return;
+        }
+
         // ボタンモードの場合、既存ボタンのヒットテスト
         if (editorMode === 'button') {
             const hit = hitTestButton(coords);
@@ -491,6 +555,12 @@ export function ImageInpaintEditor({
         }
 
         const coords = getCanvasCoords(e);
+
+        // カットツールの場合
+        if (isCutting && image) {
+            setCutEndY(Math.max(0, Math.min(coords.y, image.height)));
+            return;
+        }
 
         // ボタンのドラッグ/リサイズ処理
         if (editorMode === 'button' && dragMode !== 'none' && selectedButtonId && dragOriginal && image) {
@@ -555,6 +625,25 @@ export function ImageInpaintEditor({
             return;
         }
 
+        // カットツールの場合
+        if (isCutting && cutStartY !== null && cutEndY !== null) {
+            const minY = Math.min(cutStartY, cutEndY);
+            const maxY = Math.max(cutStartY, cutEndY);
+            console.log('[Cut] End - Range:', minY, 'to', maxY, '=', maxY - minY, 'px');
+            // 最低10px以上の範囲が選択されていればカット確認を表示
+            if (maxY - minY > 10) {
+                console.log('[Cut] Showing confirm dialog');
+                setShowCutConfirm(true);
+            } else {
+                console.log('[Cut] Range too small, resetting');
+                // 範囲が小さすぎる場合はリセット
+                setCutStartY(null);
+                setCutEndY(null);
+            }
+            setIsCutting(false);
+            return;
+        }
+
         // ドラッグモードをリセット
         if (dragMode !== 'none') {
             setDragMode('none');
@@ -586,6 +675,104 @@ export function ImageInpaintEditor({
         setIsSelecting(false);
         setIsPanning(false);
     };
+
+    // カット実行関数
+    const executeCut = useCallback(async () => {
+        console.log('[Cut] Executing cut...', { cutStartY, cutEndY });
+        if (!image || cutStartY === null || cutEndY === null) {
+            console.log('[Cut] Missing data:', { image: !!image, cutStartY, cutEndY });
+            return;
+        }
+
+        const minY = Math.round(Math.min(cutStartY, cutEndY));
+        const maxY = Math.round(Math.max(cutStartY, cutEndY));
+        const cutHeight = maxY - minY;
+
+        console.log('[Cut] Cutting from', minY, 'to', maxY, '- height:', cutHeight);
+
+        if (cutHeight <= 0) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // キャンバスを使って画像をカット
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Failed to get canvas context');
+
+            // 新しい高さを計算（カット部分を除く）
+            const newHeight = image.height - cutHeight;
+            canvas.width = image.width;
+            canvas.height = newHeight;
+
+            // 上部分を描画
+            if (minY > 0) {
+                ctx.drawImage(image, 0, 0, image.width, minY, 0, 0, image.width, minY);
+            }
+
+            // 下部分を描画（カット部分をスキップ）
+            if (maxY < image.height) {
+                ctx.drawImage(
+                    image,
+                    0, maxY, image.width, image.height - maxY,
+                    0, minY, image.width, image.height - maxY
+                );
+            }
+
+            // Blobに変換
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                canvas.toBlob((b) => {
+                    if (b) resolve(b);
+                    else reject(new Error('Failed to create blob'));
+                }, 'image/png');
+            });
+
+            // Supabaseにアップロード
+            const formData = new FormData();
+            formData.append('file', blob, `cut-${Date.now()}.png`);
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload cut image');
+            }
+
+            const data = await response.json();
+            const url = data.filePath || data.url;
+
+            if (!url) {
+                throw new Error('No URL returned from upload');
+            }
+
+            // 成功メッセージを表示
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 2000);
+
+            // リセット
+            setCutStartY(null);
+            setCutEndY(null);
+            setShowCutConfirm(false);
+
+            // 親に通知
+            onSave(url);
+        } catch (err: any) {
+            setError(err.message || 'カットに失敗しました');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [image, cutStartY, cutEndY, onSave]);
+
+    // カットをキャンセル
+    const cancelCut = useCallback(() => {
+        setCutStartY(null);
+        setCutEndY(null);
+        setShowCutConfirm(false);
+        setIsCutting(false);
+    }, []);
 
     // モバイルキャンバス用のマウスイベントハンドラー
     const handleMobileMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1184,7 +1371,11 @@ export function ImageInpaintEditor({
 
                         <canvas
                             ref={canvasRef}
-                            className={`w-full h-full relative z-10 ${tool === 'select' ? 'cursor-crosshair' : 'cursor-grab'} ${
+                            className={`w-full h-full relative z-10 ${
+                                tool === 'select' ? 'cursor-crosshair' :
+                                tool === 'cut' ? 'cursor-row-resize' :
+                                'cursor-grab'
+                            } ${
                                 isDualMode && activeViewport !== 'desktop' ? 'opacity-70' : ''
                             }`}
                             onMouseDown={(e) => { if (!isDualMode || activeViewport === 'desktop') handleMouseDown(e); else setActiveViewport('desktop'); }}
@@ -1193,49 +1384,55 @@ export function ImageInpaintEditor({
                             onMouseLeave={() => { if (!isDualMode || activeViewport === 'desktop') handleMouseUp(); }}
                         />
 
-                        {/* Toolbar */}
-                        <div className="absolute top-6 left-6 flex flex-col gap-2 bg-background p-1.5 rounded-lg border border-border shadow-lg z-20">
+                        {/* Toolbar - 下部中央に水平配置して画像を邪魔しないように */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg border border-border shadow-lg z-20">
                             <button
                                 onClick={() => setTool('select')}
-                                className={`p-2.5 rounded-md transition-all ${tool === 'select' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
+                                className={`p-2 rounded-md transition-all ${tool === 'select' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
                                 title="選択ツール"
                             >
-                                <Plus className="w-5 h-5" />
+                                <Plus className="w-4 h-4" />
                             </button>
                             <button
                                 onClick={() => setTool('pan')}
-                                className={`p-2.5 rounded-md transition-all ${tool === 'pan' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
+                                className={`p-2 rounded-md transition-all ${tool === 'pan' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
                                 title="移動ツール"
                             >
-                                <Move className="w-5 h-5" />
+                                <Move className="w-4 h-4" />
                             </button>
-                            <div className="h-px bg-border mx-1 my-1" />
                             <button
-                                onClick={handleZoomIn}
-                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
-                                title="拡大"
+                                onClick={() => { setTool('cut'); cancelCut(); }}
+                                className={`p-2 rounded-md transition-all ${tool === 'cut' ? 'bg-red-500 text-white shadow-sm' : 'text-muted-foreground hover:bg-surface-100 hover:text-foreground'}`}
+                                title="カットツール（範囲を削除）"
                             >
-                                <ZoomIn className="w-5 h-5" />
+                                <Scissors className="w-4 h-4" />
                             </button>
+                            <div className="w-px h-6 bg-border mx-1" />
                             <button
                                 onClick={handleZoomOut}
-                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                 title="縮小"
                             >
-                                <ZoomOut className="w-5 h-5" />
+                                <ZoomOut className="w-4 h-4" />
                             </button>
+                            <span className="text-xs font-bold text-foreground min-w-[40px] text-center">
+                                {Math.round(scale * 100)}%
+                            </span>
+                            <button
+                                onClick={handleZoomIn}
+                                className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                title="拡大"
+                            >
+                                <ZoomIn className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-6 bg-border mx-1" />
                             <button
                                 onClick={handleReset}
-                                className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                 title="リセット"
                             >
-                                <RotateCcw className="w-5 h-5" />
+                                <RotateCcw className="w-4 h-4" />
                             </button>
-                        </div>
-
-                        {/* Scale Indicator */}
-                        <div className="absolute bottom-6 left-6 text-xs font-bold text-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-md border border-border shadow-sm z-20">
-                            {Math.round(scale * 100)}%
                         </div>
                     </div>
 
@@ -1277,34 +1474,33 @@ export function ImageInpaintEditor({
                                 onMouseLeave={handleMobileMouseUp}
                             />
 
-                            {/* Mobile Toolbar */}
-                            <div className="absolute top-6 right-6 flex flex-col gap-2 bg-background p-1.5 rounded-lg border border-border shadow-lg z-20">
-                                <button
-                                    onClick={handleMobileZoomIn}
-                                    className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
-                                    title="拡大"
-                                >
-                                    <ZoomIn className="w-4 h-4" />
-                                </button>
+                            {/* Mobile Toolbar - 下部中央に水平配置 */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg border border-border shadow-lg z-20">
                                 <button
                                     onClick={handleMobileZoomOut}
-                                    className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                    className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                     title="縮小"
                                 >
                                     <ZoomOut className="w-4 h-4" />
                                 </button>
+                                <span className="text-xs font-bold text-foreground min-w-[40px] text-center">
+                                    {Math.round(mobileScale * 100)}%
+                                </span>
+                                <button
+                                    onClick={handleMobileZoomIn}
+                                    className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                    title="拡大"
+                                >
+                                    <ZoomIn className="w-4 h-4" />
+                                </button>
+                                <div className="w-px h-6 bg-border mx-1" />
                                 <button
                                     onClick={handleMobileReset}
-                                    className="p-2.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
+                                    className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-100 transition-all"
                                     title="リセット"
                                 >
                                     <RotateCcw className="w-4 h-4" />
                                 </button>
-                            </div>
-
-                            {/* Scale Indicator */}
-                            <div className="absolute bottom-6 left-6 text-xs font-bold text-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-md border border-border shadow-sm z-20">
-                                {Math.round(mobileScale * 100)}%
                             </div>
                         </div>
                     )}
@@ -1861,6 +2057,67 @@ export function ImageInpaintEditor({
                     )}
                 </div>
             </div>
+
+            {/* カット確認ダイアログ */}
+            {showCutConfirm && cutStartY !== null && cutEndY !== null && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
+                    <div className="bg-background rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 border border-border">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-red-100 rounded-full">
+                                <Scissors className="w-6 h-6 text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-foreground">画像をカットしますか？</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    選択した範囲（{Math.round(Math.abs(cutEndY - cutStartY))}px）が削除されます
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-surface-100 rounded-lg p-4 mb-6">
+                            <p className="text-xs text-muted-foreground mb-2">カット範囲</p>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="font-mono">Y: {Math.round(Math.min(cutStartY, cutEndY))}px</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="font-mono">Y: {Math.round(Math.max(cutStartY, cutEndY))}px</span>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={cancelCut}
+                                disabled={isLoading}
+                                className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-100 transition-all disabled:opacity-50"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={executeCut}
+                                disabled={isLoading}
+                                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        処理中...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Scissors className="w-4 h-4" />
+                                        カットを実行
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

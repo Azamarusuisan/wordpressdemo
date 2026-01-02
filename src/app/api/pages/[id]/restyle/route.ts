@@ -64,6 +64,7 @@ const editOptionsSchema = z.object({
 const restyleSchema = z.object({
     editOptions: editOptionsSchema,
     designDefinition: designDefinitionSchema,
+    includeMobile: z.boolean().default(false),  // モバイル画像も同時に処理するか
 });
 
 // カラースキーム定義
@@ -408,12 +409,12 @@ export async function POST(
         }, { status: 400 });
     }
 
-    const { editOptions, designDefinition } = validation.data;
+    const { editOptions, designDefinition, includeMobile } = validation.data;
 
     return createStreamResponse(async (send) => {
         log.info(`========== Starting Restyle for Page ${pageId} ==========`);
         log.info(`EditOptions: people=${editOptions.people.enabled}, text=${editOptions.text.enabled}, pattern=${editOptions.pattern.enabled}, objects=${editOptions.objects.enabled}, color=${editOptions.color.enabled}(${editOptions.color.scheme}), layout=${editOptions.layout.enabled}`);
-        log.info(`HasDesignDef: ${!!designDefinition}`);
+        log.info(`HasDesignDef: ${!!designDefinition}, IncludeMobile: ${includeMobile}`);
 
         // 選択された編集オプションを確認
         const enabledOptions: string[] = [];
@@ -446,13 +447,17 @@ export async function POST(
         }
 
         const sections = page.sections.filter(s => s.image?.filePath);
-        const totalSegments = sections.length;
+        const desktopCount = sections.length;
+        // モバイル画像を持つセクション数
+        const sectionsWithMobile = includeMobile ? sections.filter(s => s.mobileImage?.filePath) : [];
+        const mobileCount = sectionsWithMobile.length;
+        const totalSegments = desktopCount + mobileCount;
 
-        if (totalSegments === 0) {
+        if (desktopCount === 0) {
             throw new Error('No sections with images found');
         }
 
-        log.info(`Found ${totalSegments} sections with images`);
+        log.info(`Found ${desktopCount} desktop sections${includeMobile ? ` + ${mobileCount} mobile sections` : ''}`);
 
         // API キーを取得
         const googleApiKey = await getGoogleApiKeyForUser(user.id);
@@ -472,19 +477,24 @@ export async function POST(
         // ========================================
         let firstSegmentResult: Buffer | null = null;
 
-        // 各セクションを処理
+        let processedCount = 0;
+
+        // ========================================
+        // デスクトップ画像を処理
+        // ========================================
         for (let i = 0; i < sections.length; i++) {
             const section = sections[i];
+            processedCount++;
 
             send({
                 type: 'progress',
                 step: 'processing',
-                message: `セクション ${i + 1}/${totalSegments} を処理中...${i > 0 && firstSegmentResult ? '（参照画像あり）' : ''}`,
+                message: `デスクトップ ${i + 1}/${desktopCount} を処理中...${i > 0 && firstSegmentResult ? '（参照画像あり）' : ''}`,
                 total: totalSegments,
-                current: i + 1
+                current: processedCount
             });
 
-            log.info(`Processing section ${i + 1}: ${section.id}`);
+            log.info(`Processing desktop section ${i + 1}: ${section.id}`);
 
             try {
                 // 画像をダウンロード
@@ -562,17 +572,119 @@ export async function POST(
                         newImageUrl: publicUrl,
                     });
 
-                    log.success(`Section ${i + 1} updated: ${section.id} -> ${newMedia.id}`);
+                    log.success(`Desktop ${i + 1} updated: ${section.id} -> ${newMedia.id}`);
                 } else {
-                    log.error(`Section ${i + 1} AI processing failed, keeping original`);
+                    log.error(`Desktop ${i + 1} AI processing failed, keeping original`);
                 }
             } catch (error: any) {
-                log.error(`Error processing section ${i + 1}: ${error.message}`);
+                log.error(`Error processing desktop ${i + 1}: ${error.message}`);
+            }
+        }
+
+        // ========================================
+        // モバイル画像を処理（includeMobileがtrueの場合）
+        // ========================================
+        if (includeMobile && sectionsWithMobile.length > 0) {
+            log.info(`Starting mobile image processing (${sectionsWithMobile.length} sections)`);
+
+            for (let i = 0; i < sectionsWithMobile.length; i++) {
+                const section = sectionsWithMobile[i];
+                processedCount++;
+
+                send({
+                    type: 'progress',
+                    step: 'processing',
+                    message: `モバイル ${i + 1}/${mobileCount} を処理中...${firstSegmentResult ? '（デスクトップ参照あり）' : ''}`,
+                    total: totalSegments,
+                    current: processedCount
+                });
+
+                log.info(`Processing mobile section ${i + 1}: ${section.id}`);
+
+                try {
+                    // モバイル画像をダウンロード
+                    const imageResponse = await fetch(section.mobileImage!.filePath);
+                    const imageArrayBuffer = await imageResponse.arrayBuffer();
+                    let imageBuffer = Buffer.from(imageArrayBuffer);
+
+                    // デスクトップの最初の結果を参照画像として使用（一貫性確保）
+                    const styleReference = firstSegmentResult || undefined;
+
+                    // AI処理
+                    const aiBuffer = await processImageWithAI(
+                        imageBuffer,
+                        editOptions,
+                        i,
+                        sectionsWithMobile.length,
+                        googleApiKey,
+                        user.id,
+                        styleReference,
+                        designDefinition
+                    );
+
+                    if (aiBuffer) {
+                        // 新しい画像をアップロード
+                        const filename = `restyle-mobile-${Date.now()}-seg-${i}.png`;
+
+                        const { error: uploadError } = await supabase
+                            .storage
+                            .from('images')
+                            .upload(filename, aiBuffer, {
+                                contentType: 'image/png',
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+
+                        if (uploadError) {
+                            log.error(`Upload error for mobile section ${i}: ${uploadError.message}`);
+                            throw uploadError;
+                        }
+
+                        const { data: { publicUrl } } = supabase
+                            .storage
+                            .from('images')
+                            .getPublicUrl(filename);
+
+                        const processedMeta = await sharp(aiBuffer).metadata();
+
+                        // 新しいMediaImageを作成
+                        const newMedia = await prisma.mediaImage.create({
+                            data: {
+                                filePath: publicUrl,
+                                mime: 'image/png',
+                                width: processedMeta.width || section.mobileImage!.width || 0,
+                                height: processedMeta.height || section.mobileImage!.height || 0,
+                                sourceUrl: section.mobileImage!.filePath,
+                                sourceType: 'restyle-edit-mobile',
+                            },
+                        });
+
+                        // セクションのモバイル画像を更新
+                        await prisma.pageSection.update({
+                            where: { id: section.id },
+                            data: { mobileImageId: newMedia.id },
+                        });
+
+                        updatedSections.push({
+                            sectionId: section.id,
+                            oldImageId: section.mobileImageId,
+                            newImageId: newMedia.id,
+                            newImageUrl: publicUrl,
+                            isMobile: true,
+                        });
+
+                        log.success(`Mobile ${i + 1} updated: ${section.id} -> ${newMedia.id}`);
+                    } else {
+                        log.error(`Mobile ${i + 1} AI processing failed, keeping original`);
+                    }
+                } catch (error: any) {
+                    log.error(`Error processing mobile ${i + 1}: ${error.message}`);
+                }
             }
         }
 
         log.info(`========== Restyle Complete ==========`);
-        log.success(`Updated ${updatedSections.length} sections`);
+        log.success(`Updated ${updatedSections.length} sections (desktop + mobile)`);
 
         send({
             type: 'complete',

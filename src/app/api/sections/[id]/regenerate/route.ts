@@ -30,6 +30,15 @@ const regenerateSchema = z.object({
     designDefinition: z.any().optional(),
     // ユーザー指定の参照スタイル画像URL（一括再生成で使用）
     styleReferenceUrl: z.string().url().optional(),
+    // 一括再生成で最初のセクションから抽出したカラー（後続セクションの一貫性担保用）
+    extractedColors: z.object({
+        primary: z.string(),
+        secondary: z.string(),
+        accent: z.string(),
+        background: z.string(),
+    }).optional(),
+    // 対象画像（desktop or mobile）
+    targetImage: z.enum(['desktop', 'mobile']).default('desktop'),
 });
 
 // スタイル定義
@@ -70,7 +79,7 @@ export async function POST(
         }, { status: 400 });
     }
 
-    const { style = 'professional', colorScheme, customPrompt, mode, contextStyle, designDefinition, styleReferenceUrl } = validation.data;
+    const { style = 'professional', colorScheme, customPrompt, mode, contextStyle, designDefinition, styleReferenceUrl, extractedColors, targetImage } = validation.data;
 
     try {
         log.info(`========== Starting Regenerate for Section ${sectionId} ==========`);
@@ -103,8 +112,17 @@ export async function POST(
             return Response.json({ error: 'Section not found' }, { status: 404 });
         }
 
-        if (!section.image?.filePath) {
-            return Response.json({ error: 'Section has no image' }, { status: 400 });
+        // 対象画像を決定（desktop or mobile）
+        const isMobile = targetImage === 'mobile';
+        const targetImageData = isMobile ? section.mobileImage : section.image;
+        const targetImageField = isMobile ? 'mobileImageId' : 'imageId';
+
+        log.info(`Target: ${targetImage}, isMobile: ${isMobile}`);
+
+        if (!targetImageData?.filePath) {
+            return Response.json({
+                error: isMobile ? 'Section has no mobile image' : 'Section has no image'
+            }, { status: 400 });
         }
 
         // API キーを取得
@@ -241,10 +259,24 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
             contextInfo.push('次のセクションとデザインの連続性を保ってください');
         }
 
+        // 抽出カラーがある場合は最優先で使用（一括再生成の一貫性担保）
+        const extractedColorsInstruction = extractedColors
+            ? `【最重要：確定カラーパレット - 必ずこの色を使用】
+このセクションは一括再生成の一部です。以下の確定カラーを必ず使用してください：
+- メインカラー: ${extractedColors.primary}（ボタン、見出し、強調要素）
+- サブカラー: ${extractedColors.secondary}（背景のアクセント、サブ見出し）
+- アクセントカラー: ${extractedColors.accent}（アイコン、装飾）
+- 背景色: ${extractedColors.background}（メイン背景）
+
+【重要】他のセクションと完全に同じ色味を使用することが最優先です。色のばらつきは絶対に避けてください。
+
+`
+            : '';
+
         const prompt = mode === 'light'
             ? `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を新しいスタイルに変換してください。
 
-${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+${extractedColorsInstruction}${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
 
 【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
@@ -268,7 +300,7 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
 【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`
             : `あなたはクリエイティブなWebデザイナーです。Webページの一部分（セグメント画像）を参考に新しいデザインを作成してください。
 
-${styleReferenceInstruction}【セグメント情報】
+${extractedColorsInstruction}${styleReferenceInstruction}【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
 - 役割：${segmentInfo.role}
 
@@ -291,7 +323,7 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
         log.info(`Processing with ${mode} mode, style: ${style}${styleReferenceBuffer ? (useUserReference ? ' (with USER-SPECIFIED style reference)' : ' (with auto style reference)') : ''}`);
 
         // 画像をダウンロード
-        const imageResponse = await fetch(section.image.filePath);
+        const imageResponse = await fetch(targetImageData.filePath);
         const imageArrayBuffer = await imageResponse.arrayBuffer();
         const imageBuffer = Buffer.from(imageArrayBuffer);
 
@@ -400,40 +432,42 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
             data: {
                 filePath: publicUrl,
                 mime: 'image/png',
-                width: processedMeta.width || section.image.width || 0,
-                height: processedMeta.height || section.image.height || 0,
-                sourceUrl: section.image.filePath,
-                sourceType: `regenerate-${mode}`,
+                width: processedMeta.width || targetImageData.width || 0,
+                height: processedMeta.height || targetImageData.height || 0,
+                sourceUrl: targetImageData.filePath,
+                sourceType: `regenerate-${mode}-${targetImage}`,
             },
         });
 
         // 履歴を保存（復元機能用）
-        if (section.imageId) {
+        const previousImageId = isMobile ? section.mobileImageId : section.imageId;
+        if (previousImageId) {
             await prisma.sectionImageHistory.create({
                 data: {
                     sectionId: sectionId,
                     userId: user.id,
-                    previousImageId: section.imageId,
+                    previousImageId: previousImageId,
                     newImageId: newMedia.id,
-                    actionType: `regenerate-${mode}`,
+                    actionType: `regenerate-${mode}-${targetImage}`,
                     prompt: customPrompt || null,
                 },
             });
-            log.info(`History saved: ${section.imageId} -> ${newMedia.id}`);
+            log.info(`History saved (${targetImage}): ${previousImageId} -> ${newMedia.id}`);
         }
 
-        // セクションを更新
+        // セクションを更新（desktop or mobile）
         await prisma.pageSection.update({
             where: { id: sectionId },
-            data: { imageId: newMedia.id },
+            data: { [targetImageField]: newMedia.id },
         });
 
-        log.success(`Section ${sectionId} regenerated: ${section.imageId} -> ${newMedia.id}`);
+        log.success(`Section ${sectionId} ${targetImage} regenerated: ${previousImageId} -> ${newMedia.id}`);
 
         return Response.json({
             success: true,
             sectionId,
-            oldImageId: section.imageId,
+            targetImage,
+            oldImageId: previousImageId,
             newImageId: newMedia.id,
             newImageUrl: publicUrl,
             media: newMedia,

@@ -97,6 +97,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [batchRegeneratePrompt, setBatchRegeneratePrompt] = useState('');
     const [batchReferenceSection, setBatchReferenceSection] = useState<string | null>(null); // 参照セクション（スタイルの元）
     const [regenerateReferenceAlso, setRegenerateReferenceAlso] = useState(false); // 参照セクションも再生成するかどうか
+    const [includeMobileInBatch, setIncludeMobileInBatch] = useState(true); // モバイル画像も同時に再生成するか
 
     // セクション復元モーダル
     const [showRestoreModal, setShowRestoreModal] = useState(false);
@@ -127,6 +128,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // デスクトップレイアウトプレビューモード
     const [showDesktopPreview, setShowDesktopPreview] = useState(false);
+
+    // 表示モード（デスクトップ/モバイル）
+    const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
     // Design Analysis State
     const [designImage, setDesignImage] = useState<string | null>(null);
@@ -996,6 +1000,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // デザイン定義のON/OFF・手動入力
     const [useDesignDef, setUseDesignDef] = useState(!!designDefinition);
     const [customDesignInput, setCustomDesignInput] = useState('');
+    // デスクトップ＋モバイル両方を処理するかどうか
+    const [includeMobileInRestyle, setIncludeMobileInRestyle] = useState(true);
 
     // デザイン解析が完了したらトグルをONにする
     useEffect(() => {
@@ -1120,6 +1126,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         setRegeneratingSectionIds(new Set(sectionIds));
 
         let successCount = 0;
+        // 最初のセクションから抽出したカラー（後続セクションの一貫性担保用）
+        let extractedColors: { primary: string; secondary: string; accent: string; background: string } | null = null;
 
         for (let i = 0; i < sectionIds.length; i++) {
             const sectionId = sectionIds[i];
@@ -1151,6 +1159,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                 console.log(`Calling API: /api/sections/${dbSectionId}/regenerate`);
                 console.log(`Style reference URL: ${styleReferenceUrl}`);
+                console.log(`Extracted colors for consistency:`, extractedColors);
 
                 const response = await fetch(`/api/sections/${dbSectionId}/regenerate`, {
                     method: 'POST',
@@ -1162,6 +1171,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         mode: batchRegenerateGenerationMode,
                         designDefinition: !batchReferenceSection && batchRegenerateStyle === 'design-definition' ? designDefinition : undefined,
                         styleReferenceUrl: styleReferenceUrl, // 参照セクションの画像URL
+                        extractedColors: extractedColors, // 最初のセクションから抽出したカラー（一貫性担保用）
                     })
                 });
 
@@ -1185,6 +1195,61 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             : s
                     ));
                     successCount++;
+
+                    // 最初のセクションが成功したら、その画像からカラーを抽出して後続に使用
+                    const generatedImageUrl = data.media?.filePath || data.newImageUrl;
+                    if (i === 0 && !extractedColors && generatedImageUrl && sectionIds.length > 1) {
+                        console.log('Extracting colors from first generated section for consistency...');
+                        try {
+                            const colorResponse = await fetch('/api/analyze-colors', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ imageUrl: generatedImageUrl })
+                            });
+                            if (colorResponse.ok) {
+                                const colorData = await colorResponse.json();
+                                extractedColors = colorData.colors;
+                                console.log('✅ Extracted colors for subsequent sections:', extractedColors);
+                                toast.success('カラーを抽出しました。後続セクションに適用します。');
+                            }
+                        } catch (colorError) {
+                            console.warn('Failed to extract colors, continuing without:', colorError);
+                        }
+                    }
+
+                    // モバイル画像も同時に再生成（オプションがONで、モバイル画像がある場合）
+                    if (includeMobileInBatch && section.mobileImage?.filePath) {
+                        console.log(`Also regenerating mobile image for section ${sectionId}...`);
+                        try {
+                            const mobileResponse = await fetch(`/api/sections/${dbSectionId}/regenerate`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    style: batchReferenceSection ? 'sampling' : (batchRegenerateStyle === 'design-definition' ? 'design-definition' : batchRegenerateStyle),
+                                    colorScheme: batchRegenerateColorScheme !== 'original' ? batchRegenerateColorScheme : undefined,
+                                    customPrompt: batchRegeneratePrompt || undefined,
+                                    mode: batchRegenerateGenerationMode,
+                                    designDefinition: !batchReferenceSection && batchRegenerateStyle === 'design-definition' ? designDefinition : undefined,
+                                    styleReferenceUrl: styleReferenceUrl,
+                                    extractedColors: extractedColors,
+                                    targetImage: 'mobile', // モバイル画像を対象に
+                                })
+                            });
+                            const mobileData = await mobileResponse.json();
+                            if (mobileResponse.ok) {
+                                setSections(prev => prev.map(s =>
+                                    s.id === sectionId
+                                        ? { ...s, mobileImageId: mobileData.newImageId, mobileImage: mobileData.media }
+                                        : s
+                                ));
+                                console.log(`✅ Mobile image regenerated for section ${sectionId}`);
+                            } else {
+                                console.warn(`Mobile regenerate failed for section ${sectionId}:`, mobileData.error);
+                            }
+                        } catch (mobileError: any) {
+                            console.warn(`Mobile regenerate error for section ${sectionId}:`, mobileError.message);
+                        }
+                    }
                 } else {
                     console.error(`Section ${sectionId} API error:`, data.error || 'Unknown error');
                     toast.error(`セクション ${i + 1}: ${data.error || '再生成失敗'}`);
@@ -1214,7 +1279,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         setBatchRegeneratePrompt('');
         setBatchReferenceSection(null); // 参照セクションもリセット
         setRegenerateReferenceAlso(false); // オプションもリセット
-        toast.success(`${successCount}/${sectionIds.length}セクションを再生成しました`);
+        const mobileNote = includeMobileInBatch ? '（モバイル含む）' : '';
+        toast.success(`${successCount}/${sectionIds.length}セクションを再生成しました${mobileNote}`);
     };
 
     // セクション追加の実行
@@ -1406,6 +1472,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 body: JSON.stringify({
                     editOptions,
                     designDefinition: finalDesignDef,
+                    includeMobile: includeMobileInRestyle,
                 })
             });
 
@@ -1462,10 +1529,16 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 <button
                     onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
                     className={clsx(
-                        "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
-                        status === 'published' ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
+                        "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                        status === 'published'
+                            ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                     )}
                 >
+                    <span className={clsx(
+                        "w-1.5 h-1.5 rounded-full",
+                        status === 'published' ? "bg-white animate-pulse" : "bg-gray-400"
+                    )} />
                     {status === 'published' ? '公開中' : '下書き'}
                 </button>
                 <div className="w-px h-6 bg-gray-200" />
@@ -1480,13 +1553,40 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 <Link href={`/p/${initialSlug || pageId}`} target="_blank" className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all" title="新しいタブでプレビュー">
                     <Eye className="h-4 w-4" />
                 </Link>
+                {/* デスクトップ/モバイル切り替えトグル */}
+                <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                    <button
+                        onClick={() => setViewMode('desktop')}
+                        className={clsx(
+                            "p-1.5 rounded-md transition-all",
+                            viewMode === 'desktop'
+                                ? "bg-white text-blue-600 shadow-sm"
+                                : "text-gray-400 hover:text-gray-600"
+                        )}
+                        title="デスクトップ表示"
+                    >
+                        <Monitor className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('mobile')}
+                        className={clsx(
+                            "p-1.5 rounded-md transition-all",
+                            viewMode === 'mobile'
+                                ? "bg-white text-blue-600 shadow-sm"
+                                : "text-gray-400 hover:text-gray-600"
+                        )}
+                        title="モバイル表示"
+                    >
+                        <Smartphone className="h-4 w-4" />
+                    </button>
+                </div>
                 <button
                     onClick={() => setShowDesktopPreview(true)}
                     disabled={sections.filter(s => s.image?.filePath).length === 0}
                     className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="デスクトッププレビュー"
+                    title="フルスクリーンプレビュー"
                 >
-                    <Monitor className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                 </button>
                 <button onClick={handleExport} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all" title="ZIPダウンロード">
                     <Download className="h-4 w-4" />
@@ -1544,35 +1644,44 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     <RotateCw className="h-4 w-4" />
                 </button>
                 <div className="w-px h-6 bg-gray-200" />
-                {/* 4Kボタン */}
+                {/* 4Kアップスケール */}
                 <button
                     onClick={() => setShow4KModal(true)}
-                    className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm"
                     title="4Kアップスケール＆文字修復"
                 >
-                    <span className="text-white font-black text-sm">4K</span>
+                    <span className="text-white font-black text-xs">4K</span>
+                    <span className="text-violet-200 text-xs hidden sm:inline">高画質化</span>
                 </button>
-                {/* API消費メーター */}
+
+                {/* API利用状況 */}
                 {apiCost && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
-                        <span className="text-emerald-600 font-bold text-sm">¥</span>
-                        <div className="flex items-center gap-2 text-xs">
-                            <span className="text-gray-500">今日</span>
-                            <span className="font-bold text-emerald-700">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
-                            <span className="text-gray-300">|</span>
-                            <span className="text-gray-500">今月</span>
-                            <span className="font-bold text-teal-700">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
+                    <div className="flex items-center gap-3 px-3 py-1.5 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
+                            <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
+                        </div>
+                        <div className="w-px h-4 bg-gray-200" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
+                            <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
                         </div>
                     </div>
                 )}
-                <div className="w-px h-6 bg-gray-200" />
+
+                {/* 保存ボタン */}
                 <button
                     onClick={() => handleSave()}
                     disabled={isSaving}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
                 >
-                    {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    <span>保存</span>
+                    {isSaving ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Save className="h-4 w-4" />
+                    )}
+                    <span>{isSaving ? '保存中...' : '保存'}</span>
                 </button>
             </div>
 
@@ -1688,14 +1797,25 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                         }
                                     }}
                                 >
-                                    {section.image?.filePath ? (
+                                    {(viewMode === 'desktop' ? section.image?.filePath : section.mobileImage?.filePath || section.image?.filePath) ? (
                                         <>
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
-                                                src={section.image.filePath}
+                                                src={viewMode === 'mobile' && section.mobileImage?.filePath
+                                                    ? section.mobileImage.filePath
+                                                    : section.image?.filePath}
                                                 alt={section.role}
-                                                className="block w-full h-auto"
+                                                className={clsx(
+                                                    "block h-auto",
+                                                    viewMode === 'mobile' ? "w-full max-w-[390px] mx-auto" : "w-full"
+                                                )}
                                             />
+                                            {/* モバイル画像がない場合の警告 */}
+                                            {viewMode === 'mobile' && !section.mobileImage?.filePath && section.image?.filePath && (
+                                                <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                                    モバイル画像なし
+                                                </div>
+                                            )}
                                             {/* 一括再生成モード選択インジケーター */}
                                             {batchRegenerateMode && (
                                                 <>
@@ -2063,8 +2183,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 "fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 transform transition-transform duration-300 z-40",
                 showAIPanel ? "translate-y-0" : "translate-y-full"
             )}>
-                <div className="max-w-3xl mx-auto p-6">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="max-w-3xl mx-auto w-full px-6 pt-4 pb-2">
+                    <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-purple-500" />
@@ -2076,7 +2196,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-
+                </div>
+                <div className="max-w-3xl mx-auto w-full px-6 pb-6 overflow-y-auto max-h-[60vh]">
                     {/* 処理中の表示 */}
                     {isRestyling ? (
                         <div className="py-8">
@@ -2361,6 +2482,22 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 </label>
                             </div>
 
+                            {/* デスクトップ・モバイル選択 */}
+                            <div className="p-3 rounded-xl border-2 border-blue-200 bg-blue-50">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={includeMobileInRestyle}
+                                        onChange={(e) => setIncludeMobileInRestyle(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div>
+                                        <span className="text-sm font-bold text-gray-800">デスクトップ + モバイル両方を編集</span>
+                                        <p className="text-xs text-gray-500 mt-0.5">同じデザインで両方の画像を順番に処理します</p>
+                                    </div>
+                                </label>
+                            </div>
+
                             {/* 適用ボタン */}
                             <button
                                 onClick={handleRestyle}
@@ -2368,7 +2505,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 mt-4"
                             >
                                 <Sparkles className="h-4 w-4" />
-                                選択した要素を一括変更
+                                {includeMobileInRestyle ? 'デスクトップ・モバイル両方を一括変更' : '選択した要素を一括変更'}
                             </button>
                         </div>
                     )}
@@ -2429,32 +2566,70 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 </div>
             )}
 
-            {/* デスクトッププレビューモーダル */}
+            {/* フルスクリーンプレビューモーダル */}
             {showDesktopPreview && (
                 <div className="fixed inset-0 z-[100] bg-gray-900">
                     {/* ヘッダー */}
                     <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-900 to-transparent">
                         <div className="flex items-center gap-3">
-                            <Monitor className="h-5 w-5 text-white" />
-                            <span className="text-white font-bold">デスクトッププレビュー</span>
+                            {viewMode === 'desktop' ? (
+                                <Monitor className="h-5 w-5 text-white" />
+                            ) : (
+                                <Smartphone className="h-5 w-5 text-white" />
+                            )}
+                            <span className="text-white font-bold">
+                                {viewMode === 'desktop' ? 'デスクトップ' : 'モバイル'}プレビュー
+                            </span>
                             <span className="text-gray-400 text-sm">（実際の表示サイズ）</span>
                         </div>
-                        <button
-                            onClick={() => setShowDesktopPreview(false)}
-                            className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                        >
-                            <X className="h-6 w-6" />
-                        </button>
+                        <div className="flex items-center gap-4">
+                            {/* 表示切り替えトグル */}
+                            <div className="flex items-center bg-white/10 rounded-lg p-0.5">
+                                <button
+                                    onClick={() => setViewMode('desktop')}
+                                    className={clsx(
+                                        "p-2 rounded-md transition-all",
+                                        viewMode === 'desktop'
+                                            ? "bg-white text-gray-900"
+                                            : "text-white/60 hover:text-white"
+                                    )}
+                                >
+                                    <Monitor className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('mobile')}
+                                    className={clsx(
+                                        "p-2 rounded-md transition-all",
+                                        viewMode === 'mobile'
+                                            ? "bg-white text-gray-900"
+                                            : "text-white/60 hover:text-white"
+                                    )}
+                                >
+                                    <Smartphone className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => setShowDesktopPreview(false)}
+                                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* プレビューコンテンツ */}
                     <div className="h-full overflow-y-auto pt-16 pb-8 flex justify-center">
-                        <div className="w-full max-w-[1440px] bg-white shadow-2xl">
-                            {sections.filter(s => s.image?.filePath).map((section, index) => (
+                        <div className={clsx(
+                            "bg-white shadow-2xl transition-all",
+                            viewMode === 'desktop' ? "w-full max-w-[1440px]" : "w-[390px]"
+                        )}>
+                            {sections.filter(s => viewMode === 'desktop' ? s.image?.filePath : (s.mobileImage?.filePath || s.image?.filePath)).map((section, index) => (
                                 <div key={section.id} className="relative">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
-                                        src={section.image?.filePath}
+                                        src={viewMode === 'mobile' && section.mobileImage?.filePath
+                                            ? section.mobileImage.filePath
+                                            : section.image?.filePath}
                                         alt={`セクション ${index + 1}`}
                                         className="w-full h-auto"
                                         style={{ display: 'block' }}
@@ -2463,6 +2638,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm font-bold">
                                         Section {index + 1}
                                     </div>
+                                    {/* モバイル画像なし警告 */}
+                                    {viewMode === 'mobile' && !section.mobileImage?.filePath && (
+                                        <div className="absolute top-4 right-4 bg-yellow-500 text-white px-3 py-1.5 rounded-full text-xs font-bold">
+                                            Desktop画像を表示中
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -2475,7 +2656,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         </span>
                         <span className="text-gray-600">•</span>
                         <span className="text-gray-400 text-sm">
-                            最大幅: 1440px
+                            {viewMode === 'desktop' ? '最大幅: 1440px' : '幅: 390px'}
                         </span>
                         <span className="text-gray-600">•</span>
                         <span className="text-gray-400 text-sm">
@@ -3260,6 +3441,34 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             </label>
                                         </>
                                     )}
+                                </div>
+
+                                {/* モバイル画像も同時に再生成するオプション */}
+                                <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeMobileInBatch}
+                                            onChange={(e) => setIncludeMobileInBatch(e.target.checked)}
+                                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <Monitor className="h-4 w-4 text-purple-600" />
+                                                <span className="text-purple-600">+</span>
+                                                <Smartphone className="h-4 w-4 text-purple-600" />
+                                                <span className="font-bold text-purple-800 text-sm">モバイル画像も同時に再生成</span>
+                                            </div>
+                                            <p className="text-xs text-purple-600 mt-1">
+                                                デスクトップとモバイル両方を同じスタイルで一括再生成します
+                                            </p>
+                                            {includeMobileInBatch && (
+                                                <p className="text-xs text-purple-500 mt-1">
+                                                    ※ モバイル画像がないセクションはデスクトップのみ再生成されます
+                                                </p>
+                                            )}
+                                        </div>
+                                    </label>
                                 </div>
 
                                 {/* デザイン定義を使用（参照セクションがない場合のみ表示） */}
