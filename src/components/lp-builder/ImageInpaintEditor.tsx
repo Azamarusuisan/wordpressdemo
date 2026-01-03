@@ -2197,7 +2197,6 @@ export function ImageInpaintEditor({
                     {showHistory && (
                         <div className="w-80 border-l border-border bg-background animate-in slide-in-from-right duration-200">
                             <InpaintHistoryPanel
-                                originalImage={imageUrl}
                                 onSelectHistory={(history) => {
                                     // 履歴から画像を選択した場合、その結果画像を使用
                                     onSave(history.resultImage);

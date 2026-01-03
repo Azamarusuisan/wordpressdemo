@@ -22,11 +22,21 @@ export async function GET(
     }
 
     try {
+        // セクション情報を取得
+        const section = await prisma.pageSection.findUnique({
+            where: { id: sectionId },
+            include: { page: true }
+        });
+
+        if (!section) {
+            return Response.json({ error: 'Section not found' }, { status: 404 });
+        }
+
         // 履歴を取得（新しい順）
         const history = await prisma.sectionImageHistory.findMany({
             where: { sectionId },
             orderBy: { createdAt: 'desc' },
-            take: 10, // 最新10件まで
+            take: 10,
         });
 
         // 各履歴エントリの画像情報を取得
@@ -44,7 +54,49 @@ export async function GET(
             })
         );
 
-        return Response.json({ history: historyWithImages });
+        // このセクションに対応する可能性のある元画像を探す
+        // 同じページのセクションで使われている画像からタイムスタンプを抽出
+        const pageSections = await prisma.pageSection.findMany({
+            where: { pageId: section.pageId },
+            include: { image: true }
+        });
+
+        const timestamps = new Set<string>();
+        for (const s of pageSections) {
+            if (s.image?.filePath) {
+                // dual-desktop-1767417659743-seg-8.png のような形式からタイムスタンプを抽出
+                const match = s.image.filePath.match(/(\d{13})/);
+                if (match) timestamps.add(match[1]);
+            }
+        }
+
+        // セクションのorder（0-indexed）に対応するseg番号
+        const segNumber = section.order;
+
+        // 同じタイムスタンプ（同じインポートセッション）のseg画像だけを探す
+        let originalImages: any[] = [];
+        for (const ts of timestamps) {
+            const images = await prisma.mediaImage.findMany({
+                where: {
+                    userId: user.id,
+                    filePath: { contains: `${ts}-seg-${segNumber}` }
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 3,
+            });
+            originalImages.push(...images);
+        }
+
+        // 重複を除去
+        const uniqueOriginals = originalImages.filter((img, index, self) =>
+            index === self.findIndex(i => i.id === img.id)
+        );
+
+        return Response.json({
+            history: historyWithImages,
+            originalImages: uniqueOriginals,
+            sectionOrder: section.order,
+        });
     } catch (error: any) {
         console.error('Failed to fetch history:', error);
         return Response.json({ error: error.message }, { status: 500 });
@@ -129,6 +181,52 @@ export async function POST(
         });
     } catch (error: any) {
         console.error('Failed to revert:', error);
+        return Response.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// PUT: 履歴を保存（セクション更新なし、履歴レコードのみ追加）
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id } = await params;
+    const sectionId = parseInt(id);
+
+    if (isNaN(sectionId)) {
+        return Response.json({ error: 'Invalid section ID' }, { status: 400 });
+    }
+
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
+    if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { previousImageId, newImageId, actionType, prompt } = body;
+
+    if (!previousImageId || !newImageId) {
+        return Response.json({ error: 'previousImageId and newImageId are required' }, { status: 400 });
+    }
+
+    try {
+        // 履歴を保存
+        await prisma.sectionImageHistory.create({
+            data: {
+                sectionId: sectionId,
+                userId: user.id,
+                previousImageId,
+                newImageId,
+                actionType: actionType || 'manual',
+                prompt: prompt || null,
+            },
+        });
+
+        return Response.json({ success: true });
+    } catch (error: any) {
+        console.error('Failed to save history:', error);
         return Response.json({ error: error.message }, { status: 500 });
     }
 }

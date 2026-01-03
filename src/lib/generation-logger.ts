@@ -17,7 +17,8 @@ export type GenerationType =
   | 'boundary-connector'
   | 'boundary-design'
   | '4k-upscale'
-  | 'section-generate';
+  | 'section-generate'
+  | 'design-unify';
 
 export interface LogGenerationParams {
   userId?: string | null;

@@ -189,6 +189,20 @@ export async function POST(
             },
         });
 
+        // 履歴を保存（復元用）
+        if (section.imageId) {
+            await prisma.sectionImageHistory.create({
+                data: {
+                    sectionId: sectionId,
+                    userId: user.id,
+                    previousImageId: section.imageId,
+                    newImageId: newMedia.id,
+                    actionType: 'restore-canvas',
+                    prompt: prompt,
+                }
+            });
+        }
+
         // セクション更新
         await prisma.pageSection.update({
             where: { id: sectionId },

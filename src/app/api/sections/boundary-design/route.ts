@@ -346,6 +346,18 @@ export async function POST(request: NextRequest) {
                         sourceType: 'boundary-cut',
                     },
                 });
+                // 履歴保存（上セクション）
+                if (upperSection.imageId) {
+                    await prisma.sectionImageHistory.create({
+                        data: {
+                            sectionId: upperSection.id,
+                            userId: user.id,
+                            previousImageId: upperSection.imageId,
+                            newImageId: newUpperMedia.id,
+                            actionType: 'boundary-design',
+                        }
+                    });
+                }
                 await prisma.pageSection.update({
                     where: { id: upperSection.id },
                     data: { imageId: newUpperMedia.id },
@@ -361,6 +373,18 @@ export async function POST(request: NextRequest) {
                         sourceType: 'boundary-cut',
                     },
                 });
+                // 履歴保存（下セクション）
+                if (lowerSection.imageId) {
+                    await prisma.sectionImageHistory.create({
+                        data: {
+                            sectionId: lowerSection.id,
+                            userId: user.id,
+                            previousImageId: lowerSection.imageId,
+                            newImageId: newLowerMedia.id,
+                            actionType: 'boundary-design',
+                        }
+                    });
+                }
                 await prisma.pageSection.update({
                     where: { id: lowerSection.id },
                     data: { imageId: newLowerMedia.id },

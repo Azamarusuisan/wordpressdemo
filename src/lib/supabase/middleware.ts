@@ -55,7 +55,10 @@ export async function updateSession(request: NextRequest) {
     );
 
     // セッションを更新（重要: auth.getUser()を使用）
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+        console.error('Auth Error:', error.message);
+    }
 
     // /admin ルートへのアクセスをチェック
     if (request.nextUrl.pathname.startsWith('/admin')) {
