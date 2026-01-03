@@ -1454,55 +1454,43 @@ export function ImageInpaintEditor({
                 </div>
 
                 <div className="flex-1 flex overflow-hidden">
-                    {/* Canvas Area - Desktop */}
-                    <div
-                        ref={containerRef}
-                        className={`relative bg-surface-100 overflow-hidden ${
-                            isDualMode
-                                ? `${activeViewport === 'desktop' ? 'flex-[6]' : 'flex-[4]'} border-r-2 ${activeViewport === 'desktop' ? 'border-blue-400' : 'border-gray-200'}`
-                                : 'flex-1'
-                        }`}
-                    >
-                        {/* Viewport Label for Dual Mode */}
-                        {isDualMode && (
-                            <div className={`absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full text-xs font-bold ${
-                                activeViewport === 'desktop' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-                            }`}>
-                                <div className="flex items-center gap-1.5">
-                                    <Monitor className="w-3 h-3" />
-                                    Desktop
+                    {/* Canvas Area - Desktop (show when not dual mode OR when desktop is active) */}
+                    {(!isDualMode || activeViewport === 'desktop') && (
+                        <div
+                            ref={containerRef}
+                            className="relative bg-surface-100 overflow-hidden flex-1"
+                        >
+                            {/* Viewport Label for Dual Mode */}
+                            {isDualMode && (
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white">
+                                    <div className="flex items-center gap-1.5">
+                                        <Monitor className="w-3 h-3" />
+                                        Desktop
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Checkerboard background for transparency hint */}
-                        <div className="absolute inset-0 opacity-[0.03]"
-                            style={{
-                                backgroundImage: 'linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%)',
-                                backgroundSize: '20px 20px',
-                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
-                            }}
-                        />
+                            {/* Checkerboard background for transparency hint */}
+                            <div className="absolute inset-0 opacity-[0.03]"
+                                style={{
+                                    backgroundImage: 'linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%)',
+                                    backgroundSize: '20px 20px',
+                                    backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
+                                }}
+                            />
 
-                        <canvas
-                            ref={canvasRef}
-                            className={`w-full h-full relative z-10 ${
-                                tool === 'select' ? 'cursor-crosshair' :
-                                tool === 'cut' ? 'cursor-row-resize' :
-                                'cursor-grab'
-                            } ${
-                                isDualMode && activeViewport !== 'desktop' ? 'opacity-70' : ''
-                            }`}
-                            onMouseDown={(e) => {
-                                if (isDualMode && activeViewport !== 'desktop') {
-                                    setActiveViewport('desktop');
-                                }
-                                handleMouseDown(e);
-                            }}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                        />
+                            <canvas
+                                ref={canvasRef}
+                                className={`w-full h-full relative z-10 ${
+                                    tool === 'select' ? 'cursor-crosshair' :
+                                    tool === 'cut' ? 'cursor-row-resize' :
+                                    'cursor-grab'
+                                }`}
+                                onMouseDown={handleMouseDown}
+                                onMouseMove={handleMouseMove}
+                                onMouseUp={handleMouseUp}
+                                onMouseLeave={handleMouseUp}
+                            />
 
                         {/* Toolbar - 下部中央に水平配置して画像を邪魔しないように */}
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg border border-border shadow-lg z-20">
@@ -1554,20 +1542,17 @@ export function ImageInpaintEditor({
                                 <RotateCcw className="w-4 h-4" />
                             </button>
                         </div>
-                    </div>
+                        </div>
+                    )}
 
-                    {/* Canvas Area - Mobile (Dual Mode Only) */}
-                    {isDualMode && (
+                    {/* Canvas Area - Mobile (show only when mobile is active in dual mode) */}
+                    {isDualMode && activeViewport === 'mobile' && (
                         <div
                             ref={mobileContainerRef}
-                            className={`relative bg-surface-100 overflow-hidden ${
-                                activeViewport === 'mobile' ? 'flex-[6] border-l-2 border-purple-400' : 'flex-[4] border-l-2 border-gray-200'
-                            }`}
+                            className="relative bg-surface-100 overflow-hidden flex-1"
                         >
                             {/* Viewport Label */}
-                            <div className={`absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full text-xs font-bold ${
-                                activeViewport === 'mobile' ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-600'
-                            }`}>
+                            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full text-xs font-bold bg-purple-500 text-white">
                                 <div className="flex items-center gap-1.5">
                                     <Smartphone className="w-3 h-3" />
                                     Mobile
@@ -1585,9 +1570,7 @@ export function ImageInpaintEditor({
 
                             <canvas
                                 ref={mobileCanvasRef}
-                                className={`w-full h-full relative z-10 ${tool === 'select' ? 'cursor-crosshair' : 'cursor-grab'} ${
-                                    activeViewport !== 'mobile' ? 'opacity-70' : ''
-                                }`}
+                                className={`w-full h-full relative z-10 ${tool === 'select' ? 'cursor-crosshair' : 'cursor-grab'}`}
                                 onMouseDown={handleMobileMouseDown}
                                 onMouseMove={handleMobileMouseMove}
                                 onMouseUp={handleMobileMouseUp}
@@ -1635,95 +1618,69 @@ export function ImageInpaintEditor({
                                     <p className="text-xs text-muted-foreground">編集したい領域を選択してください。</p>
                                 </div>
 
-                                {/* Selections List */}
-                                {selections.length > 0 && (
-                                    <div className="mb-6">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className="text-xs font-bold text-foreground">{selections.length} 箇所の選択範囲</p>
-                                            <button
-                                                onClick={clearAllSelections}
-                                                className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
-                                            >
-                                                全て削除
-                                            </button>
-                                        </div>
-                                        <div className="space-y-2 overflow-y-auto pr-1">
-                                            {selections.map((sel, index) => {
-                                                const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500'];
-                                                return (
-                                                    <div key={sel.id} className="flex items-center justify-between p-3 bg-surface-50 border border-border rounded-md hover:border-primary/30 transition-colors group">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
-                                                                {index + 1}
-                                                            </span>
-                                                            <span className="text-xs font-medium text-muted-foreground">
-                                                                {Math.round(sel.width)} x {Math.round(sel.height)} px
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => removeSelection(sel.id)}
-                                                            className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
+                                {/* Selections List - Show based on active viewport */}
+                                {(() => {
+                                    const isDesktopActive = !isDualMode || activeViewport === 'desktop';
+                                    const currentSelections = isDesktopActive ? selections : mobileSelections;
+                                    const clearFunc = isDesktopActive ? clearAllSelections : clearAllMobileSelections;
+                                    const removeFunc = isDesktopActive ? removeSelection : removeMobileSelection;
+                                    const colors = isDesktopActive
+                                        ? ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-violet-500']
+                                        : ['bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-indigo-500'];
+                                    const bgStyle = isDesktopActive
+                                        ? 'bg-surface-50 border-border hover:border-primary/30'
+                                        : 'bg-purple-50 border-purple-200 hover:border-purple-300';
 
-                                {selections.length === 0 && (
-                                    <div className="mb-6 p-6 bg-surface-50 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
-                                        <div className="w-10 h-10 bg-surface-100 rounded-full flex items-center justify-center mb-3">
-                                            <Plus className="w-5 h-5 text-muted-foreground" />
-                                        </div>
-                                        <p className="text-sm font-bold text-foreground">範囲を選択</p>
-                                        <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />編集エリアを指定します。</p>
-                                    </div>
-                                )}
-
-                                {/* Mobile Selections List (Dual Mode) */}
-                                {isDualMode && mobileSelections.length > 0 && (
-                                    <div className="mb-6">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                                <Smartphone className="w-3 h-3 text-purple-500" />
-                                                {mobileSelections.length} 箇所（モバイル）
-                                            </p>
-                                            <button
-                                                onClick={clearAllMobileSelections}
-                                                className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
-                                            >
-                                                全て削除
-                                            </button>
-                                        </div>
-                                        <div className="space-y-2 overflow-y-auto pr-1">
-                                            {mobileSelections.map((sel, index) => {
-                                                const colors = ['bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-indigo-500'];
-                                                return (
-                                                    <div key={sel.id} className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-md hover:border-purple-300 transition-colors group">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
-                                                                {index + 1}
-                                                            </span>
-                                                            <span className="text-xs font-medium text-muted-foreground">
-                                                                {Math.round(sel.width)} x {Math.round(sel.height)} px
-                                                            </span>
+                                    if (currentSelections.length > 0) {
+                                        return (
+                                            <div className="mb-6">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                        {!isDesktopActive && <Smartphone className="w-3 h-3 text-purple-500" />}
+                                                        {isDesktopActive && isDualMode && <Monitor className="w-3 h-3 text-blue-500" />}
+                                                        {currentSelections.length} 箇所の選択範囲
+                                                    </p>
+                                                    <button
+                                                        onClick={clearFunc}
+                                                        className="text-[10px] font-bold text-red-500 hover:text-red-600 border border-red-100 bg-red-50 px-2 py-1 rounded-sm transition-colors"
+                                                    >
+                                                        全て削除
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2 overflow-y-auto pr-1">
+                                                    {currentSelections.map((sel, index) => (
+                                                        <div key={sel.id} className={`flex items-center justify-between p-3 border rounded-md transition-colors group ${bgStyle}`}>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${colors[index % colors.length]}`}>
+                                                                    {index + 1}
+                                                                </span>
+                                                                <span className="text-xs font-medium text-muted-foreground">
+                                                                    {Math.round(sel.width)} x {Math.round(sel.height)} px
+                                                                </span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => removeFunc(sel.id)}
+                                                                className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-sm transition-all opacity-50 group-hover:opacity-100"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            onClick={() => removeMobileSelection(sel.id)}
-                                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-                                                            title="削除"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="mb-6 p-6 bg-surface-50 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-center">
+                                            <div className="w-10 h-10 bg-surface-100 rounded-full flex items-center justify-center mb-3">
+                                                <Plus className="w-5 h-5 text-muted-foreground" />
+                                            </div>
+                                            <p className="text-sm font-bold text-foreground">範囲を選択</p>
+                                            <p className="text-xs text-muted-foreground mt-1">画像上をドラッグして<br />編集エリアを指定します。</p>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
                                 {/* Reference Design Image */}
                                 <div className="mb-6">
