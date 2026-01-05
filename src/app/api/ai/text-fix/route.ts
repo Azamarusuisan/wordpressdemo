@@ -95,32 +95,32 @@ export async function POST(request: NextRequest) {
         const textWords = correctedText.trim().split(/\s+/);
         const isShortText = textWords.length <= 3 && correctedText.length <= 25;
 
-        // 文字化け修正専用プロンプト - Gemini 3 Pro最適化（94%精度達成のためのベストプラクティス適用）
-        textFixPrompt = `You are an expert image editor specializing in text correction. Edit the provided image to fix the text.
+        // 文字化け修正専用プロンプト - 日本語LP最適化版
+        textFixPrompt = `You are an expert image editor specializing in JAPANESE text correction. Edit the provided image to fix the text.
 
-【TEXT CORRECTION TASK】
-Replace the corrupted text with the correct text below.
+【TEXT CORRECTION TASK - JAPANESE PRIORITY】
+Replace the corrupted/garbled text with the correct Japanese text below.
 
 Current text (corrupted/garbled):
 "${originalText}"
 
-Correct text to render:
+Correct text to render (EXACT characters):
 "${correctedText}"
 ${isShortText ? `
-[WORD-BY-WORD SPECIFICATION - for higher accuracy]
+[CHARACTER-BY-CHARACTER SPECIFICATION - 一文字ずつ正確に]
 ${textWords.map((word, i) => `Word ${i + 1}: "${word}"`).join('\n')}
 ` : ''}
 【TARGET AREA】
 ${areasDescription}
 
-【CRITICAL TEXT RENDERING RULES - for 94% accuracy】
-1. Render text with EVENLY SPACED LETTERS
-2. Use a clean, bold, sans-serif font style matching the original design
-3. Place text on a solid contrasting background (maintain original)
-4. Render each character with crystal-clear, sharp edges
-5. For Japanese text: prioritize hiragana clarity, then katakana, then kanji
-6. Maintain exact font weight, size, and color from original
-7. Apply proper anti-aliasing for smooth edges without blur
+【🇯🇵 JAPANESE TEXT RENDERING RULES - 日本語文字の厳格なルール】
+1. RENDER EACH CHARACTER INDIVIDUALLY: ひらがな、カタカナ、漢字を一文字ずつ正確に描画
+2. NO CHARACTER SUBSTITUTION: 類似文字への置換禁止（例: あ→お、シ→ツ）
+3. CORRECT STROKE ORDER APPEARANCE: 正しい画数・筆順で描かれた見た目
+4. EVEN SPACING (等幅): 文字間は均等に配置
+5. HIGH CONTRAST: 背景に対して十分なコントラストを確保
+6. SANS-SERIF GOTHIC: ゴシック体（サンセリフ）で太めの線を使用
+7. SHARP EDGES: アンチエイリアスは最小限、エッジは鮮明に
 
 【DESIGN PRESERVATION RULES】
 1. ONLY modify text in the specified area
@@ -129,7 +129,7 @@ ${areasDescription}
 4. Do NOT change anything outside the target area
 5. Output the COMPLETE edited image
 
-Generate the edited image with crystal-clear, perfectly legible text now.`;
+Generate the edited image with pixel-perfect, crystal-clear Japanese text now.`;
 
         // Gemini 3.0 Pro Image で画像生成
         const response = await fetch(
@@ -151,10 +151,10 @@ Generate the edited image with crystal-clear, perfectly legible text now.`;
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        temperature: 0.5,  // 低温度でテキスト精度向上（ドキュメント推奨）
+                        temperature: 0.3,  // 低温度で日本語テキスト精度を最大化
                         // 高解像度出力を指定
                         imageConfig: {
-                            imageSize: "2K"  // テキスト精度と解像度のバランス
+                            imageSize: "4K"  // 最高解像度で日本語文字の鮮明度向上
                         }
                     },
                     toolConfig: {

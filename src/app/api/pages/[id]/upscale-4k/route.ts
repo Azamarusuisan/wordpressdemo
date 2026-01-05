@@ -69,6 +69,8 @@ export async function POST(
     let textCorrection = true;
     let resolution = '2K'; // デフォルト
     let sectionIds: number[] | null = null; // null = 全体, 配列 = 個別
+    let useRealESRGAN = false; // Real-ESRGAN使用フラグ
+    let customPrompt: string | null = null; // カスタムプロンプト
     try {
         const body = await request.json();
         textCorrection = body.textCorrection !== false;
@@ -78,6 +80,14 @@ export async function POST(
         // 個別セクション指定
         if (body.sectionIds && Array.isArray(body.sectionIds) && body.sectionIds.length > 0) {
             sectionIds = body.sectionIds.map((id: any) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+        }
+        // Real-ESRGAN使用オプション
+        if (body.useRealESRGAN === true) {
+            useRealESRGAN = true;
+        }
+        // カスタムプロンプト
+        if (body.customPrompt && typeof body.customPrompt === 'string' && body.customPrompt.trim()) {
+            customPrompt = body.customPrompt.trim();
         }
     } catch {
         // ボディがない場合はデフォルト値を使用
@@ -169,31 +179,76 @@ export async function POST(
                 // 元画像をPNGに変換（AIに送る前処理）
                 const pngBuffer = await sharp(imageBuffer).png().toBuffer();
 
-                // AIで4Kアップスケール（＋オプションで文字補正）を実行
-                // 元画像をそのまま送ることで、文字が崩れる前の状態をAIが認識できる
-                const enhancedBuffer = await upscaleWith4KAI(
-                    pngBuffer,
-                    imageMeta.width,
-                    imageMeta.height,
-                    newWidth,
-                    newHeight,
-                    googleApiKey,
-                    textCorrection
-                );
-
                 let finalBuffer: Buffer;
-                if (!enhancedBuffer) {
-                    log.error(`Section ${section.id}: AI 4K upscale failed, using sharp fallback`);
-                    // AIが失敗した場合はsharpでフォールバック
-                    finalBuffer = await sharp(imageBuffer)
-                        .resize(newWidth, newHeight, {
-                            kernel: sharp.kernel.lanczos3,
-                            withoutEnlargement: false,
-                        })
-                        .png()
-                        .toBuffer();
+
+                if (useRealESRGAN) {
+                    // Real-ESRGANモード: 内部APIを呼び出し
+                    log.info(`Section ${section.id}: Using Real-ESRGAN upscaler`);
+                    try {
+                        const esrganScale = targetWidth / imageMeta.width >= 3 ? 4 : 2;
+                        const esrganResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ai/upscale`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                // 認証ヘッダーを転送
+                                'Cookie': request.headers.get('cookie') || '',
+                            },
+                            body: JSON.stringify({
+                                imageBase64: `data:image/png;base64,${pngBuffer.toString('base64')}`,
+                                scale: esrganScale,
+                                useRealESRGAN: true,
+                            }),
+                        });
+
+                        if (esrganResponse.ok) {
+                            const esrganResult = await esrganResponse.json();
+                            if (esrganResult.success && esrganResult.media?.filePath) {
+                                // Real-ESRGANの結果をダウンロード
+                                const esrganImageResponse = await fetch(esrganResult.media.filePath);
+                                finalBuffer = Buffer.from(await esrganImageResponse.arrayBuffer());
+                                log.success(`Section ${section.id}: Real-ESRGAN upscale successful`);
+                            } else {
+                                throw new Error('Real-ESRGAN response invalid');
+                            }
+                        } else {
+                            throw new Error(`Real-ESRGAN API error: ${esrganResponse.status}`);
+                        }
+                    } catch (esrganError: any) {
+                        log.error(`Section ${section.id}: Real-ESRGAN failed (${esrganError.message}), using Sharp fallback`);
+                        finalBuffer = await sharp(imageBuffer)
+                            .resize(newWidth, newHeight, {
+                                kernel: sharp.kernel.lanczos3,
+                                withoutEnlargement: false,
+                            })
+                            .sharpen({ sigma: 1.0 })
+                            .png()
+                            .toBuffer();
+                    }
                 } else {
-                    finalBuffer = enhancedBuffer;
+                    // Gemini AIモード: 文字補正＋高画質化
+                    const enhancedBuffer = await upscaleWith4KAI(
+                        pngBuffer,
+                        imageMeta.width,
+                        imageMeta.height,
+                        newWidth,
+                        newHeight,
+                        googleApiKey,
+                        textCorrection,
+                        customPrompt
+                    );
+
+                    if (!enhancedBuffer) {
+                        log.error(`Section ${section.id}: AI 4K upscale failed, using sharp fallback`);
+                        finalBuffer = await sharp(imageBuffer)
+                            .resize(newWidth, newHeight, {
+                                kernel: sharp.kernel.lanczos3,
+                                withoutEnlargement: false,
+                            })
+                            .png()
+                            .toBuffer();
+                    } else {
+                        finalBuffer = enhancedBuffer;
+                    }
                 }
 
                 // アップロード
@@ -293,14 +348,28 @@ async function upscaleWith4KAI(
     targetWidth: number,
     targetHeight: number,
     apiKey: string,
-    textCorrection: boolean = true
+    textCorrection: boolean = true,
+    customPrompt: string | null = null
 ): Promise<Buffer | null> {
     const scaleRatio = (targetWidth / originalWidth).toFixed(1);
+
+    // カスタムプロンプト（正しいテキスト）がある場合
+    const customTextSection = customPrompt
+        ? `
+【正しいテキスト（参照）】★最重要★
+以下が画像内に表示されるべき正しいテキストです。
+画像内の文字化け・崩れた文字を見つけ、以下の正しいテキストに置き換えてください：
+
+「${customPrompt}」
+
+上記のテキストを参照して、画像内の対応する箇所を正確に修正してください。
+`
+        : '';
 
     // 文字補正ON/OFFでプロンプトを切り替え
     const textCorrectionSection = textCorrection
         ? `
-【文字・テキストの補正】★最重要★
+【文字・テキストの補正】★重要★
 - すべての日本語テキストを鮮明で読みやすく再描画してください
 - 文字化け、ぼやけ、にじみを完全に修正してください
 - フォントの形状を正確に維持しながら、エッジをシャープにしてください
@@ -309,6 +378,7 @@ async function upscaleWith4KAI(
         : '';
 
     const prompt = `この画像を高画質に補正・強化してください。
+${customTextSection}
 ${textCorrectionSection}
 【画質向上タスク】
 - ぼやけた部分をシャープに鮮明化
@@ -319,7 +389,7 @@ ${textCorrectionSection}
 
 【絶対に守ること】
 - 画像のレイアウト、構成、デザインは一切変更しないでください
-- テキストの内容（文言）を変えずに、見た目の品質だけを改善してください
+${customPrompt ? '- 正しいテキストに従って文字を修正してください' : '- テキストの内容（文言）を変えずに、見た目の品質だけを改善してください'}
 - 元の画像の雰囲気やスタイルを維持してください
 - アスペクト比を維持してください
 

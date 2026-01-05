@@ -127,6 +127,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [upscaleResolution, setUpscaleResolution] = useState<'1K' | '2K' | '4K'>('2K'); // 解像度選択
     const [upscaleMode, setUpscaleMode] = useState<'all' | 'individual'>('all'); // 全体/個別
     const [selectedUpscaleSections, setSelectedUpscaleSections] = useState<number[]>([]); // 選択されたセクションID
+    const [useRealESRGAN, setUseRealESRGAN] = useState(false); // Real-ESRGAN使用フラグ
+    const [geminiUpscalePrompt, setGeminiUpscalePrompt] = useState(''); // Gemini AI用カスタムプロンプト
     const [upscale4KProgress, setUpscale4KProgress] = useState<{
         current: number;
         total: number;
@@ -1534,6 +1536,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     textCorrection: textCorrection4K,
                     resolution: upscaleResolution,
                     sectionIds: upscaleMode === 'individual' ? selectedUpscaleSections : null,
+                    useRealESRGAN: useRealESRGAN,
+                    customPrompt: geminiUpscalePrompt || null,
                 }),
             });
 
@@ -3785,26 +3789,90 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     </div>
                                 )}
 
-                                {/* 文字補正ON/OFFスイッチ */}
-                                <div className="mb-4 p-3 bg-gray-800 rounded-lg">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <div>
-                                            <span className="text-white text-sm font-medium">文字補正</span>
-                                            <p className="text-gray-500 text-xs mt-0.5">日本語テキストを鮮明に修正</p>
-                                        </div>
-                                        <div className="relative">
-                                            <input
-                                                type="checkbox"
-                                                checked={textCorrection4K}
-                                                onChange={(e) => setTextCorrection4K(e.target.checked)}
-                                                className="sr-only"
-                                            />
-                                            <div className={`w-11 h-6 rounded-full transition-colors ${textCorrection4K ? 'bg-violet-600' : 'bg-gray-600'}`}>
-                                                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${textCorrection4K ? 'translate-x-5' : ''}`} />
+                                {/* AIエンジン選択 */}
+                                <div className="mb-4">
+                                    <span className="text-white text-sm font-medium block mb-2">AIエンジン</span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* Gemini AI オプション */}
+                                        <button
+                                            onClick={() => {
+                                                setUseRealESRGAN(false);
+                                                setTextCorrection4K(true);
+                                            }}
+                                            className={`p-3 rounded-lg border-2 transition-all text-left ${!useRealESRGAN
+                                                ? 'bg-violet-600/20 border-violet-500 ring-2 ring-violet-500/50'
+                                                : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-sm font-bold ${!useRealESRGAN ? 'text-violet-300' : 'text-gray-300'}`}>
+                                                    Gemini AI
+                                                </span>
+                                                {!useRealESRGAN && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-violet-500 text-white rounded-full">選択中</span>
+                                                )}
                                             </div>
-                                        </div>
-                                    </label>
+                                            <p className="text-[10px] text-gray-400 leading-tight">
+                                                ✅ 文字化け修正<br />
+                                                ✅ 文字内容の変更可<br />
+                                                ✅ 画質向上
+                                            </p>
+                                        </button>
+
+                                        {/* 超解像AI オプション */}
+                                        <button
+                                            onClick={() => {
+                                                setUseRealESRGAN(true);
+                                                setTextCorrection4K(false);
+                                            }}
+                                            className={`p-3 rounded-lg border-2 transition-all text-left ${useRealESRGAN
+                                                ? 'bg-cyan-600/20 border-cyan-500 ring-2 ring-cyan-500/50'
+                                                : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-sm font-bold ${useRealESRGAN ? 'text-cyan-300' : 'text-gray-300'}`}>
+                                                    超解像AI
+                                                </span>
+                                                {useRealESRGAN && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-cyan-500 text-white rounded-full">選択中</span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-gray-400 leading-tight">
+                                                ✅ 超高画質化<br />
+                                                ✅ エッジ鮮明化<br />
+                                                ⚠️ 文字補正なし
+                                            </p>
+                                        </button>
+                                    </div>
+                                    <p className="text-gray-500 text-[10px] mt-2">
+                                        {!useRealESRGAN
+                                            ? '💡 文字化けを修正したい場合はGemini AIがおすすめ'
+                                            : '💡 文字を変えずに画質だけ上げたい場合は超解像AIがおすすめ'
+                                        }
+                                    </p>
                                 </div>
+
+                                {/* Gemini AI選択時のプロンプト入力欄 */}
+                                {!useRealESRGAN && (
+                                    <div className="mb-4 p-3 bg-violet-900/30 rounded-lg border border-violet-700/50">
+                                        <label className="block">
+                                            <span className="text-violet-300 text-sm font-medium block mb-2">
+                                                修正指示（任意）
+                                            </span>
+                                            <textarea
+                                                value={geminiUpscalePrompt}
+                                                onChange={(e) => setGeminiUpscalePrompt(e.target.value)}
+                                                placeholder="例：文字を大きくして / ○○を△△に変更 / もっと鮮明に"
+                                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-violet-500 resize-none"
+                                                rows={2}
+                                            />
+                                            <p className="text-gray-500 text-[10px] mt-1">
+                                                空欄の場合は文字補正＋画質向上のみ実行
+                                            </p>
+                                        </label>
+                                    </div>
+                                )}
 
                                 <div className="flex gap-3">
                                     <button

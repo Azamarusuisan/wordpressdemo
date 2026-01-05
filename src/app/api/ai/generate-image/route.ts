@@ -126,7 +126,12 @@ Generate the image to EXACTLY match this visual style and color palette.
                         parts: [{ text: imagePrompt }]
                     }],
                     generationConfig: {
-                        responseModalities: ["IMAGE", "TEXT"]
+                        responseModalities: ["IMAGE", "TEXT"],
+                        temperature: 0.8,  // 創造性を維持しつつ品質を安定
+                        // 最高解像度出力
+                        imageConfig: {
+                            imageSize: "4K"  // LP用高解像度画像
+                        }
                     }
                 })
             }
