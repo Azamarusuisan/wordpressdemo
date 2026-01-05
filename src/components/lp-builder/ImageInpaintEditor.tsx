@@ -753,7 +753,12 @@ export function ImageInpaintEditor({
 
         if (sel && sel.width > 10 && sel.height > 10 && (editorMode === 'inpaint' || editorMode === 'text-fix')) {
             const newId = Date.now().toString();
-            setSelections(prev => [...prev, { ...sel, id: newId }]);
+            console.log('[ImageInpaintEditor] Adding selection:', { ...sel, id: newId }, 'Current count:', selections.length);
+            setSelections(prev => {
+                const newSelections = [...prev, { ...sel, id: newId }];
+                console.log('[ImageInpaintEditor] New selections count:', newSelections.length);
+                return newSelections;
+            });
         } else if (sel && sel.width > 10 && sel.height > 10 && editorMode === 'button') {
             const newId = Date.now().toString();
             const newButtonArea: ClickableAreaDraft = {
