@@ -1,6 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -33,16 +34,18 @@ model Page {
 }
 
 model PageSection {
-  id            Int         @id @default(autoincrement())
-  pageId        Int
-  page          Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  order         Int
-  role          String
-  imageId       Int?
-  image         MediaImage? @relation("DesktopImage", fields: [imageId], references: [id])
-  mobileImageId Int?
-  mobileImage   MediaImage? @relation("MobileImage", fields: [mobileImageId], references: [id])
-  config        String?
+  id                   Int         @id @default(autoincrement())
+  pageId               Int
+  page                 Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  order                Int
+  role                 String
+  imageId              Int?
+  image                MediaImage? @relation("DesktopImage", fields: [imageId], references: [id])
+  mobileImageId        Int?
+  mobileImage          MediaImage? @relation("MobileImage", fields: [mobileImageId], references: [id])
+  config               String?
+  boundaryOffsetTop    Int         @default(0) // AI認識範囲の上方向拡張（ピクセル）
+  boundaryOffsetBottom Int         @default(0) // AI認識範囲の下方向拡張（ピクセル）
 }
 
 model MediaImage {

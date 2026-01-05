@@ -87,6 +87,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [boundaryFixMode, setBoundaryFixMode] = useState(false); // 境界選択モード
     const [selectedBoundaries, setSelectedBoundaries] = useState<Set<number>>(new Set()); // 選択された境界のインデックス
 
+    // 境界ドラッグ調整
+    const [draggingBoundaryIndex, setDraggingBoundaryIndex] = useState<number | null>(null);
+    const [boundaryDragOffset, setBoundaryDragOffset] = useState(0); // ドラッグ中のピクセルオフセット
+    const [boundaryDragStartY, setBoundaryDragStartY] = useState(0); // ドラッグ開始Y座標
+
     // 一括再生成モード（複数選択対応）
     const [batchRegenerateMode, setBatchRegenerateMode] = useState(false);
     const [selectedSectionsForRegenerate, setSelectedSectionsForRegenerate] = useState<Set<string>>(new Set());
@@ -113,12 +118,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [backgroundUnifyMode, setBackgroundUnifyMode] = useState(false);
     const [selectedSectionsForBackgroundUnify, setSelectedSectionsForBackgroundUnify] = useState<Set<string>>(new Set());
     const [showBackgroundUnifyModal, setShowBackgroundUnifyModal] = useState(false);
-
-    // セクション追加モーダル
-    const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-    const [addSectionIndex, setAddSectionIndex] = useState<number>(0); // 挿入位置
-    const [addSectionPrompt, setAddSectionPrompt] = useState('');
-    const [isAddingSection, setIsAddingSection] = useState(false);
 
     // HD高画質化モーダル
     const [show4KModal, setShow4KModal] = useState(false);
@@ -260,6 +259,72 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [showDesktopPreview]);
+
+    // 境界ドラッグ用のref（useEffect内で最新値を参照するため）
+    const boundaryDragOffsetRef = React.useRef(boundaryDragOffset);
+    const draggingBoundaryIndexRef = React.useRef(draggingBoundaryIndex);
+    const boundaryDragStartYRef = React.useRef(boundaryDragStartY);
+
+    // refを最新値に更新
+    React.useEffect(() => {
+        boundaryDragOffsetRef.current = boundaryDragOffset;
+    }, [boundaryDragOffset]);
+    React.useEffect(() => {
+        draggingBoundaryIndexRef.current = draggingBoundaryIndex;
+    }, [draggingBoundaryIndex]);
+    React.useEffect(() => {
+        boundaryDragStartYRef.current = boundaryDragStartY;
+    }, [boundaryDragStartY]);
+
+    // 境界ドラッグのグローバルイベント処理
+    useEffect(() => {
+        if (draggingBoundaryIndex === null) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const deltaY = e.clientY - boundaryDragStartYRef.current;
+            // 最大±300pxに制限
+            const clampedDelta = Math.max(-300, Math.min(300, deltaY));
+            setBoundaryDragOffset(clampedDelta);
+        };
+
+        const handleMouseUp = () => {
+            const currentOffset = boundaryDragOffsetRef.current;
+            const boundaryIndex = draggingBoundaryIndexRef.current;
+
+            if (boundaryIndex !== null && Math.abs(currentOffset) > 5) {
+                // ドラッグ量が5px以上なら境界オフセットをセクションに保存
+                setSections(prev => prev.map((s, idx) => {
+                    if (idx === boundaryIndex) {
+                        // 上セクション: 下端の境界オフセットを保存（最大±300pxに制限）
+                        const existing = s.boundaryOffsetBottom || 0;
+                        const newOffset = Math.max(-300, Math.min(300, existing + currentOffset));
+                        return { ...s, boundaryOffsetBottom: newOffset };
+                    }
+                    if (idx === boundaryIndex + 1) {
+                        // 下セクション: 上端の境界オフセットを保存（最大±300pxに制限）
+                        const existing = s.boundaryOffsetTop || 0;
+                        const newOffset = Math.max(-300, Math.min(300, existing - currentOffset));
+                        return { ...s, boundaryOffsetTop: newOffset };
+                    }
+                    return s;
+                }));
+
+                toast.success('境界位置を調整しました（再生成時に反映）', { id: 'boundary-adjust' });
+            }
+
+            setDraggingBoundaryIndex(null);
+            setBoundaryDragOffset(0);
+            setBoundaryDragStartY(0);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [draggingBoundaryIndex]); // 依存を最小限に
 
     // API消費量を取得
     useEffect(() => {
@@ -1218,6 +1283,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     customPrompt: regeneratePrompt || undefined,
                     mode: regenerateMode,
                     designDefinition: regenerateStyle === 'design-definition' ? designDefinition : undefined,
+                    // 境界オフセット情報（ユーザーが調整した認識範囲）
+                    boundaryOffsetTop: section.boundaryOffsetTop || undefined,
+                    boundaryOffsetBottom: section.boundaryOffsetBottom || undefined,
                 })
             });
 
@@ -1330,6 +1398,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         styleReferenceUrl: styleReferenceUrl || undefined,
                         extractedColors: extractedColors || undefined,
                         unifyDesign: !!batchReferenceSection, // デザイン統一モード
+                        // 境界オフセット情報
+                        boundaryOffsetTop: section.boundaryOffsetTop || undefined,
+                        boundaryOffsetBottom: section.boundaryOffsetBottom || undefined,
                     })
                 });
 
@@ -1392,6 +1463,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     extractedColors: extractedColors || undefined,
                                     targetImage: 'mobile',
                                     unifyDesign: !!batchReferenceSection,
+                                    // 境界オフセット情報
+                                    boundaryOffsetTop: section.boundaryOffsetTop || undefined,
+                                    boundaryOffsetBottom: section.boundaryOffsetBottom || undefined,
                                 })
                             });
                             const mobileData = await mobileResponse.json();
@@ -1441,81 +1515,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         setRegenerateReferenceAlso(false); // オプションもリセット
         const mobileNote = includeMobileInBatch ? '（モバイル含む）' : '';
         toast.success(`${successCount}/${sectionIds.length}セクションを再生成しました${mobileNote}`);
-    };
-
-    // セクション追加の実行
-    const handleAddSection = async () => {
-        if (!addSectionPrompt.trim()) {
-            toast.error('生成内容を入力してください');
-            return;
-        }
-
-        setIsAddingSection(true);
-
-        try {
-            // 前後のセクション画像を取得（コンテキスト用）
-            const prevSection = addSectionIndex > 0 ? sections[addSectionIndex - 1] : null;
-            const nextSection = addSectionIndex < sections.length ? sections[addSectionIndex] : null;
-
-            // サイズを決定（前後のセクションから推測）
-            const referenceSection = prevSection || nextSection;
-            const width = referenceSection?.image?.width || 750;
-            const estimatedHeight = 400; // デフォルト高さ
-
-            const response = await fetch('/api/sections/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: addSectionPrompt,
-                    width,
-                    height: estimatedHeight,
-                    prevImageUrl: prevSection?.image?.filePath,
-                    nextImageUrl: nextSection?.image?.filePath,
-                    designDefinition: designDefinition || undefined,
-                }),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || '生成に失敗しました');
-            }
-
-            const data = await response.json();
-
-            // 新しいセクションを挿入
-            const newSection = {
-                id: `temp-${Date.now()}`,
-                order: addSectionIndex,
-                role: 'generated',
-                imageId: data.mediaId,
-                image: {
-                    id: data.mediaId,
-                    filePath: data.imageUrl,
-                    width: data.width,
-                    height: data.height,
-                },
-            };
-
-            setSections(prev => {
-                const updated = [...prev];
-                // 挿入位置以降のorderを更新
-                for (let i = addSectionIndex; i < updated.length; i++) {
-                    updated[i] = { ...updated[i], order: updated[i].order + 1 };
-                }
-                // 新しいセクションを挿入
-                updated.splice(addSectionIndex, 0, newSection);
-                return updated;
-            });
-
-            toast.success('セクションを追加しました');
-            setShowAddSectionModal(false);
-            setAddSectionPrompt('');
-
-        } catch (error: any) {
-            toast.error(error.message || 'セクション追加に失敗しました');
-        } finally {
-            setIsAddingSection(false);
-        }
     };
 
     // 4Kアップスケール実行
@@ -1633,6 +1632,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 finalDesignDef = { description: customDesignInput.trim() };
             }
 
+            // 各セクションの境界オフセット情報を収集（IDは文字列に統一）
+            const sectionBoundaries = sections.map(s => ({
+                id: String(s.id),
+                boundaryOffsetTop: s.boundaryOffsetTop || 0,
+                boundaryOffsetBottom: s.boundaryOffsetBottom || 0,
+            }));
+
             const response = await fetch(`/api/pages/${pageId}/restyle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1640,6 +1646,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     editOptions,
                     designDefinition: finalDesignDef,
                     includeMobile: includeMobileInRestyle,
+                    sectionBoundaries, // 境界オフセット情報を送信
                 })
             });
 
@@ -1940,22 +1947,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         </div>
                     ) : (
                         <>
-                            {/* 先頭にセクション追加ボタン */}
-                            {!boundaryFixMode && sections.length > 0 && (
-                                <div className="py-2 flex justify-center">
-                                    <button
-                                        onClick={() => {
-                                            setAddSectionIndex(0);
-                                            setShowAddSectionModal(true);
-                                        }}
-                                        className="group/add flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-blue-500 text-gray-400 hover:text-white text-xs font-bold rounded-full shadow transition-all hover:scale-110 border border-gray-200 hover:border-blue-500"
-                                        title="先頭にセクションを追加"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        <span className="hidden group-hover/add:inline">先頭に追加</span>
-                                    </button>
-                                </div>
-                            )}
                             {sections.map((section, sectionIndex) => (
                                 <React.Fragment key={section.id}>
                                     <div
@@ -2195,79 +2186,98 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             </div>
                                         )}
                                     </div>
-                                    {/* 境界差し替えチェックボックス（モード時のみ表示） */}
-                                    {boundaryFixMode &&
-                                        sectionIndex < sections.length - 1 &&
+                                    {/* 境界ドラッグハンドル（通常モード時）または境界差し替えチェックボックス（境界修正モード時） */}
+                                    {sectionIndex < sections.length - 1 &&
                                         section.image?.filePath &&
                                         sections[sectionIndex + 1].image?.filePath && (
-                                            <div className="relative h-0 z-10">
+                                            <div
+                                                className="relative h-0 z-10"
+                                                style={{
+                                                    // ドラッグ中は保存済み+ドラッグオフセット、それ以外は保存済みのみ
+                                                    transform: `translateY(${
+                                                        draggingBoundaryIndex === sectionIndex
+                                                            ? Math.max(-300, Math.min(300, (section.boundaryOffsetBottom || 0) + boundaryDragOffset))
+                                                            : (section.boundaryOffsetBottom || 0)
+                                                    }px)`
+                                                }}
+                                            >
                                                 <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedBoundaries(prev => {
-                                                                const next = new Set(prev);
-                                                                if (next.has(sectionIndex)) {
-                                                                    next.delete(sectionIndex);
-                                                                } else {
-                                                                    next.add(sectionIndex);
-                                                                }
-                                                                return next;
-                                                            });
-                                                        }}
-                                                        className={clsx(
-                                                            "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full shadow-lg transition-all hover:scale-105 border-2",
-                                                            selectedBoundaries.has(sectionIndex)
-                                                                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white"
-                                                                : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
-                                                        )}
-                                                    >
-                                                        {selectedBoundaries.has(sectionIndex) ? (
-                                                            <Check className="h-4 w-4" />
-                                                        ) : (
-                                                            <Scissors className="h-4 w-4" />
-                                                        )}
-                                                        境界 {sectionIndex + 1}
-                                                    </button>
+                                                    {boundaryFixMode ? (
+                                                        // 境界修正モード: チェックボックス
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedBoundaries(prev => {
+                                                                    const next = new Set(prev);
+                                                                    if (next.has(sectionIndex)) {
+                                                                        next.delete(sectionIndex);
+                                                                    } else {
+                                                                        next.add(sectionIndex);
+                                                                    }
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            className={clsx(
+                                                                "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full shadow-lg transition-all hover:scale-105 border-2",
+                                                                selectedBoundaries.has(sectionIndex)
+                                                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white"
+                                                                    : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
+                                                            )}
+                                                        >
+                                                            {selectedBoundaries.has(sectionIndex) ? (
+                                                                <Check className="h-4 w-4" />
+                                                            ) : (
+                                                                <Scissors className="h-4 w-4" />
+                                                            )}
+                                                            境界 {sectionIndex + 1}
+                                                        </button>
+                                                    ) : (
+                                                        // 通常モード: ドラッグ可能な境界ハンドル
+                                                        <div
+                                                            className={clsx(
+                                                                "flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-full shadow-lg border-2 cursor-ns-resize select-none transition-all",
+                                                                draggingBoundaryIndex === sectionIndex
+                                                                    ? "bg-purple-600 text-white border-purple-400 scale-110"
+                                                                    : "bg-white/90 text-gray-600 border-gray-300 hover:border-purple-400 hover:text-purple-600"
+                                                            )}
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                setDraggingBoundaryIndex(sectionIndex);
+                                                                setBoundaryDragStartY(e.clientY);
+                                                                setBoundaryDragOffset(0);
+                                                            }}
+                                                            title="上下にドラッグして境界を調整"
+                                                        >
+                                                            <GripVertical className="h-5 w-5" />
+                                                            境界 {sectionIndex + 1}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
-                                    {/* セクション追加ボタン（境界修正モードでない時に表示） */}
-                                    {!boundaryFixMode && sectionIndex < sections.length - 1 && (
-                                        <div className="relative h-0 z-10">
-                                            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setAddSectionIndex(sectionIndex + 1);
-                                                        setShowAddSectionModal(true);
-                                                    }}
-                                                    className="group/add flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-blue-500 text-gray-400 hover:text-white text-xs font-bold rounded-full shadow-lg transition-all hover:scale-110 border border-gray-200 hover:border-blue-500"
-                                                    title="ここにセクションを追加"
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                    <span className="hidden group-hover/add:inline">追加</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
                                 </React.Fragment>
                             ))}
                         </>
                     )}
 
-                    {/* 最後にセクション追加ボタン */}
-                    {!boundaryFixMode && sections.length > 0 && (
-                        <div className="py-4 flex justify-center">
+                    {/* 境界を追加ボタン（セクションが2つ以上ある場合） */}
+                    {sections.length >= 2 && !boundaryFixMode && (
+                        <div className="py-6 flex justify-center">
                             <button
                                 onClick={() => {
-                                    setAddSectionIndex(sections.length);
-                                    setShowAddSectionModal(true);
+                                    // 全セクションの境界オフセットをリセット（新規追加モード）
+                                    setSections(prev => prev.map(s => ({
+                                        ...s,
+                                        boundaryOffsetTop: 0,
+                                        boundaryOffsetBottom: 0
+                                    })));
+                                    toast.success('境界オフセットをリセットしました。各境界をドラッグして調整してください。');
                                 }}
-                                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-blue-500 text-gray-500 hover:text-white text-sm font-bold rounded-full shadow-lg transition-all hover:scale-105 border border-gray-200 hover:border-blue-500"
+                                className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm"
                             >
-                                <Plus className="h-5 w-5" />
-                                セクションを追加
+                                <Expand className="h-5 w-5" />
+                                境界を調整（リセット）
                             </button>
                         </div>
                     )}
@@ -3488,123 +3498,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         handleSave(updatedSections);
                     }}
                 />
-            )}
-
-            {/* セクション追加モーダル */}
-            {showAddSectionModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
-                        {/* ヘッダー */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                                    <Plus className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-gray-900">セクションを追加</h2>
-                                    <p className="text-xs text-gray-500">
-                                        {addSectionIndex === 0 ? '先頭' : addSectionIndex === sections.length ? '末尾' : `${addSectionIndex}番目`}に挿入
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setShowAddSectionModal(false);
-                                    setAddSectionPrompt('');
-                                }}
-                                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {isAddingSection ? (
-                            <div className="p-8 flex flex-col items-center justify-center">
-                                <Loader2 className="h-10 w-10 text-blue-600 animate-spin mb-4" />
-                                <p className="text-sm font-medium text-gray-700">セクションを生成中...</p>
-                                <p className="text-xs text-gray-500 mt-2">AIが画像を生成しています</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="p-5 space-y-4">
-                                    {/* デザイン定義がある場合は表示 */}
-                                    {designDefinition && (
-                                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                            <div className="flex items-center gap-2 text-sm text-green-700">
-                                                <Palette className="h-4 w-4" />
-                                                <span className="font-medium">デザイン定義を適用します</span>
-                                            </div>
-                                            <p className="text-xs text-green-600 mt-1">
-                                                {designDefinition.vibe || '統一されたスタイル'}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* 生成内容 */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                                            生成内容 <span className="text-red-500">*</span>
-                                        </label>
-                                        <textarea
-                                            value={addSectionPrompt}
-                                            onChange={(e) => setAddSectionPrompt(e.target.value)}
-                                            placeholder="例: 3つの特徴を並べたセクション。アイコン付きで、タイトルと説明文を含む。背景は薄いグレー。"
-                                            rows={4}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            どんなセクションを追加したいか、内容やレイアウトを具体的に説明してください
-                                        </p>
-                                    </div>
-
-                                    {/* クイックテンプレート */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-2">
-                                            クイックテンプレート
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {[
-                                                { label: '特徴セクション', prompt: '3つの特徴をアイコン付きで横並びに配置。各特徴にはタイトルと短い説明文。' },
-                                                { label: 'CTAセクション', prompt: '目立つボタン付きのコールトゥアクションセクション。キャッチコピーと補足テキスト。' },
-                                                { label: '料金プラン', prompt: '3つの料金プランを横並びで表示。各プランに価格、特徴リスト、申込ボタン。' },
-                                                { label: 'FAQ', prompt: 'よくある質問セクション。Q&A形式で3〜4問程度。アコーディオン風のデザイン。' },
-                                            ].map((template) => (
-                                                <button
-                                                    key={template.label}
-                                                    onClick={() => setAddSectionPrompt(template.prompt)}
-                                                    className="px-3 py-2 text-xs text-left bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors"
-                                                >
-                                                    {template.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* フッター */}
-                                <div className="flex items-center justify-end gap-3 px-5 py-4 border-t bg-gray-50">
-                                    <button
-                                        onClick={() => {
-                                            setShowAddSectionModal(false);
-                                            setAddSectionPrompt('');
-                                        }}
-                                        className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
-                                    >
-                                        キャンセル
-                                    </button>
-                                    <button
-                                        onClick={handleAddSection}
-                                        disabled={!addSectionPrompt.trim()}
-                                        className="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        <Sparkles className="h-4 w-4" />
-                                        生成して追加
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
             )}
 
             {/* 4Kアップスケールモーダル */}

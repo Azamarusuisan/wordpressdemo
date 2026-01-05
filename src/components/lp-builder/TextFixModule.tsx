@@ -47,20 +47,22 @@ export function TextFixModule({
         setOcrComplete(false);
 
         try {
-            // 最初の選択範囲の座標を0-1の比率に変換
-            const cropArea = {
-                x: selections[0].x / imageWidth,
-                y: selections[0].y / imageHeight,
-                width: selections[0].width / imageWidth,
-                height: selections[0].height / imageHeight,
-            };
+            // 全ての選択範囲の座標を0-1の比率に変換
+            const cropAreas = selections.map(sel => ({
+                x: sel.x / imageWidth,
+                y: sel.y / imageHeight,
+                width: sel.width / imageWidth,
+                height: sel.height / imageHeight,
+            }));
+
+            console.log('[TextFixModule] Sending OCR request with', cropAreas.length, 'areas:', cropAreas);
 
             const response = await fetch('/api/ai/ocr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     imageUrl,
-                    cropArea,
+                    cropAreas, // 複数範囲を送信
                 }),
             });
 
@@ -178,12 +180,12 @@ export function TextFixModule({
                         {isOcrLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                文字を認識中...
+                                {selections.length > 1 ? `${selections.length}箇所の文字を認識中...` : '文字を認識中...'}
                             </>
                         ) : (
                             <>
                                 <Eye className="w-4 h-4" />
-                                選択範囲の文字を読み取る
+                                {selections.length > 1 ? `${selections.length}箇所の文字を読み取る` : '選択範囲の文字を読み取る'}
                             </>
                         )}
                     </button>

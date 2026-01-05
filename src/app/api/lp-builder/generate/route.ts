@@ -97,19 +97,20 @@ ${info.tone === 'energetic' ? 'ダイナミックで情熱的な' : info.tone ==
 今すぐアクションを起こしたくなるようなインパクトのある画像。`,
 };
 
-// 画像生成関数（リトライ付き）
+// 画像生成関数（リトライ付き・参照画像対応）
 async function generateSectionImage(
     sectionType: string,
     businessInfo: any,
     apiKey: string,
     userId: string | null,
     maxRetries: number = 3,
-    designDefinition?: any // Added Design Definition
-): Promise<number | null> {
+    designDefinition?: any, // Added Design Definition
+    referenceImageBase64?: string // 参照画像（前のセクションの画像）
+): Promise<{ imageId: number | null; base64: string | null }> {
     const promptGenerator = SECTION_IMAGE_PROMPTS[sectionType];
     if (!promptGenerator) {
         log.warn(`No image prompt defined for section type: ${sectionType}`);
-        return null;
+        return { imageId: null, base64: null };
     }
 
     const imagePrompt = promptGenerator(businessInfo);
@@ -144,7 +145,17 @@ The generated image MUST match this specific visual style.
 `;
     }
 
-    const fullPrompt = `${imagePrompt}${styleInstruction}
+    // 参照画像がある場合は統一感を強調
+    const referenceInstruction = referenceImageBase64
+        ? `\n\n【最重要：デザイン統一】
+この画像は、添付した参照画像と同じLPの一部として生成してください。
+- 参照画像と完全に同じ色調・背景色・グラデーションを使用
+- 同じ雰囲気・スタイル・照明条件を維持
+- 境界部分が自然に繋がるように配色を合わせる
+- 参照画像のデザインテイストを100%引き継ぐこと`
+        : '';
+
+    const fullPrompt = `${imagePrompt}${styleInstruction}${referenceInstruction}
 
 【要件】
 - 縦長の画像（アスペクト比 9:16）を生成すること
@@ -157,6 +168,24 @@ The generated image MUST match this specific visual style.
         try {
             log.progress(`Generating image for [${sectionType}] section... (attempt ${attempt}/${maxRetries})`);
 
+            // リクエストのpartsを構築（参照画像があれば含める）
+            const requestParts: any[] = [];
+
+            if (referenceImageBase64) {
+                // 参照画像を最初に追加
+                requestParts.push({
+                    inlineData: {
+                        mimeType: 'image/png',
+                        data: referenceImageBase64
+                    }
+                });
+                requestParts.push({
+                    text: `上記の画像は、このLPの他のセクションです。この画像と完全に統一されたデザインで、以下のセクションを生成してください：\n\n${fullPrompt}`
+                });
+            } else {
+                requestParts.push({ text: fullPrompt });
+            }
+
             // Gemini 3 Pro Image で画像生成
             let response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
@@ -165,7 +194,7 @@ The generated image MUST match this specific visual style.
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{
-                            parts: [{ text: fullPrompt }]
+                            parts: requestParts
                         }],
                         generationConfig: {
                             responseModalities: ["IMAGE", "TEXT"]
@@ -209,7 +238,7 @@ The generated image MUST match this specific visual style.
                         continue;
                     }
                     log.error(`[${sectionType}] 画像生成に失敗しました（両モデルでエラー）`);
-                    return null;
+                    return { imageId: null, base64: null };
                 }
                 data = await fallbackResponse.json();
             } else {
@@ -236,7 +265,7 @@ The generated image MUST match this specific visual style.
                     continue;
                 }
                 log.error(`[${sectionType}] 画像データが取得できませんでした`);
-                return null;
+                return { imageId: null, base64: null };
             }
 
             // 成功 - 画像をアップロード
@@ -258,7 +287,7 @@ The generated image MUST match this specific visual style.
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     continue;
                 }
-                return null;
+                return { imageId: null, base64: null };
             }
 
             const { data: { publicUrl } } = supabase
@@ -278,7 +307,7 @@ The generated image MUST match this specific visual style.
             });
 
             log.success(`Image generated for [${sectionType}] → ID: ${media.id}`);
-            return media.id;
+            return { imageId: media.id, base64: base64Image };
 
         } catch (error: any) {
             log.error(`Exception on attempt ${attempt} for [${sectionType}]: ${error.message || error}`);
@@ -291,7 +320,7 @@ The generated image MUST match this specific visual style.
     }
 
     log.error(`====== [${sectionType}] 画像生成に完全に失敗しました（${maxRetries}回リトライ後）======`);
-    return null;
+    return { imageId: null, base64: null };
 }
 
 export async function POST(req: NextRequest) {
@@ -423,63 +452,53 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             }, { status: 500 });
         }
 
-        // 各セクションの画像を並列生成（高速化）
+        // 各セクションの画像を順次生成（参照画像方式で統一感を確保）
         const sections = generatedData.sections || [];
         const sectionCount = sections.length;
-        log.info(`========== Starting PARALLEL image generation for ${sectionCount} sections ==========`);
+        log.info(`========== Starting SEQUENTIAL image generation with reference for ${sectionCount} sections ==========`);
 
-        // 並列で画像生成を実行（Promise.allSettledで全て完了を待つ）
-        const imageGenerationPromises = sections.map((section: any, index: number) => {
-            // 各リクエストに少しずつ遅延を入れてレート制限を回避（0ms, 500ms, 1000ms, ...）
-            const delay = index * 500;
-            return new Promise<{ section: any; imageId: number | null }>(async (resolve) => {
-                await new Promise(r => setTimeout(r, delay));
-                log.progress(`Processing section: ${section.type}`);
+        // 順次生成：前のセクションの画像を参照として渡す
+        const sectionsWithImages: any[] = [];
+        let previousImageBase64: string | null = null;
 
-                const imageId = await generateSectionImage(
-                    section.type,
-                    businessInfo,
-                    GOOGLE_API_KEY,
-                    user.id,
-                    3, // maxRetries
-                    body.designDefinition // Pass Design Definition
-                );
+        for (let index = 0; index < sections.length; index++) {
+            const section = sections[index];
+            log.progress(`Processing section ${index + 1}/${sections.length}: ${section.type}`);
 
-                resolve({
-                    section,
-                    imageId,
-                });
+            const result = await generateSectionImage(
+                section.type,
+                businessInfo,
+                GOOGLE_API_KEY,
+                user.id,
+                3, // maxRetries
+                body.designDefinition, // Pass Design Definition
+                previousImageBase64 || undefined // 前のセクションの画像を参照として渡す
+            );
+
+            sectionsWithImages.push({
+                ...section,
+                imageId: result.imageId,
+                properties: section.data || section.properties || {},
             });
-        });
 
-        const results = await Promise.allSettled(imageGenerationPromises);
-
-        // 結果を整理
-        const sectionsWithImages = results.map((result, index) => {
-            if (result.status === 'fulfilled') {
-                const { section, imageId } = result.value;
-                return {
-                    ...section,
-                    imageId: imageId,
-                    properties: section.data || section.properties || {},
-                };
-            } else {
-                // Promise rejected（通常は起きないが念のため）
-                log.error(`Section ${index} failed: ${result.reason}`);
-                return {
-                    ...sections[index],
-                    imageId: null,
-                    properties: sections[index].data || sections[index].properties || {},
-                };
+            // 成功した場合、この画像を次のセクションの参照として保持
+            if (result.base64) {
+                previousImageBase64 = result.base64;
+                log.info(`Reference image updated for next section`);
             }
-        });
+
+            // レート制限回避のため少し待機
+            if (index < sections.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
 
         // 結果サマリー
         const successCount = sectionsWithImages.filter(s => s.imageId).length;
         const failCount = sectionsWithImages.filter(s => !s.imageId).length;
 
         log.info(`========== Image generation complete ==========`);
-        log.success(`Successfully generated: ${successCount}/${sectionsWithImages.length} sections (parallel)`);
+        log.success(`Successfully generated: ${successCount}/${sectionsWithImages.length} sections (sequential with reference)`);
         if (failCount > 0) {
             log.warn(`Failed to generate: ${failCount} sections`);
         }

@@ -72,6 +72,16 @@ export const imageGenerationSchema = z.object({
 
 export type ImageGenerationInput = z.infer<typeof imageGenerationSchema>;
 
+// カスタムセクション境界のスキーマ
+const customSectionSchema = z.object({
+    index: z.number(),
+    startY: z.number(),
+    endY: z.number(),
+    height: z.number(),
+    label: z.string(),
+    confidence: z.number().optional(),
+});
+
 // Import URL Schema
 export const importUrlSchema = z.object({
     url: z.string().url('有効なURLを入力してください'),
@@ -81,6 +91,7 @@ export const importUrlSchema = z.object({
     colorScheme: z.enum(['original', 'blue', 'green', 'purple', 'orange', 'monochrome']).optional(),
     layoutOption: z.enum(['keep', 'modernize', 'compact']).optional(),
     customPrompt: z.string().max(500, 'カスタムプロンプトは500文字以内で入力してください').optional(),
+    customSections: z.array(customSectionSchema).optional(), // ユーザーが調整したセクション境界
 });
 
 export type ImportUrlInput = z.infer<typeof importUrlSchema>;
@@ -110,6 +121,8 @@ export const pageSectionsUpdateSchema = z.object({
         imageId: z.number().nullable().optional(),
         mobileImageId: z.number().nullable().optional(),
         config: z.record(z.string(), z.unknown()).nullable().optional(),
+        boundaryOffsetTop: z.number().optional(),
+        boundaryOffsetBottom: z.number().optional(),
     })),
     headerConfig: z.record(z.string(), z.unknown()).optional(),
     status: z.enum(['draft', 'published']).optional(),

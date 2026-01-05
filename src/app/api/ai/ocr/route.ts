@@ -4,16 +4,20 @@ import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import sharp from 'sharp';
 
+interface CropArea {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 interface OCRRequest {
     imageUrl?: string;
     imageBase64?: string;
-    // Optional: crop area (0-1 ratio)
-    cropArea?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
+    // Optional: single crop area (0-1 ratio) - legacy support
+    cropArea?: CropArea;
+    // Optional: multiple crop areas (0-1 ratio)
+    cropAreas?: CropArea[];
 }
 
 export async function POST(request: NextRequest) {
@@ -28,7 +32,12 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { imageUrl, imageBase64, cropArea }: OCRRequest = await request.json();
+        const { imageUrl, imageBase64, cropArea, cropAreas }: OCRRequest = await request.json();
+
+        // 複数範囲と単一範囲を統合
+        const areas: CropArea[] = cropAreas || (cropArea ? [cropArea] : []);
+
+        console.log(`[OCR] Received ${areas.length} crop areas:`, JSON.stringify(areas));
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
         if (!GOOGLE_API_KEY) {
@@ -61,45 +70,80 @@ export async function POST(request: NextRequest) {
         }
 
         // クロップ処理（選択範囲がある場合）
-        let processedBuffer: Buffer;
-        if (cropArea) {
-            // 0-1の比率からピクセル座標に変換
-            const cropX = Math.round(cropArea.x * metadata.width);
-            const cropY = Math.round(cropArea.y * metadata.height);
-            const cropWidth = Math.round(cropArea.width * metadata.width);
-            const cropHeight = Math.round(cropArea.height * metadata.height);
+        let processedBuffers: Buffer[] = [];
 
-            // 範囲チェック
-            const safeX = Math.max(0, Math.min(cropX, metadata.width - 1));
-            const safeY = Math.max(0, Math.min(cropY, metadata.height - 1));
-            const safeWidth = Math.min(cropWidth, metadata.width - safeX);
-            const safeHeight = Math.min(cropHeight, metadata.height - safeY);
+        if (areas.length > 0) {
+            // 複数の選択範囲それぞれをクロップ
+            for (let i = 0; i < areas.length; i++) {
+                const area = areas[i];
 
-            if (safeWidth < 10 || safeHeight < 10) {
-                throw new Error('選択範囲が小さすぎます');
+                // 0-1の比率からピクセル座標に変換
+                const cropX = Math.round(area.x * metadata.width);
+                const cropY = Math.round(area.y * metadata.height);
+                const cropWidth = Math.round(area.width * metadata.width);
+                const cropHeight = Math.round(area.height * metadata.height);
+
+                // 範囲チェック
+                const safeX = Math.max(0, Math.min(cropX, metadata.width - 1));
+                const safeY = Math.max(0, Math.min(cropY, metadata.height - 1));
+                const safeWidth = Math.min(cropWidth, metadata.width - safeX);
+                const safeHeight = Math.min(cropHeight, metadata.height - safeY);
+
+                if (safeWidth < 10 || safeHeight < 10) {
+                    console.log(`[OCR] Skipping area ${i + 1}: too small`);
+                    continue;
+                }
+
+                console.log(`[OCR] Cropping area ${i + 1}: ${safeX},${safeY} ${safeWidth}x${safeHeight} from ${metadata.width}x${metadata.height}`);
+
+                // クロップ実行
+                const croppedBuffer = await sharp(imageBuffer)
+                    .extract({
+                        left: safeX,
+                        top: safeY,
+                        width: safeWidth,
+                        height: safeHeight
+                    })
+                    .png()
+                    .toBuffer();
+
+                processedBuffers.push(croppedBuffer);
             }
 
-            console.log(`[OCR] Cropping: ${safeX},${safeY} ${safeWidth}x${safeHeight} from ${metadata.width}x${metadata.height}`);
-
-            // クロップ実行
-            processedBuffer = await sharp(imageBuffer)
-                .extract({
-                    left: safeX,
-                    top: safeY,
-                    width: safeWidth,
-                    height: safeHeight
-                })
-                .png()
-                .toBuffer();
+            if (processedBuffers.length === 0) {
+                throw new Error('有効な選択範囲がありません');
+            }
         } else {
             // クロップなしの場合はそのまま
-            processedBuffer = await sharp(imageBuffer).png().toBuffer();
+            processedBuffers.push(await sharp(imageBuffer).png().toBuffer());
         }
 
-        const base64Data = processedBuffer.toString('base64');
+        // 複数画像の場合はGeminiに全部送る
+        console.log(`[OCR] Processed ${processedBuffers.length} images for OCR`);
 
-        // OCR用プロンプト - シンプルに
-        const ocrPrompt = `この画像内のテキストを全て読み取ってください。
+        const imageParts = processedBuffers.map((buf, idx) => ({
+            inlineData: {
+                mimeType: 'image/png',
+                data: buf.toString('base64')
+            }
+        }));
+
+        // OCR用プロンプト - 複数画像対応
+        const imageCount = imageParts.length;
+        const ocrPrompt = imageCount > 1
+            ? `${imageCount}枚の画像内のテキストを全て読み取ってください。
+
+【ルール】
+1. 各画像を「【画像1】」「【画像2】」のように区切って出力してください
+2. 日本語・英語・数字・記号を全て正確に読み取ってください
+3. テキストの位置関係（上から下、左から右）を維持して出力してください
+4. 改行は元の改行を維持してください
+5. 文字化けや判読困難な文字があれば、最も近い推測を記載してください
+6. テキストのみを出力し、説明文は不要です
+7. 画像にテキストがない場合は「(テキストなし)」と出力してください
+
+読み取ったテキスト:`
+            : `この画像内のテキストを全て読み取ってください。
 
 【ルール】
 1. 日本語・英語・数字・記号を全て正確に読み取ってください
@@ -111,7 +155,9 @@ export async function POST(request: NextRequest) {
 
 読み取ったテキスト:`;
 
-        // Gemini Vision APIでOCR実行
+        // Gemini Vision APIでOCR実行（複数画像対応）
+        const parts: any[] = [...imageParts, { text: ocrPrompt }];
+
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
             {
@@ -119,19 +165,11 @@ export async function POST(request: NextRequest) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{
-                        parts: [
-                            {
-                                inlineData: {
-                                    mimeType: 'image/png',
-                                    data: base64Data
-                                }
-                            },
-                            { text: ocrPrompt }
-                        ]
+                        parts: parts
                     }],
                     generationConfig: {
                         temperature: 0.1, // 低い温度でより正確に
-                        maxOutputTokens: 2048
+                        maxOutputTokens: 4096 // 複数画像対応で増やす
                     }
                 })
             }

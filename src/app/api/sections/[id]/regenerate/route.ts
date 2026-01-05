@@ -39,6 +39,11 @@ const regenerateSchema = z.object({
     }).optional(),
     // 対象画像（desktop or mobile）
     targetImage: z.enum(['desktop', 'mobile']).default('desktop'),
+    // 境界オフセット（AIへの認識範囲指示用）
+    // boundaryOffsetTop: このセクションの上端をどれだけ上に拡張するか（ピクセル）
+    // boundaryOffsetBottom: このセクションの下端をどれだけ下に拡張するか（ピクセル）
+    boundaryOffsetTop: z.number().optional(),
+    boundaryOffsetBottom: z.number().optional(),
 });
 
 // スタイル定義
@@ -79,7 +84,7 @@ export async function POST(
         }, { status: 400 });
     }
 
-    const { style = 'professional', colorScheme, customPrompt, mode, contextStyle, designDefinition, styleReferenceUrl, extractedColors, targetImage } = validation.data;
+    const { style = 'professional', colorScheme, customPrompt, mode, contextStyle, designDefinition, styleReferenceUrl, extractedColors, targetImage, boundaryOffsetTop, boundaryOffsetBottom } = validation.data;
 
     try {
         log.info(`========== Starting Regenerate for Section ${sectionId} ==========`);
@@ -189,6 +194,22 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
             ? { position: 'フッターセクション', role: 'CTA、問い合わせ、著作権表示' }
             : { position: `コンテンツセクション（${segmentIndex + 1}/${totalSegments}）`, role: '本文コンテンツ' };
 
+        // 境界オフセット情報（ユーザーが調整した認識範囲）
+        // 拡張画像を作成してAIに渡すので、AIには「この拡張された画像全体を見て、論理的なまとまりを認識して」と伝える
+        const boundaryInfo = (boundaryOffsetTop || boundaryOffsetBottom)
+            ? `【重要：境界調整済み画像】この画像はユーザーが境界を調整した結果、前後のセクションの一部を含めて拡張されています。${
+                boundaryOffsetTop ? `上部に前セクションの下部${Math.abs(boundaryOffsetTop)}px分が追加されています。` : ''
+            }${
+                boundaryOffsetBottom ? `下部に次セクションの上部${Math.abs(boundaryOffsetBottom)}px分が追加されています。` : ''
+            }
+この拡張画像全体を見て、見出し・本文・画像などが論理的にまとまった形で再生成してください。
+特に見出しとその下のコンテンツが分離しないよう、意味のあるまとまりとして扱ってください。`
+            : '';
+
+        if (boundaryInfo) {
+            log.info(`Boundary adjustment: top=${boundaryOffsetTop || 0}px, bottom=${boundaryOffsetBottom || 0}px`);
+        }
+
         // ========================================
         // 参照画像方式：ユーザー指定または最初のセクションの画像を参照として使用
         // ========================================
@@ -281,6 +302,7 @@ ${extractedColorsInstruction}${styleReferenceInstruction}【重要】この画�
 【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
 - 役割：${segmentInfo.role}
+${boundaryInfo ? `\n${boundaryInfo}` : ''}
 
 【絶対厳守ルール】
 1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
@@ -303,6 +325,7 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
 ${extractedColorsInstruction}${styleReferenceInstruction}【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
 - 役割：${segmentInfo.role}
+${boundaryInfo ? `\n${boundaryInfo}` : ''}
 
 【絶対厳守ルール】
 1. 画像サイズ維持：入力画像と完全に同じ縦横比・解像度で出力する
@@ -325,7 +348,131 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
         // 画像をダウンロード
         const imageResponse = await fetch(targetImageData.filePath);
         const imageArrayBuffer = await imageResponse.arrayBuffer();
-        const imageBuffer = Buffer.from(imageArrayBuffer);
+        let imageBuffer = Buffer.from(imageArrayBuffer);
+
+        // 境界オフセットがある場合、前後のセクション画像を結合して拡張画像を作成
+        // これにより、AIは境界調整された認識範囲を正しく見ることができる
+        let expandedImageInfo: { originalHeight: number; expandedTop: number; expandedBottom: number } | null = null;
+
+        if (boundaryOffsetTop || boundaryOffsetBottom) {
+            log.info(`Boundary offsets detected: top=${boundaryOffsetTop || 0}px, bottom=${boundaryOffsetBottom || 0}px`);
+
+            const currentMeta = await sharp(imageBuffer).metadata();
+            const currentWidth = currentMeta.width || 750;
+            const currentHeight = currentMeta.height || 400;
+
+            // 前のセクション画像（上方向に拡張する場合）
+            let topExtensionBuffer: Buffer | null = null;
+            let topExtensionHeight = 0;
+            if (boundaryOffsetTop && boundaryOffsetTop > 0 && segmentIndex > 0) {
+                const prevSection = allSections[segmentIndex - 1];
+                const prevImageUrl = isMobile ? prevSection.mobileImage?.filePath : prevSection.image?.filePath;
+                if (prevImageUrl) {
+                    try {
+                        const prevResponse = await fetch(prevImageUrl);
+                        const prevBuffer = Buffer.from(await prevResponse.arrayBuffer());
+                        const prevMeta = await sharp(prevBuffer).metadata();
+
+                        // 前のセクションの下部からboundaryOffsetTop分を切り出す
+                        const extractHeight = Math.min(boundaryOffsetTop, prevMeta.height || 0);
+                        const extractTop = (prevMeta.height || 0) - extractHeight;
+
+                        if (extractHeight > 0) {
+                            topExtensionBuffer = await sharp(prevBuffer)
+                                .extract({
+                                    left: 0,
+                                    top: extractTop,
+                                    width: prevMeta.width || currentWidth,
+                                    height: extractHeight
+                                })
+                                .resize(currentWidth, extractHeight) // 幅を合わせる
+                                .toBuffer();
+                            topExtensionHeight = extractHeight;
+                            log.info(`Extracted ${extractHeight}px from previous section for top extension`);
+                        }
+                    } catch (e: any) {
+                        log.error(`Failed to extract top extension: ${e.message}`);
+                    }
+                }
+            }
+
+            // 次のセクション画像（下方向に拡張する場合）
+            let bottomExtensionBuffer: Buffer | null = null;
+            let bottomExtensionHeight = 0;
+            if (boundaryOffsetBottom && boundaryOffsetBottom > 0 && segmentIndex < allSections.length - 1) {
+                const nextSection = allSections[segmentIndex + 1];
+                const nextImageUrl = isMobile ? nextSection.mobileImage?.filePath : nextSection.image?.filePath;
+                if (nextImageUrl) {
+                    try {
+                        const nextResponse = await fetch(nextImageUrl);
+                        const nextBuffer = Buffer.from(await nextResponse.arrayBuffer());
+                        const nextMeta = await sharp(nextBuffer).metadata();
+
+                        // 次のセクションの上部からboundaryOffsetBottom分を切り出す
+                        const extractHeight = Math.min(boundaryOffsetBottom, nextMeta.height || 0);
+
+                        if (extractHeight > 0) {
+                            bottomExtensionBuffer = await sharp(nextBuffer)
+                                .extract({
+                                    left: 0,
+                                    top: 0,
+                                    width: nextMeta.width || currentWidth,
+                                    height: extractHeight
+                                })
+                                .resize(currentWidth, extractHeight) // 幅を合わせる
+                                .toBuffer();
+                            bottomExtensionHeight = extractHeight;
+                            log.info(`Extracted ${extractHeight}px from next section for bottom extension`);
+                        }
+                    } catch (e: any) {
+                        log.error(`Failed to extract bottom extension: ${e.message}`);
+                    }
+                }
+            }
+
+            // 画像を結合（上部拡張 + 現在の画像 + 下部拡張）
+            if (topExtensionBuffer || bottomExtensionBuffer) {
+                const compositeImages: sharp.OverlayOptions[] = [];
+                let yOffset = 0;
+                const totalHeight = topExtensionHeight + currentHeight + bottomExtensionHeight;
+
+                // ベース画像（透明）を作成
+                let compositeBase = sharp({
+                    create: {
+                        width: currentWidth,
+                        height: totalHeight,
+                        channels: 4,
+                        background: { r: 255, g: 255, b: 255, alpha: 1 }
+                    }
+                });
+
+                // 上部拡張
+                if (topExtensionBuffer) {
+                    compositeImages.push({ input: topExtensionBuffer, top: yOffset, left: 0 });
+                    yOffset += topExtensionHeight;
+                }
+
+                // 現在の画像
+                compositeImages.push({ input: imageBuffer, top: yOffset, left: 0 });
+                yOffset += currentHeight;
+
+                // 下部拡張
+                if (bottomExtensionBuffer) {
+                    compositeImages.push({ input: bottomExtensionBuffer, top: yOffset, left: 0 });
+                }
+
+                // 結合
+                imageBuffer = Buffer.from(await compositeBase.composite(compositeImages).png().toBuffer());
+
+                expandedImageInfo = {
+                    originalHeight: currentHeight,
+                    expandedTop: topExtensionHeight,
+                    expandedBottom: bottomExtensionHeight
+                };
+
+                log.success(`Created expanded image: ${currentWidth}x${totalHeight} (original: ${currentHeight}, top: +${topExtensionHeight}, bottom: +${bottomExtensionHeight})`);
+            }
+        }
 
         const startTime = createTimer();
         const base64Data = imageBuffer.toString('base64');
@@ -390,6 +537,38 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
         if (!aiBuffer) {
             log.error('No image data in response');
             return Response.json({ error: 'AI did not generate an image' }, { status: 500 });
+        }
+
+        // 拡張画像で生成した場合、元のサイズ部分だけを切り出す
+        if (expandedImageInfo) {
+            const aiMeta = await sharp(aiBuffer).metadata();
+            const aiWidth = aiMeta.width || 750;
+            const aiHeight = aiMeta.height || 400;
+
+            // 生成画像と入力画像の比率を計算
+            const inputTotalHeight = expandedImageInfo.originalHeight + expandedImageInfo.expandedTop + expandedImageInfo.expandedBottom;
+            const scale = aiHeight / inputTotalHeight;
+
+            // スケールに応じて切り出し位置を計算
+            const extractTop = Math.round(expandedImageInfo.expandedTop * scale);
+            const extractHeight = Math.round(expandedImageInfo.originalHeight * scale);
+
+            log.info(`Cropping expanded image: top=${extractTop}, height=${extractHeight} (scale=${scale.toFixed(2)})`);
+
+            try {
+                aiBuffer = await sharp(aiBuffer)
+                    .extract({
+                        left: 0,
+                        top: extractTop,
+                        width: aiWidth,
+                        height: Math.min(extractHeight, aiHeight - extractTop) // 安全のため
+                    })
+                    .toBuffer();
+                log.success(`Cropped to original section size: ${aiWidth}x${extractHeight}`);
+            } catch (cropError: any) {
+                log.error(`Failed to crop expanded image: ${cropError.message}`);
+                // クロップに失敗しても続行（拡張されたままの画像を使用）
+            }
         }
 
         await logGeneration({

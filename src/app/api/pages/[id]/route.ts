@@ -39,6 +39,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                             imageId: sec.imageId,
                             mobileImageId: sec.mobileImageId,
                             config: sec.config ? JSON.stringify(sec.config) : null,
+                            boundaryOffsetTop: sec.boundaryOffsetTop || 0,
+                            boundaryOffsetBottom: sec.boundaryOffsetBottom || 0,
                         }))
                     }
                 }
@@ -62,7 +64,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
                 mobileImageId: s.mobileImageId,
                 image: s.image,
                 mobileImage: s.mobileImage,
-                config: s.config ? JSON.parse(s.config as string) : null
+                config: s.config ? JSON.parse(s.config as string) : null,
+                boundaryOffsetTop: s.boundaryOffsetTop || 0,
+                boundaryOffsetBottom: s.boundaryOffsetBottom || 0,
             }))
         });
     } catch (error) {

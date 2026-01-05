@@ -28,6 +28,8 @@ export async function GET() {
                         order: true,
                         role: true,
                         config: true,
+                        boundaryOffsetTop: true,
+                        boundaryOffsetBottom: true,
                         image: {
                             select: {
                                 id: true,
@@ -71,6 +73,8 @@ export async function POST(request: Request) {
                 name: s.name,
                 properties: s.properties || {},
             }),
+            boundaryOffsetTop: s.boundaryOffsetTop || 0,
+            boundaryOffsetBottom: s.boundaryOffsetBottom || 0,
         }));
 
         if (pageId) {

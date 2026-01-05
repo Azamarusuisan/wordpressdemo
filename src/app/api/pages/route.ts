@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
                     imageId: sec.imageId || null,
                     mobileImageId: sec.mobileImageId || null,
                     config: sec.config ? JSON.stringify(sec.config) : null,
+                    boundaryOffsetTop: sec.boundaryOffsetTop || 0,
+                    boundaryOffsetBottom: sec.boundaryOffsetBottom || 0,
                 })),
             },
         },

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Globe, Loader2, X, Layout, Sparkles, Monitor, Smartphone, Copy, Wand2, Palette } from 'lucide-react';
+import { Plus, Globe, Loader2, X, Layout, Sparkles, Monitor, Smartphone, Copy, Wand2, Palette, Scissors } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { SmartImportModal } from './SmartImportModal';
 
 // スタイル定義
 const STYLE_OPTIONS = [
@@ -43,6 +44,7 @@ export function PagesHeader() {
     const [isImporting, setIsImporting] = useState(false);
     const [importUrl, setImportUrl] = useState('');
     const [showSelection, setShowSelection] = useState(false);
+    const [showSmartImport, setShowSmartImport] = useState(false); // スマートインポートモーダル
     const [mode, setMode] = useState<'select' | 'import'>('select');
     const [device, setDevice] = useState<'desktop' | 'mobile' | 'dual'>('desktop');
     const [importMode, setImportMode] = useState<'faithful' | 'light' | 'heavy'>('faithful');
@@ -287,15 +289,34 @@ export function PagesHeader() {
                                     </button>
 
                                     <button
+                                        onClick={() => {
+                                            setShowSelection(false);
+                                            setShowSmartImport(true);
+                                        }}
+                                        className="group flex flex-col items-start rounded-lg border-2 border-purple-200 p-6 text-left transition-all hover:border-purple-500 hover:bg-purple-50 relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold rounded-full">
+                                            NEW
+                                        </div>
+                                        <div className="mb-4 rounded-md bg-gradient-to-r from-purple-500 to-indigo-500 p-3 text-white">
+                                            <Scissors className="h-6 w-6" />
+                                        </div>
+                                        <h3 className="text-base font-bold text-foreground mb-1"><span>スマートインポート</span></h3>
+                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                                            <span>セクション境界を確認・調整してから生成。より綺麗な仕上がりに。</span>
+                                        </p>
+                                    </button>
+
+                                    <button
                                         onClick={() => setMode('import')}
                                         className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50"
                                     >
                                         <div className="mb-4 rounded-md bg-secondary p-3 text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                                             <Globe className="h-6 w-6" />
                                         </div>
-                                        <h3 className="text-base font-bold text-foreground mb-1"><span>URLからインポート</span></h3>
+                                        <h3 className="text-base font-bold text-foreground mb-1"><span>クイックインポート</span></h3>
                                         <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                            <span>URLを入力してスクリーンショットからベースを自動生成します。</span>
+                                            <span>URLを入力して自動分割。境界調整なしで素早く取り込み。</span>
                                         </p>
                                     </button>
                                 </div>
@@ -597,6 +618,16 @@ export function PagesHeader() {
                 <Plus className="h-4 w-4" />
                 <span>新規ページ作成</span>
             </button>
+
+            {/* Smart Import Modal */}
+            {showSmartImport && (
+                <SmartImportModal
+                    onClose={() => setShowSmartImport(false)}
+                    onImportComplete={(pageId) => {
+                        router.push(`/admin/pages/${pageId}`);
+                    }}
+                />
+            )}
         </>
     );
 }

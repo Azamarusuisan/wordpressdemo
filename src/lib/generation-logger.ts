@@ -21,7 +21,8 @@ export type GenerationType =
   | 'design-unify'
   | 'background-unify'
   | 'ocr'
-  | 'text-fix';
+  | 'text-fix'
+  | 'upscale';
 
 export interface LogGenerationParams {
   userId?: string | null;

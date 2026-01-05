@@ -36,6 +36,8 @@ export default async function PageEditor({ params }: { params: { id: string } })
                 mobileImageId: sec.mobileImageId,
                 mobileImage: sec.mobileImage,
                 config: config,
+                boundaryOffsetTop: sec.boundaryOffsetTop || 0,
+                boundaryOffsetBottom: sec.boundaryOffsetBottom || 0,
             };
         });
 

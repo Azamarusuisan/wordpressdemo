@@ -302,7 +302,12 @@ function createStreamResponse(processFunction: (send: (data: any) => void) => Pr
             try {
                 await processFunction(send);
             } catch (error: any) {
-                send({ type: 'error', error: error.message });
+                console.error('[IMPORT-URL STREAM ERROR]', error);
+                try {
+                    send({ type: 'error', error: error.message });
+                } catch (sendError) {
+                    console.error('[IMPORT-URL] Failed to send error:', sendError);
+                }
             } finally {
                 controller.close();
             }
@@ -344,7 +349,8 @@ export async function POST(request: NextRequest) {
         style = 'sampling',  // デフォルトは元デザイン維持
         colorScheme,
         layoutOption,
-        customPrompt
+        customPrompt,
+        customSections  // ユーザーが調整したセクション境界
     } = validation.data;
 
     // デザインオプションをまとめる
@@ -673,13 +679,60 @@ export async function POST(request: NextRequest) {
 
         log.info(`Final screenshot dimensions: ${width}x${height}px`);
 
-        const baseSegmentHeight = 800;
-        const segmentHeight = baseSegmentHeight * deviceConfig.deviceScaleFactor;
-        const numSegments = Math.ceil(height / segmentHeight);
+        // ========================================
+        // セグメント境界の決定
+        // customSectionsがある場合はユーザー指定の境界を使用
+        // ない場合は均等分割
+        // ========================================
+        interface SegmentBoundary {
+            top: number;
+            height: number;
+            label: string;
+        }
+
+        let segments: SegmentBoundary[];
+
+        if (customSections && customSections.length > 0) {
+            // ユーザー指定の境界を使用（スケールファクターで調整）
+            const scaleFactor = deviceConfig.deviceScaleFactor;
+            segments = customSections.map(section => ({
+                top: Math.round(section.startY * scaleFactor),
+                height: Math.round(section.height * scaleFactor),
+                label: section.label
+            }));
+            log.info(`Using custom sections: ${customSections.length} segments from user`);
+        } else {
+            // 従来の均等分割
+            const baseSegmentHeight = 800;
+            const segmentHeight = baseSegmentHeight * deviceConfig.deviceScaleFactor;
+            const rawNumSegments = Math.ceil(height / segmentHeight);
+            const numSegments = Math.min(rawNumSegments, 10);
+            if (rawNumSegments > 10) {
+                log.info(`Limiting segments from ${rawNumSegments} to 10 (AI processing limit)`);
+            }
+
+            segments = Array.from({ length: numSegments }, (_, i) => {
+                const top = i * segmentHeight;
+                const segHeight = Math.min(segmentHeight, height - top);
+                return {
+                    top,
+                    height: segHeight,
+                    label: i === 0 ? 'ヘッダー・ヒーロー' : i === numSegments - 1 ? 'フッター' : `セクション ${i + 1}`
+                };
+            });
+        }
+
+        // AI処理が重いため、最大10セグメントに制限
+        if (segments.length > 10) {
+            log.info(`Limiting segments from ${segments.length} to 10 (AI processing limit)`);
+            segments = segments.slice(0, 10);
+        }
+
+        const numSegments = segments.length;
         const createdMedia: any[] = [];
 
-        log.info(`Segmenting into ${numSegments} parts (segmentHeight=${segmentHeight}px)...`);
-        log.info(`Segment breakdown: ${Array.from({ length: numSegments }, (_, i) => `[${i}] top=${i * segmentHeight}px`).join(', ')}`);
+        log.info(`Segmenting into ${numSegments} parts...`);
+        log.info(`Segment breakdown: ${segments.map((s, i) => `[${i}] top=${s.top}px, h=${s.height}px`).join(', ')}`);
 
         // Get API key if needed
         let googleApiKey: string | null = null;
@@ -755,8 +808,9 @@ export async function POST(request: NextRequest) {
 
         // Process each segment
         for (let i = 0; i < numSegments; i++) {
-            const top = i * segmentHeight;
-            const currentSegHeight = Math.min(segmentHeight, height - top);
+            const segment = segments[i];
+            const top = segment.top;
+            const currentSegHeight = segment.height;
 
             if (currentSegHeight <= 0) continue;
 
@@ -819,6 +873,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Upload to Supabase
+            log.info(`Segment ${i + 1}: Starting upload to Supabase...`);
             const filename = `import-${Date.now()}-seg-${i}.png`;
 
             const { error: uploadError } = await supabase
