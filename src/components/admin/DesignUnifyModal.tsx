@@ -350,8 +350,22 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
 
                             {/* キャンバス */}
                             <div ref={containerRef} className="bg-gray-100 rounded-lg p-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                                    <p className="text-xs font-bold text-amber-800 mb-1">⚠️ 重要：1つずつ選択</p>
+                                    <p className="text-xs text-amber-700">
+                                        <strong>1回の実行で1箇所だけ</strong>選択してください。
+                                        複数箇所を同時に選択すると結果が崩れます。
+                                    </p>
+                                </div>
+                                {masks.length > 1 && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                                        <p className="text-xs font-bold text-red-800">
+                                            ⛔ {masks.length}箇所選択中 - 1箇所だけにしてください
+                                        </p>
+                                    </div>
+                                )}
                                 <p className="text-xs text-gray-500 mb-2">
-                                    修正したい領域をドラッグで選択してください（赤い領域が修正対象）
+                                    修正したい要素をドラッグで選択（赤い領域が修正対象）
                                 </p>
                                 <canvas
                                     ref={canvasRef}
@@ -372,9 +386,12 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                     type="text"
                                     value={additionalPrompt}
                                     onChange={(e) => setAdditionalPrompt(e.target.value)}
-                                    placeholder="例: 緑色のアイコンに統一、角丸を揃える"
+                                    placeholder="例: バッジを緑色にする、アイコンのスタイルを揃える"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 />
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                    具体的に指示すると精度が上がります（例：「Merit 1と同じ緑のバッジにする」）
+                                </p>
                             </div>
                         </div>
                     )}
@@ -421,11 +438,11 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                         {step === 'draw-mask' && (
                             <button
                                 onClick={handleExecute}
-                                disabled={masks.length === 0}
+                                disabled={masks.length === 0 || masks.length > 1}
                                 className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Wand2 className="h-4 w-4" />
-                                デザイン統一を実行
+                                {masks.length > 1 ? '1箇所だけ選択してください' : 'デザイン統一を実行'}
                             </button>
                         )}
                     </div>

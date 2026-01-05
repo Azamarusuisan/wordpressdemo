@@ -7,9 +7,9 @@ import { logGeneration, createTimer } from '@/lib/generation-logger';
 import sharp from 'sharp';
 
 const log = {
-    info: (msg: string) => console.log(`\x1b[36m[DESIGN-UNIFY]\x1b[0m ${msg}`),
-    success: (msg: string) => console.log(`\x1b[32m[DESIGN-UNIFY]\x1b[0m ${msg}`),
-    error: (msg: string) => console.log(`\x1b[31m[DESIGN-UNIFY]\x1b[0m ${msg}`),
+    info: (msg: string) => console.log(`\x1b[36m[BG-UNIFY]\x1b[0m ${msg}`),
+    success: (msg: string) => console.log(`\x1b[32m[BG-UNIFY]\x1b[0m ${msg}`),
+    error: (msg: string) => console.log(`\x1b[31m[BG-UNIFY]\x1b[0m ${msg}`),
 };
 
 interface MaskArea {
@@ -19,12 +19,12 @@ interface MaskArea {
     height: number; // 0-1の比率
 }
 
-interface DesignUnifyRequest {
-    referenceImageUrl: string;      // 参照画像（デザインの正解）
+interface BackgroundUnifyRequest {
     targetImageUrl: string;         // 修正対象画像
     targetSectionId: number;        // 修正対象セクションID
-    masks: MaskArea[];              // マスク領域（不一致部分）
-    prompt?: string;                // 追加の指示（オプション）
+    masks: MaskArea[];              // マスク領域（背景部分）
+    targetColor: string;            // 目標の背景色（#RRGGBB形式）
+    resolution: '1K' | '2K' | '4K'; // 出力解像度
 }
 
 export async function POST(request: NextRequest) {
@@ -39,15 +39,27 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const body: DesignUnifyRequest = await request.json();
-        const { referenceImageUrl, targetImageUrl, targetSectionId, masks, prompt } = body;
+        const body: BackgroundUnifyRequest = await request.json();
+        const { targetImageUrl, targetSectionId, masks, targetColor, resolution } = body;
 
-        if (!referenceImageUrl || !targetImageUrl || !targetSectionId) {
-            return NextResponse.json({ error: '必須パラメータが不足しています' }, { status: 400 });
+        if (!targetSectionId) {
+            return NextResponse.json({ error: 'セクションIDが必要です' }, { status: 400 });
+        }
+
+        if (!targetImageUrl || typeof targetImageUrl !== 'string' || !targetImageUrl.startsWith('http')) {
+            return NextResponse.json({ error: '有効な画像URLが必要です' }, { status: 400 });
         }
 
         if (!masks || masks.length === 0) {
-            return NextResponse.json({ error: 'マスク領域を指定してください' }, { status: 400 });
+            return NextResponse.json({ error: '背景領域を選択してください' }, { status: 400 });
+        }
+
+        if (!targetColor || !/^#[0-9A-Fa-f]{6}$/.test(targetColor)) {
+            return NextResponse.json({ error: '有効な色コードを指定してください（例: #FFFFFF）' }, { status: 400 });
+        }
+
+        if (!resolution || !['1K', '2K', '4K'].includes(resolution)) {
+            return NextResponse.json({ error: '解像度は1K, 2K, 4Kのいずれかを指定してください' }, { status: 400 });
         }
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
@@ -57,19 +69,14 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        log.info(`Design unify: section ${targetSectionId}, ${masks.length} mask(s)`);
+        log.info(`Background unify: section ${targetSectionId}, color ${targetColor}, resolution ${resolution}, ${masks.length} mask(s)`);
 
         // 画像を取得
-        const [refResponse, targetResponse] = await Promise.all([
-            fetch(referenceImageUrl),
-            fetch(targetImageUrl),
-        ]);
-
-        if (!refResponse.ok || !targetResponse.ok) {
+        const targetResponse = await fetch(targetImageUrl);
+        if (!targetResponse.ok) {
             return NextResponse.json({ error: '画像の取得に失敗しました' }, { status: 500 });
         }
 
-        const refBuffer = Buffer.from(await refResponse.arrayBuffer());
         const targetBuffer = Buffer.from(await targetResponse.arrayBuffer());
         const targetMeta = await sharp(targetBuffer).metadata();
 
@@ -77,45 +84,80 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: '画像メタデータの取得に失敗しました' }, { status: 500 });
         }
 
-        // === マスク画像を生成 ===
-        // 黒背景に白でマスク領域を描画
-        const maskBuffer = await createMaskImage(targetMeta.width, targetMeta.height, masks);
-        log.info(`Mask image created: ${targetMeta.width}x${targetMeta.height}px, ${masks.length} regions`);
+        // 全画像モード判定（マスクオーバーレイ不要判定用）
+        // 浮動小数点の誤差を考慮して判定
+        const isFullImageMaskForOverlay = masks.length === 1 &&
+            masks[0].x <= 0.01 && masks[0].y <= 0.01 &&
+            masks[0].width >= 0.99 && masks[0].height >= 0.99;
 
-        // === マスク付き対象画像を作成 ===
-        // マスク領域を半透明の赤でオーバーレイ（AIに視覚的に伝える）
-        const targetWithMaskBuffer = await createTargetWithMaskOverlay(targetBuffer, targetMeta.width, targetMeta.height, masks);
+        log.info(`Full image mode check: ${isFullImageMaskForOverlay} (mask: x=${masks[0].x}, y=${masks[0].y}, w=${masks[0].width}, h=${masks[0].height})`);
 
-        const refBase64 = refBuffer.toString('base64');
-        const targetWithMaskBase64 = targetWithMaskBuffer.toString('base64');
+        // マスク付き対象画像を作成（全画像モードではオーバーレイ不要）
+        let targetImageBase64: string;
+        if (isFullImageMaskForOverlay) {
+            // 全画像モード：元画像をそのまま使用（赤枠なし）
+            log.info('Using original image without red frame overlay');
+            targetImageBase64 = targetBuffer.toString('base64');
+        } else {
+            // 部分マスクモード：赤枠オーバーレイを追加
+            log.info('Adding red frame overlay for partial mask mode');
+            const targetWithMaskBuffer = await createTargetWithMaskOverlay(targetBuffer, targetMeta.width, targetMeta.height, masks);
+            targetImageBase64 = targetWithMaskBuffer.toString('base64');
+        }
 
-        // プロンプト構築 - デザイン統一用
-        const unifyPrompt = `【デザイン統一タスク】
+        // 色名を取得（より自然なプロンプトのため）
+        const colorName = getColorName(targetColor);
 
-2枚の画像があります。
+        // 全画像モード判定（プロンプト分岐用）- 同じ判定ロジックを使用
+        const isFullImageMask = isFullImageMaskForOverlay;
 
-【1枚目】参照画像 - このデザインスタイルが正しいです
-【2枚目】修正対象 - 赤枠の部分を参照画像のスタイルに合わせてください
+        // プロンプト構築 - 背景色統一用
+        const unifyPrompt = isFullImageMask
+            ? `【画像の背景色変更】
 
-【重要：自然に馴染ませる】
-- 赤枠内のデザイン（色、装飾、アイコンスタイル）を参照画像に合わせる
-- 全体のバランスを崩さない
-- 周囲と自然に馴染むように修正する
-- 元の画像の構造・レイアウトは完全に維持する
+この画像の背景色を「${targetColor}」(${colorName})に変更してください。
 
-【テキストについて】
-- テキストの内容は変更しない
-- 文字が読めなくなるような変更はしない
-- フォントの色は変えてもOK（参照画像に合わせる）
+【絶対に守ること】
+- テキスト、文字、ロゴ、アイコン、ボタン、写真などの「コンテンツ要素」は完全に保持
+- 要素の位置、サイズ、色、フォントは一切変更しない
+- 背景部分のみを新しい色に置き換える
+- レイアウトや構図は維持する
+
+【背景の判定基準】
+- テキストや画像の「後ろ」にある色の領域が背景
+- ヘッダー、フッター、セクションの塗りつぶし領域
+- 余白部分
+
+【禁止事項】
+- テキストの内容や色を変更すること
+- 要素を追加・削除すること
+- 画像を歪ませること
+- ボタンや装飾の色を変えること
+
+背景色だけを「${targetColor}」に変更した完全な画像を出力してください。`
+            : `【背景色変更タスク】
+
+この画像の赤枠で囲まれた領域の背景色を変更してください。
+
+【目標の色】
+- カラーコード: ${targetColor}
+- 色の説明: ${colorName}
+
+【重要な指示】
+1. 赤枠内の背景色のみを「${targetColor}」に変更する
+2. テキスト、アイコン、ボタン、画像などの要素は一切変更しない
+3. 要素の位置やサイズは維持する
+4. 背景色は均一に塗りつぶす（グラデーションにしない）
+5. 赤枠外の領域は絶対に変更しない
 
 【やってはいけないこと】
-- 歪んだ画像を生成する
-- 赤枠外を変更する
-- レイアウトを崩す
-- 参照画像の内容をそのままコピーする
-${prompt ? `\n【追加指示】${prompt}` : ''}
+- テキストの色や内容を変える
+- 要素を追加・削除する
+- レイアウトを変える
+- 画像を歪ませる
+- 赤枠外を編集する
 
-自然で違和感のない結果を出力してください。`;
+背景色だけを正確に変更した画像を出力してください。`;
 
         // Gemini API呼び出し
         const response = await fetch(
@@ -126,17 +168,16 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
                 body: JSON.stringify({
                     contents: [{
                         parts: [
-                            // 参照画像
-                            { inlineData: { mimeType: 'image/png', data: refBase64 } },
-                            { text: '【参照画像】この画像のバッジ・アイコン・色使いを見本にしてください。' },
-                            // マスク付き修正対象画像
-                            { inlineData: { mimeType: 'image/png', data: targetWithMaskBase64 } },
+                            { inlineData: { mimeType: 'image/png', data: targetImageBase64 } },
                             { text: unifyPrompt },
                         ]
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        temperature: 0.2,  // より安定した出力のため低めに
+                        temperature: 0.1,  // より安定した出力のため低めに
+                        imageConfig: {
+                            image_size: resolution  // "1K", "2K", "4K"
+                        }
                     },
                 }),
             }
@@ -168,35 +209,42 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
         let generatedBuffer = Buffer.from(resultBase64, 'base64');
         const resultMeta = await sharp(generatedBuffer).metadata();
 
-        // サイズが異なる場合は調整（歪みを避けるため比率を維持）
+        // サイズが異なる場合は調整
         if (resultMeta.width !== targetMeta.width || resultMeta.height !== targetMeta.height) {
             log.info(`Resizing result: ${resultMeta.width}x${resultMeta.height} → ${targetMeta.width}x${targetMeta.height}`);
 
-            // 比率を維持してリサイズし、必要に応じてクロップ
+            // fillを使用して正確なサイズに合わせる（多少の歪みは許容）
+            // 背景色変更なので、厳密な比率維持より正確なサイズを優先
             const resized = await sharp(generatedBuffer)
                 .resize(targetMeta.width, targetMeta.height, {
-                    fit: 'cover',      // 比率を維持してカバー
-                    position: 'center' // 中央を維持
+                    fit: 'fill'  // 正確なサイズに合わせる
                 })
                 .png()
                 .toBuffer();
             generatedBuffer = Buffer.from(resized);
-            log.info(`Resized with cover (aspect ratio preserved)`);
+            log.info(`Resized to exact dimensions`);
         }
 
-        // === セーフガード ===
-        // マスク外の領域を元画像で上書きして、確実に維持する
-        log.info(`Applying safeguard: preserving non-mask areas...`);
-        const finalBuffer = await applyMaskSafeguard(
-            targetBuffer,
-            generatedBuffer,
-            targetMeta.width,
-            targetMeta.height,
-            masks
-        );
+        // 全画像モード（マスクが1つで全体をカバー）の場合はセーフガードをスキップ
+        // AIの出力をそのまま使用（AIがテキストや要素を保持することを信頼）
+        let finalBuffer: Buffer;
+        if (isFullImageMaskForOverlay) {
+            log.info(`Full image mode: using AI output directly (trusting AI to preserve elements)`);
+            finalBuffer = generatedBuffer;
+        } else {
+            // 部分マスクモード: マスク外の領域を元画像で保持
+            log.info(`Partial mask mode: applying safeguard to preserve non-mask areas...`);
+            finalBuffer = await applyMaskSafeguard(
+                targetBuffer,
+                generatedBuffer,
+                targetMeta.width,
+                targetMeta.height,
+                masks
+            );
+        }
 
         // Supabaseにアップロード
-        const filename = `design-unify-${targetSectionId}-${Date.now()}.png`;
+        const filename = `bg-unify-${targetSectionId}-${Date.now()}.png`;
         const { error: uploadError } = await supabase.storage
             .from('images')
             .upload(filename, finalBuffer, {
@@ -221,7 +269,7 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
                 mime: 'image/png',
                 width: finalMeta.width || 0,
                 height: finalMeta.height || 0,
-                sourceType: 'design-unified',
+                sourceType: 'background-unified',
             },
         });
 
@@ -245,8 +293,8 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
                     userId: user.id,
                     previousImageId: currentSection.imageId,
                     newImageId: newMedia.id,
-                    actionType: 'design-unify',
-                    prompt: prompt || null,
+                    actionType: 'background-unify',
+                    prompt: `背景色を${targetColor}に変更（${resolution}）`,
                 }
             });
         }
@@ -254,8 +302,8 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
         // ログ記録
         await logGeneration({
             userId: user.id,
-            type: 'design-unify',
-            endpoint: '/api/ai/design-unify',
+            type: 'background-unify',
+            endpoint: '/api/ai/background-unify',
             model: 'gemini-3-pro-image-preview',
             inputPrompt: unifyPrompt,
             imageCount: 1,
@@ -263,7 +311,7 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
             startTime,
         });
 
-        log.success(`Design unified for section ${targetSectionId}`);
+        log.success(`Background unified for section ${targetSectionId}: ${targetColor} at ${resolution}`);
 
         return NextResponse.json({
             success: true,
@@ -278,44 +326,7 @@ ${prompt ? `\n【追加指示】${prompt}` : ''}
 }
 
 /**
- * マスク画像を生成（黒背景 + 白いマスク領域）
- */
-async function createMaskImage(width: number, height: number, masks: MaskArea[]): Promise<Buffer> {
-    // 黒背景を作成
-    let image = sharp({
-        create: {
-            width,
-            height,
-            channels: 4,
-            background: { r: 0, g: 0, b: 0, alpha: 1 },
-        },
-    });
-
-    // マスク領域を白で描画
-    const overlays: sharp.OverlayOptions[] = masks.map(mask => {
-        const x = Math.round(mask.x * width);
-        const y = Math.round(mask.y * height);
-        const w = Math.round(mask.width * width);
-        const h = Math.round(mask.height * height);
-
-        // 白い矩形を作成
-        const whiteRect = Buffer.from(
-            `<svg width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="white"/></svg>`
-        );
-
-        return {
-            input: whiteRect,
-            top: y,
-            left: x,
-        };
-    });
-
-    return image.composite(overlays).png().toBuffer() as Promise<Buffer>;
-}
-
-/**
  * 対象画像にマスクオーバーレイを追加（AIに視覚的に伝える）
- * 枠線のみで内部は見えるようにする
  */
 async function createTargetWithMaskOverlay(
     targetBuffer: Buffer,
@@ -323,7 +334,6 @@ async function createTargetWithMaskOverlay(
     height: number,
     masks: MaskArea[]
 ): Promise<Buffer> {
-    // マスク領域を赤い枠線で囲む（内部は透明で見える）
     const overlays: sharp.OverlayOptions[] = masks.map(mask => {
         const x = Math.round(mask.x * width);
         const y = Math.round(mask.y * height);
@@ -354,7 +364,6 @@ async function createTargetWithMaskOverlay(
 
 /**
  * セーフガード: マスク外の領域を元画像で上書き
- * 境界部分をフェザリング（ぼかし）して自然に馴染ませる
  */
 async function applyMaskSafeguard(
     originalBuffer: Buffer,
@@ -363,58 +372,25 @@ async function applyMaskSafeguard(
     height: number,
     masks: MaskArea[]
 ): Promise<Buffer> {
-    // 1. 元画像をベースにする
-    // 2. マスク領域だけ生成画像から切り出して上書き
-    // 3. 境界をフェザリングして馴染ませる
-
     const composites: sharp.OverlayOptions[] = [];
-    const featherSize = 8; // フェザリングのサイズ（ピクセル）
 
     for (const mask of masks) {
-        // 少し内側を切り出して境界のアーティファクトを避ける
         const padding = 2;
         const x = Math.round(mask.x * width) + padding;
         const y = Math.round(mask.y * height) + padding;
         const w = Math.max(1, Math.round(mask.width * width) - padding * 2);
         const h = Math.max(1, Math.round(mask.height * height) - padding * 2);
 
-        // 範囲チェック
         if (x < 0 || y < 0 || x + w > width || y + h > height) {
             log.info(`Skipping mask due to bounds: x=${x}, y=${y}, w=${w}, h=${h}`);
             continue;
         }
 
         try {
-            // 生成画像からマスク領域を切り出し
             const extractedRegion = await sharp(generatedBuffer)
                 .extract({ left: x, top: y, width: w, height: h })
                 .png()
                 .toBuffer();
-
-            // フェザリング用のグラデーションマスクを作成
-            const featherMask = Buffer.from(
-                `<svg width="${w}" height="${h}">
-                    <defs>
-                        <linearGradient id="fadeLeft" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" style="stop-color:black;stop-opacity:0"/>
-                            <stop offset="${Math.min(100, (featherSize / w) * 100)}%" style="stop-color:black;stop-opacity:1"/>
-                            <stop offset="${Math.max(0, 100 - (featherSize / w) * 100)}%" style="stop-color:black;stop-opacity:1"/>
-                            <stop offset="100%" style="stop-color:black;stop-opacity:0"/>
-                        </linearGradient>
-                        <linearGradient id="fadeTop" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:white;stop-opacity:0"/>
-                            <stop offset="${Math.min(100, (featherSize / h) * 100)}%" style="stop-color:white;stop-opacity:1"/>
-                            <stop offset="${Math.max(0, 100 - (featherSize / h) * 100)}%" style="stop-color:white;stop-opacity:1"/>
-                            <stop offset="100%" style="stop-color:white;stop-opacity:0"/>
-                        </linearGradient>
-                        <mask id="featherMask">
-                            <rect width="${w}" height="${h}" fill="url(#fadeLeft)"/>
-                            <rect width="${w}" height="${h}" fill="url(#fadeTop)" style="mix-blend-mode:multiply"/>
-                        </mask>
-                    </defs>
-                    <rect width="${w}" height="${h}" fill="white" mask="url(#featherMask)"/>
-                </svg>`
-            );
 
             composites.push({
                 input: extractedRegion,
@@ -432,9 +408,48 @@ async function applyMaskSafeguard(
         return originalBuffer;
     }
 
-    // 元画像の上にマスク領域だけを合成
     return sharp(originalBuffer)
         .composite(composites)
         .png()
         .toBuffer() as Promise<Buffer>;
+}
+
+/**
+ * 色コードから色名を取得（プロンプト用）
+ */
+function getColorName(hex: string): string {
+    const colorNames: Record<string, string> = {
+        '#FFFFFF': '白 (white)',
+        '#000000': '黒 (black)',
+        '#FF0000': '赤 (red)',
+        '#00FF00': '緑 (green)',
+        '#0000FF': '青 (blue)',
+        '#FFFF00': '黄 (yellow)',
+        '#FF00FF': 'マゼンタ (magenta)',
+        '#00FFFF': 'シアン (cyan)',
+        '#808080': 'グレー (gray)',
+        '#F5F5F5': 'ホワイトスモーク (whitesmoke)',
+        '#F0F0F0': 'ライトグレー (light gray)',
+        '#E0E0E0': 'シルバー (silver)',
+    };
+
+    const upperHex = hex.toUpperCase();
+    if (colorNames[upperHex]) {
+        return colorNames[upperHex];
+    }
+
+    // RGB値から大まかな色を推定
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+
+    const brightness = (r + g + b) / 3;
+    if (brightness > 200) return '明るい色 (light color)';
+    if (brightness < 50) return '暗い色 (dark color)';
+
+    if (r > g && r > b) return '赤系の色 (reddish color)';
+    if (g > r && g > b) return '緑系の色 (greenish color)';
+    if (b > r && b > g) return '青系の色 (bluish color)';
+
+    return `RGB(${r}, ${g}, ${b})`;
 }

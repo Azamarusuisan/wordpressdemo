@@ -147,6 +147,9 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // テキスト追加系の指示かどうかを判定
+        const isTextAddition = /(?:入れ|追加|書い|変更|テキスト|文字|タイトル|見出し)/i.test(prompt);
+
         // インペインティング用プロンプト - 画像生成を強制（日本語対応強化）
         inpaintPrompt = `あなたは画像編集の専門家です。提供された画像を編集して、新しい画像を生成してください。
 
@@ -162,6 +165,14 @@ ${designStyleSection}
 3. ${(referenceDesign || referenceImageBase64) ? '参考デザインスタイルの色味、雰囲気、トーンを反映してください' : '元の画像のスタイル、フォント、色使いをできる限り維持してください'}
 4. 修正箇所以外は変更しないでください
 5. 画像全体を出力してください（説明文は不要です）
+${isTextAddition ? `
+【テキスト追加時の厳守事項】
+- 絶対に白い背景や白い余白を追加しないでください
+- テキストは選択エリアの既存の背景色・画像の上に直接描画してください
+- 選択エリアの周囲の背景色・デザインを維持したまま、テキストのみを追加してください
+- 背景を塗りつぶさず、元の背景を活かしてテキストを重ねてください
+- テキストの色は背景とコントラストが取れる色を選んでください（背景が明るい場合は暗い文字、背景が暗い場合は明るい文字）
+` : ''}
 
 Generate the complete edited image now.`;
 
@@ -205,7 +216,11 @@ Generate the complete edited image now.`;
                     }],
                     generationConfig: {
                         responseModalities: ["IMAGE", "TEXT"],
-                        temperature: 1.0
+                        temperature: 1.0,
+                        // 高解像度出力
+                        imageConfig: {
+                            imageSize: "2K"
+                        }
                     },
                     toolConfig: {
                         functionCallingConfig: {

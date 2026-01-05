@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone, Scissors } from 'lucide-react';
+import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone, Scissors, Type } from 'lucide-react';
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
+import { TextFixModule } from './TextFixModule';
 import type { ClickableArea, FormFieldConfig, ViewportType } from '@/types';
 
 // デザイン定義の型
@@ -25,7 +26,7 @@ interface DesignDefinition {
     description: string;
 }
 
-type EditorMode = 'inpaint' | 'button';
+type EditorMode = 'inpaint' | 'button' | 'text-fix';
 
 interface ImageInpaintEditorProps {
     imageUrl: string;
@@ -308,7 +309,7 @@ export function ImageInpaintEditor({
         ctx.restore();
 
         // 描画する選択範囲を決定
-        const areasToRender = editorMode === 'inpaint'
+        const areasToRender = (editorMode === 'inpaint' || editorMode === 'text-fix')
             ? (currentSelection ? [...selections, currentSelection] : selections)
             : (currentSelection ? [...buttonAreas, currentSelection as ClickableAreaDraft] : buttonAreas);
 
@@ -322,10 +323,13 @@ export function ImageInpaintEditor({
 
             // モードに応じて色を変更
             const inpaintColors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            const textFixColors = ['#f59e0b', '#d97706', '#b45309', '#92400e', '#78350f']; // Amber colors for text-fix
             const buttonColor = '#3b82f6'; // Blue for buttons
             const isSelected = editorMode === 'button' && sel.id === selectedButtonId;
             const color = editorMode === 'inpaint'
                 ? inpaintColors[index % inpaintColors.length]
+                : editorMode === 'text-fix'
+                ? textFixColors[index % textFixColors.length]
                 : (isSelected ? '#2563eb' : buttonColor);
 
             // Glow Effect
@@ -747,7 +751,7 @@ export function ImageInpaintEditor({
         // refまたはstateから選択を取得
         const sel = currentSelectionRef.current || currentSelection;
 
-        if (sel && sel.width > 10 && sel.height > 10 && editorMode === 'inpaint') {
+        if (sel && sel.width > 10 && sel.height > 10 && (editorMode === 'inpaint' || editorMode === 'text-fix')) {
             const newId = Date.now().toString();
             setSelections(prev => [...prev, { ...sel, id: newId }]);
         } else if (sel && sel.width > 10 && sel.height > 10 && editorMode === 'button') {
@@ -885,8 +889,8 @@ export function ImageInpaintEditor({
             return;
         }
 
-        // インペイントモードのみ対応（ボタンモードはデスクトップで設定）
-        if (editorMode === 'inpaint') {
+        // インペイント/文字化け修正モードのみ対応（ボタンモードはデスクトップで設定）
+        if (editorMode === 'inpaint' || editorMode === 'text-fix') {
             // refも同時に更新
             isMobileSelectingRef.current = true;
             mobileCurrentSelectionRef.current = null;
@@ -1347,16 +1351,26 @@ export function ImageInpaintEditor({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-md border ${editorMode === 'inpaint' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                {editorMode === 'inpaint' ? <Wand2 className="w-5 h-5" /> : <MousePointer className="w-5 h-5" />}
+                            <div className={`p-2 rounded-md border ${
+                                editorMode === 'inpaint' ? 'bg-primary/10 text-primary border-primary/20'
+                                : editorMode === 'text-fix' ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                : 'bg-blue-50 text-blue-600 border-blue-200'
+                            }`}>
+                                {editorMode === 'inpaint' ? <Wand2 className="w-5 h-5" />
+                                 : editorMode === 'text-fix' ? <Type className="w-5 h-5" />
+                                 : <MousePointer className="w-5 h-5" />}
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-foreground">
-                                    {editorMode === 'inpaint' ? '画像部分編集' : 'ボタン設定'}
+                                    {editorMode === 'inpaint' ? '画像部分編集'
+                                     : editorMode === 'text-fix' ? '文字化け修正'
+                                     : 'ボタン設定'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground font-medium">
                                     {editorMode === 'inpaint'
                                         ? '画像の一部を選択してAIで編集・修正します（複数選択可）'
+                                        : editorMode === 'text-fix'
+                                        ? '文字化けした部分を選択してOCR→AI修正します'
                                         : '画像上にクリッカブルなボタン領域を設定します'}
                                 </p>
                             </div>
@@ -1385,6 +1399,17 @@ export function ImageInpaintEditor({
                             >
                                 <MousePointer className="w-4 h-4" />
                                 ボタン設定
+                            </button>
+                            <button
+                                onClick={() => setEditorMode('text-fix')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                    editorMode === 'text-fix'
+                                        ? 'bg-amber-500 text-white shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-amber-50'
+                                }`}
+                            >
+                                <Type className="w-4 h-4" />
+                                文字化け修正
                             </button>
                         </div>
 
@@ -1944,7 +1969,7 @@ export function ImageInpaintEditor({
                                     </button>
                                 </div>
                             </div>
-                        ) : (
+                        ) : editorMode === 'button' ? (
                             <div className="flex-1 overflow-y-auto p-6">
                                 {/* Button Mode Content */}
                                 <div className="mb-6">
@@ -2201,6 +2226,95 @@ export function ImageInpaintEditor({
                                         className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all"
                                     >
                                         キャンセル
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Text Fix Mode Content */
+                            <div className="flex-1 overflow-y-auto p-6">
+                                <div className="mb-6">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="p-2 bg-amber-100 rounded-lg">
+                                            <Type className="w-5 h-5 text-amber-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-foreground">文字化け修正</h3>
+                                            <p className="text-[10px] text-muted-foreground">OCR + AI で文字をくっきり修正</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Instructions */}
+                                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <h4 className="text-xs font-bold text-amber-900 mb-2">使い方</h4>
+                                    <ol className="text-xs text-amber-800 space-y-1.5">
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 mt-0.5">1</span>
+                                            <span>文字化けしている部分を画像上で選択</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 mt-0.5">2</span>
+                                            <span>「文字を読み取る」で現在の文字を認識</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 mt-0.5">3</span>
+                                            <span>正しいテキストに編集して修正実行</span>
+                                        </li>
+                                    </ol>
+                                </div>
+
+                                {/* Selections indicator */}
+                                {selections.length > 0 ? (
+                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <p className="text-xs text-green-700 font-medium flex items-center gap-2">
+                                            <Check className="w-4 h-4" />
+                                            {selections.length} 箇所を選択中
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                        <p className="text-xs text-gray-600">
+                                            画像上で文字化けしている部分をドラッグして選択してください
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* TextFixModule Integration */}
+                                {image && (
+                                    <TextFixModule
+                                        imageUrl={imageUrl}
+                                        selections={selections}
+                                        imageWidth={image.width}
+                                        imageHeight={image.height}
+                                        onTextFixed={(newImageUrl) => {
+                                            setShowSuccess(true);
+                                            setTimeout(() => {
+                                                onSave(newImageUrl);
+                                            }, 1500);
+                                        }}
+                                        onError={(err) => setError(err)}
+                                        disabled={isLoading}
+                                    />
+                                )}
+
+                                {/* Error Message */}
+                                {error && (
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-md">
+                                        <p className="text-xs text-red-600 font-bold flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
+                                            {error}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Cancel Button */}
+                                <div className="mt-6 pt-6 border-t border-border">
+                                    <button
+                                        onClick={onClose}
+                                        disabled={isLoading}
+                                        className="w-full py-3 px-4 bg-surface-100 text-muted-foreground font-bold text-sm rounded-md hover:bg-surface-200 hover:text-foreground transition-all disabled:opacity-50"
+                                    >
+                                        閉じる
                                     </button>
                                 </div>
                             </div>

@@ -18,7 +18,10 @@ export type GenerationType =
   | 'boundary-design'
   | '4k-upscale'
   | 'section-generate'
-  | 'design-unify';
+  | 'design-unify'
+  | 'background-unify'
+  | 'ocr'
+  | 'text-fix';
 
 export interface LogGenerationParams {
   userId?: string | null;

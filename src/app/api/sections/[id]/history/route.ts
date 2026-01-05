@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
+const log = (msg: string, data?: any) => {
+    console.log(`[History API] ${msg}`, data ? JSON.stringify(data) : '');
+};
+
 // GET: セクションの画像変更履歴を取得
 export async function GET(
     request: NextRequest,
@@ -10,7 +14,10 @@ export async function GET(
     const { id } = await params;
     const sectionId = parseInt(id);
 
+    log('GET request', { sectionId });
+
     if (isNaN(sectionId)) {
+        log('Invalid section ID');
         return Response.json({ error: 'Invalid section ID' }, { status: 400 });
     }
 
@@ -18,6 +25,7 @@ export async function GET(
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
     if (!user) {
+        log('Unauthorized');
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,16 +36,56 @@ export async function GET(
             include: { page: true }
         });
 
+        log('Section lookup', { found: !!section, sectionId });
+
         if (!section) {
             return Response.json({ error: 'Section not found' }, { status: 404 });
         }
 
         // 履歴を取得（新しい順）
-        const history = await prisma.sectionImageHistory.findMany({
+        // セクションIDで検索 + 現在の画像IDに関連する履歴も検索
+        const currentImageId = section.imageId;
+
+        log('Looking for history', { sectionId, currentImageId });
+
+        // 1. このセクションIDの履歴
+        const historyBySectionId = await prisma.sectionImageHistory.findMany({
             where: { sectionId },
             orderBy: { createdAt: 'desc' },
             take: 10,
         });
+
+        // 2. 現在の画像に関連する履歴（セクションIDが変わっても追跡可能）
+        let historyByImageId: any[] = [];
+        if (currentImageId) {
+            historyByImageId = await prisma.sectionImageHistory.findMany({
+                where: {
+                    userId: user.id,
+                    OR: [
+                        { previousImageId: currentImageId },
+                        { newImageId: currentImageId },
+                    ]
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+            });
+        }
+
+        // 重複を除去してマージ
+        const allHistoryIds = new Set<number>();
+        const mergedHistory: any[] = [];
+        for (const h of [...historyBySectionId, ...historyByImageId]) {
+            if (!allHistoryIds.has(h.id)) {
+                allHistoryIds.add(h.id);
+                mergedHistory.push(h);
+            }
+        }
+
+        // 日付順にソート
+        mergedHistory.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const history = mergedHistory.slice(0, 10);
+
+        log('History found', { bySectionId: historyBySectionId.length, byImageId: historyByImageId.length, merged: history.length });
 
         // 各履歴エントリの画像情報を取得
         const historyWithImages = await Promise.all(
@@ -92,12 +140,19 @@ export async function GET(
             index === self.findIndex(i => i.id === img.id)
         );
 
+        log('Response data', {
+            historyCount: historyWithImages.length,
+            originalImagesCount: uniqueOriginals.length,
+            sectionOrder: section.order
+        });
+
         return Response.json({
             history: historyWithImages,
             originalImages: uniqueOriginals,
             sectionOrder: section.order,
         });
     } catch (error: any) {
+        log('Error', { error: error.message });
         console.error('Failed to fetch history:', error);
         return Response.json({ error: error.message }, { status: 500 });
     }

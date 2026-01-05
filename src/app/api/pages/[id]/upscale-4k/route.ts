@@ -7,13 +7,17 @@ import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 const log = {
-    info: (msg: string) => console.log(`\x1b[35m[4K-UPSCALE]\x1b[0m ${msg}`),
-    success: (msg: string) => console.log(`\x1b[32m[4K-UPSCALE]\x1b[0m ${msg}`),
-    error: (msg: string) => console.log(`\x1b[31m[4K-UPSCALE]\x1b[0m ${msg}`),
+    info: (msg: string) => console.log(`\x1b[35m[HD-UPSCALE]\x1b[0m ${msg}`),
+    success: (msg: string) => console.log(`\x1b[32m[HD-UPSCALE]\x1b[0m ${msg}`),
+    error: (msg: string) => console.log(`\x1b[31m[HD-UPSCALE]\x1b[0m ${msg}`),
 };
 
-// 4K基準幅（LPは縦長なので幅を基準に）
-const TARGET_4K_WIDTH = 1500; // 4K相当の高解像度
+// 解像度マッピング
+const RESOLUTION_MAP: Record<string, number> = {
+    '1K': 1024,
+    '2K': 2048,
+    '4K': 3840,
+};
 
 function createStreamResponse(processFunction: (send: (data: any) => void) => Promise<void>) {
     const encoder = new TextEncoder();
@@ -61,8 +65,30 @@ export async function POST(
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // リクエストボディからオプションを取得
+    let textCorrection = true;
+    let resolution = '2K'; // デフォルト
+    let sectionIds: number[] | null = null; // null = 全体, 配列 = 個別
+    try {
+        const body = await request.json();
+        textCorrection = body.textCorrection !== false;
+        if (body.resolution && RESOLUTION_MAP[body.resolution]) {
+            resolution = body.resolution;
+        }
+        // 個別セクション指定
+        if (body.sectionIds && Array.isArray(body.sectionIds) && body.sectionIds.length > 0) {
+            sectionIds = body.sectionIds.map((id: any) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+        }
+    } catch {
+        // ボディがない場合はデフォルト値を使用
+    }
+
+    const targetWidth = RESOLUTION_MAP[resolution];
+
     return createStreamResponse(async (send) => {
         const startTime = createTimer();
+
+        log.info(`Resolution: ${resolution} (${targetWidth}px), Text correction: ${textCorrection ? 'ON' : 'OFF'}`);
 
         // ページとセクションを取得
         const page = await prisma.page.findUnique({
@@ -79,14 +105,20 @@ export async function POST(
             throw new Error('Page not found');
         }
 
-        const sectionsWithImages = page.sections.filter(s => s.image?.filePath);
+        // 画像があるセクションをフィルタ、個別指定がある場合はさらにフィルタ
+        let sectionsWithImages = page.sections.filter(s => s.image?.filePath);
+        if (sectionIds && sectionIds.length > 0) {
+            sectionsWithImages = sectionsWithImages.filter(s => sectionIds!.includes(s.id));
+            log.info(`Individual mode: processing ${sectionsWithImages.length} selected sections`);
+        }
         const total = sectionsWithImages.length;
 
         if (total === 0) {
             throw new Error('No sections with images found');
         }
 
-        log.info(`Starting 4K upscale for page ${pageId}: ${total} sections`);
+        const modeLabel = sectionIds ? '個別' : '全体';
+        log.info(`Starting 4K upscale for page ${pageId}: ${total} sections (${modeLabel})`);
 
         send({
             type: 'start',
@@ -126,47 +158,43 @@ export async function POST(
                     continue;
                 }
 
-                // 既に4K以上ならスキップ
-                if (imageMeta.width >= TARGET_4K_WIDTH) {
-                    log.info(`Section ${section.id}: Already 4K+ (${imageMeta.width}px), skipping`);
-                    send({
-                        type: 'skip',
-                        message: `セクション ${i + 1}: 既に高解像度のためスキップ`,
-                        sectionId: section.id,
-                    });
-                    continue;
-                }
+                // 出力サイズを計算（既に大きい場合はそのまま、小さい場合は拡大）
+                const needsUpscale = imageMeta.width < targetWidth;
+                const scale = needsUpscale ? targetWidth / imageMeta.width : 1;
+                const newWidth = needsUpscale ? targetWidth : imageMeta.width;
+                const newHeight = needsUpscale ? Math.round(imageMeta.height * scale) : imageMeta.height;
 
-                // アップスケール倍率を計算
-                const scale = TARGET_4K_WIDTH / imageMeta.width;
-                const newWidth = TARGET_4K_WIDTH;
-                const newHeight = Math.round(imageMeta.height * scale);
+                log.info(`Section ${section.id}: Processing ${imageMeta.width}x${imageMeta.height} -> ${newWidth}x${newHeight}${needsUpscale ? '' : ' (AI enhance only)'}`);
 
-                log.info(`Section ${section.id}: Upscaling ${imageMeta.width}x${imageMeta.height} -> ${newWidth}x${newHeight}`);
+                // 元画像をPNGに変換（AIに送る前処理）
+                const pngBuffer = await sharp(imageBuffer).png().toBuffer();
 
-                // まずsharpで拡大（ベースライン）
-                const upscaledBase = await sharp(imageBuffer)
-                    .resize(newWidth, newHeight, {
-                        kernel: sharp.kernel.lanczos3,
-                        withoutEnlargement: false,
-                    })
-                    .png()
-                    .toBuffer();
-
-                // AIで文字修復＆品質向上
-                const enhancedBuffer = await enhanceWith4KAI(
-                    upscaledBase,
+                // AIで4Kアップスケール（＋オプションで文字補正）を実行
+                // 元画像をそのまま送ることで、文字が崩れる前の状態をAIが認識できる
+                const enhancedBuffer = await upscaleWith4KAI(
+                    pngBuffer,
+                    imageMeta.width,
+                    imageMeta.height,
                     newWidth,
                     newHeight,
-                    googleApiKey
+                    googleApiKey,
+                    textCorrection
                 );
 
+                let finalBuffer: Buffer;
                 if (!enhancedBuffer) {
-                    log.error(`Section ${section.id}: AI enhancement failed, using base upscale`);
-                    // AIが失敗してもベースのアップスケールは使用
+                    log.error(`Section ${section.id}: AI 4K upscale failed, using sharp fallback`);
+                    // AIが失敗した場合はsharpでフォールバック
+                    finalBuffer = await sharp(imageBuffer)
+                        .resize(newWidth, newHeight, {
+                            kernel: sharp.kernel.lanczos3,
+                            withoutEnlargement: false,
+                        })
+                        .png()
+                        .toBuffer();
+                } else {
+                    finalBuffer = enhancedBuffer;
                 }
-
-                const finalBuffer = enhancedBuffer || upscaledBase;
 
                 // アップロード
                 const timestamp = Date.now();
@@ -258,32 +286,49 @@ export async function POST(
     });
 }
 
-async function enhanceWith4KAI(
+async function upscaleWith4KAI(
     imageBuffer: Buffer,
-    width: number,
-    height: number,
-    apiKey: string
+    originalWidth: number,
+    originalHeight: number,
+    targetWidth: number,
+    targetHeight: number,
+    apiKey: string,
+    textCorrection: boolean = true
 ): Promise<Buffer | null> {
-    const prompt = `この画像を高品質に修復・強化してください。
+    const scaleRatio = (targetWidth / originalWidth).toFixed(1);
 
-【タスク】
-1. 文字化けや読みにくい日本語テキストを正確で読みやすいものに修復
-2. ぼやけた部分をシャープに
-3. 色の鮮やかさを適切に調整
-4. ノイズやアーティファクトを除去
-5. UIコンポーネント（ボタン、アイコン等）のエッジを鮮明に
+    // 文字補正ON/OFFでプロンプトを切り替え
+    const textCorrectionSection = textCorrection
+        ? `
+【文字・テキストの補正】★最重要★
+- すべての日本語テキストを鮮明で読みやすく再描画してください
+- 文字化け、ぼやけ、にじみを完全に修正してください
+- フォントの形状を正確に維持しながら、エッジをシャープにしてください
+- 小さな文字も拡大後に読めるようにしてください
+`
+        : '';
 
-【重要】
+    const prompt = `この画像を高画質に補正・強化してください。
+${textCorrectionSection}
+【画質向上タスク】
+- ぼやけた部分をシャープに鮮明化
+- ノイズやアーティファクトを除去
+- 色の鮮やかさを適切に調整
+- UIコンポーネント（ボタン、アイコン等）のエッジを鮮明に
+- 細部のディテールを強化
+
+【絶対に守ること】
 - 画像のレイアウト、構成、デザインは一切変更しないでください
-- テキストの内容を変えずに、読みやすさだけを改善してください
-- 出力サイズは ${width}x${height}px を厳守してください
+- テキストの内容（文言）を変えずに、見た目の品質だけを改善してください
 - 元の画像の雰囲気やスタイルを維持してください
+- アスペクト比を維持してください
 
-高品質な ${width}x${height}px の画像を1枚だけ出力してください。`;
+高画質に補正した画像を1枚だけ出力してください。`;
 
     try {
         const base64 = imageBuffer.toString('base64');
 
+        // Gemini 3 Pro Image (最新モデル)
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
             {
@@ -297,8 +342,7 @@ async function enhanceWith4KAI(
                         ]
                     }],
                     generationConfig: {
-                        responseModalities: ["IMAGE", "TEXT"],
-                        temperature: 0.1, // 低温度で忠実な再現
+                        responseModalities: ["TEXT", "IMAGE"],
                     },
                 }),
             }
@@ -315,24 +359,32 @@ async function enhanceWith4KAI(
 
         for (const part of parts) {
             if (part.inlineData?.data) {
-                const enhancedBuffer = Buffer.from(part.inlineData.data, 'base64');
+                const aiOutputBuffer = Buffer.from(part.inlineData.data, 'base64');
+                const meta = await sharp(aiOutputBuffer).metadata();
+                log.info(`AI output: ${meta.width}x${meta.height}`);
 
-                // サイズを確認して必要なら調整
-                const meta = await sharp(enhancedBuffer).metadata();
-                if (meta.width !== width || meta.height !== height) {
-                    return await sharp(enhancedBuffer)
-                        .resize(width, height, { fit: 'cover', position: 'center' })
+                // AIの出力が目標サイズより小さい場合のみリサイズ
+                if (meta.width && meta.width < targetWidth) {
+                    log.info(`Upscaling AI output to ${targetWidth}x${targetHeight} with lanczos3`);
+                    return await sharp(aiOutputBuffer)
+                        .resize(targetWidth, targetHeight, {
+                            kernel: sharp.kernel.lanczos3,
+                            withoutEnlargement: false,
+                        })
+                        .sharpen({ sigma: 0.3 })
                         .png()
                         .toBuffer();
                 }
 
-                return enhancedBuffer;
+                // AIの出力がすでに十分なサイズならそのまま使用
+                log.info(`AI output already sufficient size, using as-is`);
+                return aiOutputBuffer;
             }
         }
 
         return null;
     } catch (error: any) {
-        log.error(`AI enhancement error: ${error.message}`);
+        log.error(`AI upscale error: ${error.message}`);
         return null;
     }
 }

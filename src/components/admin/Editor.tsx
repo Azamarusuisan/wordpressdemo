@@ -9,6 +9,7 @@ import { DualImportModal } from '@/components/admin/DualImportModal';
 import { BoundaryDesignModal } from '@/components/admin/BoundaryDesignModal';
 import { RestoreModal } from '@/components/admin/RestoreModal';
 import { DesignUnifyModal } from '@/components/admin/DesignUnifyModal';
+import { BackgroundUnifyModal } from '@/components/admin/BackgroundUnifyModal';
 import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand } from 'lucide-react';
 import type { ClickableArea } from '@/types';
 import Link from 'next/link';
@@ -108,15 +109,24 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [showDesignUnifyModal, setShowDesignUnifyModal] = useState(false);
     const [designUnifySectionId, setDesignUnifySectionId] = useState<string | null>(null);
 
+    // 背景色統一モーダル（複数セクション対応）
+    const [backgroundUnifyMode, setBackgroundUnifyMode] = useState(false);
+    const [selectedSectionsForBackgroundUnify, setSelectedSectionsForBackgroundUnify] = useState<Set<string>>(new Set());
+    const [showBackgroundUnifyModal, setShowBackgroundUnifyModal] = useState(false);
+
     // セクション追加モーダル
     const [showAddSectionModal, setShowAddSectionModal] = useState(false);
     const [addSectionIndex, setAddSectionIndex] = useState<number>(0); // 挿入位置
     const [addSectionPrompt, setAddSectionPrompt] = useState('');
     const [isAddingSection, setIsAddingSection] = useState(false);
 
-    // 4Kアップスケールモーダル
+    // HD高画質化モーダル
     const [show4KModal, setShow4KModal] = useState(false);
     const [is4KProcessing, setIs4KProcessing] = useState(false);
+    const [textCorrection4K, setTextCorrection4K] = useState(true); // 文字補正ON/OFF
+    const [upscaleResolution, setUpscaleResolution] = useState<'1K' | '2K' | '4K'>('2K'); // 解像度選択
+    const [upscaleMode, setUpscaleMode] = useState<'all' | 'individual'>('all'); // 全体/個別
+    const [selectedUpscaleSections, setSelectedUpscaleSections] = useState<number[]>([]); // 選択されたセクションID
     const [upscale4KProgress, setUpscale4KProgress] = useState<{
         current: number;
         total: number;
@@ -864,6 +874,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // サーバー側の履歴を取得して履歴パネルを開く
     const handleOpenHistoryPanel = async (sectionId: string) => {
+        console.log('[History] Opening panel for section:', sectionId);
         setShowHistoryPanel(sectionId);
         setIsLoadingHistory(true);
         setServerHistory([]);
@@ -871,13 +882,24 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
         try {
             const response = await fetch(`/api/sections/${sectionId}/history`);
+            const data = await response.json();
+
+            console.log('[History] API response:', { ok: response.ok, data });
+
             if (response.ok) {
-                const data = await response.json();
                 setServerHistory(data.history || []);
                 setOriginalImages(data.originalImages || []);
+                console.log('[History] Loaded:', {
+                    historyCount: data.history?.length || 0,
+                    originalImagesCount: data.originalImages?.length || 0
+                });
+            } else {
+                console.error('[History] API error:', data.error);
+                toast.error(data.error || '履歴の取得に失敗しました');
             }
         } catch (error) {
-            console.error('Failed to fetch history:', error);
+            console.error('[History] Failed to fetch:', error);
+            toast.error('履歴の取得に失敗しました');
         } finally {
             setIsLoadingHistory(false);
         }
@@ -886,32 +908,50 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // サーバー履歴から復元
     const handleRestoreFromServer = async (sectionId: string, imageId: number, imageUrl: string) => {
         try {
+            console.log('[Restore] Starting restore:', { sectionId, imageId, imageUrl });
+
             const response = await fetch(`/api/sections/${sectionId}/history`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageId }),
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || '復元に失敗しました');
+                console.error('[Restore] API error:', result);
+                throw new Error(result.error || '復元に失敗しました');
             }
 
-            // セクションを更新
-            setSections(prev => prev.map(s =>
-                s.id === sectionId
-                    ? { ...s, imageId, image: { ...s.image, id: imageId, filePath: imageUrl } }
-                    : s
-            ));
+            console.log('[Restore] API success:', result);
 
+            // セクションを更新（新しいimageオブジェクトを作成）
+            const updatedSections = sections.map(s =>
+                s.id === sectionId
+                    ? {
+                        ...s,
+                        imageId: imageId,
+                        image: {
+                            id: imageId,
+                            filePath: imageUrl,
+                            width: s.image?.width || 0,
+                            height: s.image?.height || 0,
+                        }
+                    }
+                    : s
+            );
+
+            setSections(updatedSections);
             toast.success('復元しました');
             setShowHistoryPanel(null);
-            handleSave(sections.map(s =>
-                s.id === sectionId
-                    ? { ...s, imageId, image: { ...s.image, id: imageId, filePath: imageUrl } }
-                    : s
-            ));
+
+            // 少し待ってから保存（state更新を待つ）
+            setTimeout(() => {
+                handleSave(updatedSections);
+            }, 100);
+
         } catch (error: any) {
+            console.error('[Restore] Error:', error);
             toast.error(error.message || '復元に失敗しました');
         }
     };
@@ -1490,6 +1530,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             const response = await fetch(`/api/pages/${pageId}/upscale-4k`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    textCorrection: textCorrection4K,
+                    resolution: upscaleResolution,
+                    sectionIds: upscaleMode === 'individual' ? selectedUpscaleSections : null,
+                }),
             });
 
             const reader = response.body?.getReader();
@@ -1536,7 +1581,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                         : s
                                 ));
                             } else if (data.type === 'complete') {
-                                toast.success(`4Kアップスケール完了: ${data.processed}/${data.total}セクション`);
+                                toast.success(`HD高画質化完了: ${data.processed}/${data.total}セクション`);
                             } else if (data.type === 'error') {
                                 throw new Error(data.error);
                             }
@@ -1547,7 +1592,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 }
             }
         } catch (error: any) {
-            toast.error(error.message || '4Kアップスケールに失敗しました');
+            toast.error(error.message || 'HD高画質化に失敗しました');
         } finally {
             setIs4KProcessing(false);
             setUpscale4KProgress(null);
@@ -1647,7 +1692,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 <button
                     onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
                     className={clsx(
-                        "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                        "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
                         status === 'published'
                             ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm"
                             : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -1761,46 +1806,73 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 >
                     <RotateCw className="h-4 w-4" />
                 </button>
+                <button
+                    onClick={() => {
+                        if (backgroundUnifyMode) {
+                            setBackgroundUnifyMode(false);
+                            setSelectedSectionsForBackgroundUnify(new Set());
+                        } else {
+                            setBackgroundUnifyMode(true);
+                            setBatchRegenerateMode(false);
+                            setSelectedSectionsForRegenerate(new Set());
+                            setBoundaryFixMode(false);
+                            setSelectedBoundaries(new Set());
+                        }
+                    }}
+                    disabled={sections.filter(s => s.image?.filePath).length === 0}
+                    className={clsx(
+                        "p-2 rounded-lg transition-all",
+                        backgroundUnifyMode ? "bg-amber-100 text-amber-600" : "text-gray-500 hover:bg-gray-100",
+                        "disabled:opacity-30 disabled:cursor-not-allowed"
+                    )}
+                    title="背景色統一（複数選択）"
+                >
+                    <Palette className="h-4 w-4" />
+                </button>
                 <div className="w-px h-6 bg-gray-200" />
-                {/* 4Kアップスケール */}
+                {/* HD高画質化 */}
                 <button
                     onClick={() => setShow4KModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm"
-                    title="4Kアップスケール＆文字修復"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm whitespace-nowrap"
+                    title="HD高画質化＆文字修復"
                 >
-                    <span className="text-white font-black text-xs">4K</span>
+                    <span className="text-white font-black text-xs">HD</span>
                     <span className="text-violet-200 text-xs hidden sm:inline">高画質化</span>
                 </button>
 
-                {/* API利用状況 */}
-                {apiCost && (
-                    <div className="flex items-center gap-3 px-3 py-1.5 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
-                            <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
-                        </div>
-                        <div className="w-px h-4 bg-gray-200" />
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
-                            <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* 保存ボタン */}
-                <button
-                    onClick={() => handleSave()}
-                    disabled={isSaving}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
-                >
-                    {isSaving ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Save className="h-4 w-4" />
+                {/* ステータス＆アクションバー */}
+                <div className="flex items-center p-1 bg-white rounded-xl border border-gray-200 shadow-sm h-10">
+                    {apiCost && (
+                        <>
+                            <div className="flex items-center gap-3 px-3">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
+                                    <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
+                                </div>
+                                <div className="w-px h-4 bg-gray-200" />
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
+                                    <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div className="w-px h-6 bg-gray-100 mx-1" />
+                        </>
                     )}
-                    <span>{isSaving ? '保存中...' : '保存'}</span>
-                </button>
+
+                    <button
+                        onClick={() => handleSave()}
+                        disabled={isSaving}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm h-full"
+                    >
+                        {isSaving ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Save className="h-4 w-4" />
+                        )}
+                        <span className="whitespace-nowrap">{isSaving ? '保存中...' : '保存'}</span>
+                    </button>
+                </div>
             </div>
 
             {/* Hidden file input */}
@@ -1881,273 +1953,302 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 </div>
                             )}
                             {sections.map((section, sectionIndex) => (
-                            <React.Fragment key={section.id}>
-                                <div
-                                    id={`section-${section.id}`}
-                                    className={clsx(
-                                        "relative group cursor-pointer",
-                                        batchRegenerateMode && batchReferenceSection === section.id && "ring-4 ring-blue-500",
-                                        batchRegenerateMode && selectedSectionsForRegenerate.has(section.id) && batchReferenceSection !== section.id && "ring-4 ring-orange-500"
-                                    )}
-                                    onClick={() => {
-                                        if (batchRegenerateMode && section.image?.filePath) {
-                                            // 参照セクションをクリックした場合は解除
-                                            if (batchReferenceSection === section.id) {
-                                                setBatchReferenceSection(null);
-                                                return;
-                                            }
-                                            // 一括再生成モード: 選択/解除（参照セクション以外）
-                                            setSelectedSectionsForRegenerate(prev => {
-                                                const next = new Set(prev);
-                                                if (next.has(section.id)) {
-                                                    next.delete(section.id);
-                                                } else {
-                                                    next.add(section.id);
+                                <React.Fragment key={section.id}>
+                                    <div
+                                        id={`section-${section.id}`}
+                                        className={clsx(
+                                            "relative group cursor-pointer",
+                                            batchRegenerateMode && batchReferenceSection === section.id && "ring-4 ring-blue-500",
+                                            batchRegenerateMode && selectedSectionsForRegenerate.has(section.id) && batchReferenceSection !== section.id && "ring-4 ring-orange-500",
+                                            backgroundUnifyMode && selectedSectionsForBackgroundUnify.has(section.id) && "ring-4 ring-amber-500"
+                                        )}
+                                        onClick={() => {
+                                            if (batchRegenerateMode && section.image?.filePath) {
+                                                // 参照セクションをクリックした場合は解除
+                                                if (batchReferenceSection === section.id) {
+                                                    setBatchReferenceSection(null);
+                                                    return;
                                                 }
-                                                return next;
-                                            });
-                                        } else if (section.image?.filePath) {
-                                            handleOpenInpaint(
-                                                section.id,
-                                                section.image.filePath,
-                                                section.mobileImage?.filePath
-                                            );
-                                        }
-                                    }}
-                                >
-                                    {(viewMode === 'desktop' ? section.image?.filePath : section.mobileImage?.filePath || section.image?.filePath) ? (
-                                        <>
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={viewMode === 'mobile' && section.mobileImage?.filePath
-                                                    ? section.mobileImage.filePath
-                                                    : section.image?.filePath}
-                                                alt={section.role}
-                                                className={clsx(
-                                                    "block h-auto",
-                                                    viewMode === 'mobile' ? "w-full max-w-[390px] mx-auto" : "w-full"
+                                                // 一括再生成モード: 選択/解除（参照セクション以外）
+                                                setSelectedSectionsForRegenerate(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(section.id)) {
+                                                        next.delete(section.id);
+                                                    } else {
+                                                        next.add(section.id);
+                                                    }
+                                                    return next;
+                                                });
+                                            } else if (backgroundUnifyMode && section.image?.filePath) {
+                                                // 背景色統一モード: 選択/解除
+                                                setSelectedSectionsForBackgroundUnify(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(section.id)) {
+                                                        next.delete(section.id);
+                                                    } else {
+                                                        next.add(section.id);
+                                                    }
+                                                    return next;
+                                                });
+                                            } else if (section.image?.filePath) {
+                                                handleOpenInpaint(
+                                                    section.id,
+                                                    section.image.filePath,
+                                                    section.mobileImage?.filePath
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        {(viewMode === 'desktop' ? section.image?.filePath : section.mobileImage?.filePath || section.image?.filePath) ? (
+                                            <>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={viewMode === 'mobile' && section.mobileImage?.filePath
+                                                        ? section.mobileImage.filePath
+                                                        : section.image?.filePath}
+                                                    alt={section.role}
+                                                    className={clsx(
+                                                        "block h-auto",
+                                                        viewMode === 'mobile' ? "w-full max-w-[390px] mx-auto" : "w-full"
+                                                    )}
+                                                />
+                                                {/* モバイル画像がない場合の警告 */}
+                                                {viewMode === 'mobile' && !section.mobileImage?.filePath && section.image?.filePath && (
+                                                    <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                                        モバイル画像なし
+                                                    </div>
                                                 )}
-                                            />
-                                            {/* モバイル画像がない場合の警告 */}
-                                            {viewMode === 'mobile' && !section.mobileImage?.filePath && section.image?.filePath && (
-                                                <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-                                                    モバイル画像なし
-                                                </div>
-                                            )}
-                                            {/* 一括再生成モード選択インジケーター */}
-                                            {batchRegenerateMode && (
-                                                <>
-                                                    {/* 参照セクションバッジ */}
-                                                    {batchReferenceSection === section.id && (
-                                                        <div className="absolute top-3 left-3 z-20 px-3 py-1.5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg">
-                                                            <Palette className="h-3.5 w-3.5" />
-                                                            参照スタイル
-                                                        </div>
-                                                    )}
-                                                    {/* 対象セクションバッジ */}
-                                                    {batchReferenceSection !== section.id && (
-                                                        <div className={clsx(
-                                                            "absolute top-3 left-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                                                            selectedSectionsForRegenerate.has(section.id)
-                                                                ? "bg-orange-500 text-white"
-                                                                : "bg-white/90 text-gray-400 border-2 border-gray-300"
-                                                        )}>
-                                                            {selectedSectionsForRegenerate.has(section.id) ? (
-                                                                <Check className="h-5 w-5" />
-                                                            ) : (
-                                                                <span className="text-xs font-bold">{sectionIndex + 1}</span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    {/* 参照として設定ボタン（右上） */}
-                                                    {batchReferenceSection !== section.id && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                // 参照セクションに設定し、対象リストから除外
-                                                                console.log('Setting reference section:', section.id);
-                                                                setBatchReferenceSection(section.id);
-                                                                setSelectedSectionsForRegenerate(prev => {
-                                                                    const next = new Set(prev);
-                                                                    next.delete(section.id);
-                                                                    return next;
-                                                                });
-                                                            }}
-                                                            className="absolute top-3 right-3 z-20 px-2 py-1 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold transition-all flex items-center gap-1 shadow-lg"
-                                                            title="このセクションのスタイルを参照として使用"
-                                                        >
-                                                            <Palette className="h-3 w-3" />
-                                                            参照に設定
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
-                                            {/* ホバーオーバーレイ（一括再生成モード以外） */}
-                                            <div className={clsx(
-                                                "absolute inset-0 transition-all duration-200 flex items-center justify-center",
-                                                batchRegenerateMode
-                                                    ? selectedSectionsForRegenerate.has(section.id) ? "bg-orange-500/20" : "bg-black/0 hover:bg-orange-500/10"
-                                                    : "bg-black/0 group-hover:bg-black/30"
-                                            )}>
+                                                {/* 一括再生成モード選択インジケーター */}
+                                                {batchRegenerateMode && (
+                                                    <>
+                                                        {/* 参照セクションバッジ */}
+                                                        {batchReferenceSection === section.id && (
+                                                            <div className="absolute top-3 left-3 z-20 px-3 py-1.5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                                                                <Palette className="h-3.5 w-3.5" />
+                                                                参照スタイル
+                                                            </div>
+                                                        )}
+                                                        {/* 対象セクションバッジ */}
+                                                        {batchReferenceSection !== section.id && (
+                                                            <div className={clsx(
+                                                                "absolute top-3 left-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                                                                selectedSectionsForRegenerate.has(section.id)
+                                                                    ? "bg-orange-500 text-white"
+                                                                    : "bg-white/90 text-gray-400 border-2 border-gray-300"
+                                                            )}>
+                                                                {selectedSectionsForRegenerate.has(section.id) ? (
+                                                                    <Check className="h-5 w-5" />
+                                                                ) : (
+                                                                    <span className="text-xs font-bold">{sectionIndex + 1}</span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {/* 参照として設定ボタン（右上） */}
+                                                        {batchReferenceSection !== section.id && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // 参照セクションに設定し、対象リストから除外
+                                                                    console.log('Setting reference section:', section.id);
+                                                                    setBatchReferenceSection(section.id);
+                                                                    setSelectedSectionsForRegenerate(prev => {
+                                                                        const next = new Set(prev);
+                                                                        next.delete(section.id);
+                                                                        return next;
+                                                                    });
+                                                                }}
+                                                                className="absolute top-3 right-3 z-20 px-2 py-1 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold transition-all flex items-center gap-1 shadow-lg"
+                                                                title="このセクションのスタイルを参照として使用"
+                                                            >
+                                                                <Palette className="h-3 w-3" />
+                                                                参照に設定
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {/* 背景色統一モード選択インジケーター */}
+                                                {backgroundUnifyMode && (
+                                                    <div className={clsx(
+                                                        "absolute top-3 left-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                                                        selectedSectionsForBackgroundUnify.has(section.id)
+                                                            ? "bg-amber-500 text-white"
+                                                            : "bg-white/90 text-gray-400 border-2 border-gray-300"
+                                                    )}>
+                                                        {selectedSectionsForBackgroundUnify.has(section.id) ? (
+                                                            <Check className="h-5 w-5" />
+                                                        ) : (
+                                                            <span className="text-xs font-bold">{sectionIndex + 1}</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {/* ホバーオーバーレイ */}
                                                 <div className={clsx(
-                                                    "transition-opacity duration-200 flex flex-col items-center gap-3",
-                                                    batchRegenerateMode ? "hidden" : "opacity-0 group-hover:opacity-100"
+                                                    "absolute inset-0 transition-all duration-200 flex items-center justify-center",
+                                                    batchRegenerateMode
+                                                        ? selectedSectionsForRegenerate.has(section.id) ? "bg-orange-500/20" : "bg-black/0 hover:bg-orange-500/10"
+                                                        : backgroundUnifyMode
+                                                            ? selectedSectionsForBackgroundUnify.has(section.id) ? "bg-amber-500/20" : "bg-black/0 hover:bg-amber-500/10"
+                                                            : "bg-black/0 group-hover:bg-black/30"
                                                 )}>
-                                                    <div className="flex gap-3">
-                                                        <div className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-xl">
-                                                            <Pencil className="h-6 w-6 text-gray-800" />
+                                                    <div className={clsx(
+                                                        "transition-opacity duration-200 flex flex-col items-center gap-3",
+                                                        batchRegenerateMode ? "hidden" : "opacity-0 group-hover:opacity-100"
+                                                    )}>
+                                                        <div className="flex gap-3">
+                                                            <div className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-xl">
+                                                                <Pencil className="h-6 w-6 text-gray-800" />
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenRegenerate(section.id);
+                                                                }}
+                                                                className="h-14 w-14 rounded-full bg-purple-600 flex items-center justify-center shadow-xl hover:bg-purple-700 transition-colors"
+                                                                title="このセクションを再生成"
+                                                            >
+                                                                <RotateCw className="h-6 w-6 text-white" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setRestoreSectionId(section.id);
+                                                                    setShowRestoreModal(true);
+                                                                }}
+                                                                className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center shadow-xl hover:bg-green-700 transition-colors"
+                                                                title="カットしすぎた部分を復元"
+                                                            >
+                                                                <Expand className="h-6 w-6 text-white" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDesignUnifySectionId(section.id);
+                                                                    setShowDesignUnifyModal(true);
+                                                                }}
+                                                                className="h-14 w-14 rounded-full bg-indigo-600 flex items-center justify-center shadow-xl hover:bg-indigo-700 transition-colors"
+                                                                title="他セクションのデザインに統一"
+                                                            >
+                                                                <Wand2 className="h-6 w-6 text-white" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (confirm('このセクションを削除しますか？')) {
+                                                                        setSections(prev => prev.filter(s => s.id !== section.id));
+                                                                        toast.success('セクションを削除しました');
+                                                                    }
+                                                                }}
+                                                                className="h-14 w-14 rounded-full bg-red-600 flex items-center justify-center shadow-xl hover:bg-red-700 transition-colors"
+                                                                title="このセクションを削除"
+                                                            >
+                                                                <Trash2 className="h-6 w-6 text-white" />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleOpenRegenerate(section.id);
-                                                            }}
-                                                            className="h-14 w-14 rounded-full bg-purple-600 flex items-center justify-center shadow-xl hover:bg-purple-700 transition-colors"
-                                                            title="このセクションを再生成"
-                                                        >
-                                                            <RotateCw className="h-6 w-6 text-white" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setRestoreSectionId(section.id);
-                                                                setShowRestoreModal(true);
-                                                            }}
-                                                            className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center shadow-xl hover:bg-green-700 transition-colors"
-                                                            title="カットしすぎた部分を復元"
-                                                        >
-                                                            <Expand className="h-6 w-6 text-white" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setDesignUnifySectionId(section.id);
-                                                                setShowDesignUnifyModal(true);
-                                                            }}
-                                                            className="h-14 w-14 rounded-full bg-indigo-600 flex items-center justify-center shadow-xl hover:bg-indigo-700 transition-colors"
-                                                            title="他セクションのデザインに統一"
-                                                        >
-                                                            <Wand2 className="h-6 w-6 text-white" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (confirm('このセクションを削除しますか？')) {
-                                                                    setSections(prev => prev.filter(s => s.id !== section.id));
-                                                                    toast.success('セクションを削除しました');
+                                                        <div className="flex gap-2">
+                                                            <span className="text-white text-xs font-bold bg-black/60 px-3 py-1.5 rounded-full">
+                                                                編集
+                                                            </span>
+                                                            <span className="text-white text-xs font-bold bg-purple-600/80 px-3 py-1.5 rounded-full">
+                                                                再生成
+                                                            </span>
+                                                            <span className="text-white text-xs font-bold bg-green-600/80 px-3 py-1.5 rounded-full">
+                                                                復元
+                                                            </span>
+                                                            <span className="text-white text-xs font-bold bg-indigo-600/80 px-3 py-1.5 rounded-full">
+                                                                統一
+                                                            </span>
+                                                            <span className="text-white text-xs font-bold bg-red-600/80 px-3 py-1.5 rounded-full">
+                                                                削除
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* 履歴ボタン - 常に表示 */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenHistoryPanel(section.id);
+                                                    }}
+                                                    className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all hover:scale-105"
+                                                    title="編集履歴"
+                                                >
+                                                    <Undo2 className="h-3.5 w-3.5" />
+                                                    <span>履歴</span>
+                                                </button>
+                                                {/* ローディング */}
+                                                {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id) || regeneratingSectionIds.has(section.id)) && (
+                                                    <div className="absolute inset-0 bg-purple-600/80 flex flex-col items-center justify-center gap-2">
+                                                        <RefreshCw className="h-10 w-10 text-white animate-spin" />
+                                                        {regeneratingSectionIds.has(section.id) && (
+                                                            <span className="text-white text-sm font-bold">再生成中...</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="h-48 bg-gray-100 flex items-center justify-center">
+                                                <span className="text-gray-400">画像なし</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* 境界差し替えチェックボックス（モード時のみ表示） */}
+                                    {boundaryFixMode &&
+                                        sectionIndex < sections.length - 1 &&
+                                        section.image?.filePath &&
+                                        sections[sectionIndex + 1].image?.filePath && (
+                                            <div className="relative h-0 z-10">
+                                                <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedBoundaries(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(sectionIndex)) {
+                                                                    next.delete(sectionIndex);
+                                                                } else {
+                                                                    next.add(sectionIndex);
                                                                 }
-                                                            }}
-                                                            className="h-14 w-14 rounded-full bg-red-600 flex items-center justify-center shadow-xl hover:bg-red-700 transition-colors"
-                                                            title="このセクションを削除"
-                                                        >
-                                                            <Trash2 className="h-6 w-6 text-white" />
-                                                        </button>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <span className="text-white text-xs font-bold bg-black/60 px-3 py-1.5 rounded-full">
-                                                            編集
-                                                        </span>
-                                                        <span className="text-white text-xs font-bold bg-purple-600/80 px-3 py-1.5 rounded-full">
-                                                            再生成
-                                                        </span>
-                                                        <span className="text-white text-xs font-bold bg-green-600/80 px-3 py-1.5 rounded-full">
-                                                            復元
-                                                        </span>
-                                                        <span className="text-white text-xs font-bold bg-indigo-600/80 px-3 py-1.5 rounded-full">
-                                                            統一
-                                                        </span>
-                                                        <span className="text-white text-xs font-bold bg-red-600/80 px-3 py-1.5 rounded-full">
-                                                            削除
-                                                        </span>
-                                                    </div>
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className={clsx(
+                                                            "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full shadow-lg transition-all hover:scale-105 border-2",
+                                                            selectedBoundaries.has(sectionIndex)
+                                                                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white"
+                                                                : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
+                                                        )}
+                                                    >
+                                                        {selectedBoundaries.has(sectionIndex) ? (
+                                                            <Check className="h-4 w-4" />
+                                                        ) : (
+                                                            <Scissors className="h-4 w-4" />
+                                                        )}
+                                                        境界 {sectionIndex + 1}
+                                                    </button>
                                                 </div>
                                             </div>
-                                            {/* 履歴ボタン - 常に表示 */}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleOpenHistoryPanel(section.id);
-                                                }}
-                                                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all hover:scale-105"
-                                                title="編集履歴"
-                                            >
-                                                <Undo2 className="h-3.5 w-3.5" />
-                                                <span>履歴</span>
-                                            </button>
-                                            {/* ローディング */}
-                                            {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id) || regeneratingSectionIds.has(section.id)) && (
-                                                <div className="absolute inset-0 bg-purple-600/80 flex flex-col items-center justify-center gap-2">
-                                                    <RefreshCw className="h-10 w-10 text-white animate-spin" />
-                                                    {regeneratingSectionIds.has(section.id) && (
-                                                        <span className="text-white text-sm font-bold">再生成中...</span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <div className="h-48 bg-gray-100 flex items-center justify-center">
-                                            <span className="text-gray-400">画像なし</span>
+                                        )}
+                                    {/* セクション追加ボタン（境界修正モードでない時に表示） */}
+                                    {!boundaryFixMode && sectionIndex < sections.length - 1 && (
+                                        <div className="relative h-0 z-10">
+                                            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setAddSectionIndex(sectionIndex + 1);
+                                                        setShowAddSectionModal(true);
+                                                    }}
+                                                    className="group/add flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-blue-500 text-gray-400 hover:text-white text-xs font-bold rounded-full shadow-lg transition-all hover:scale-110 border border-gray-200 hover:border-blue-500"
+                                                    title="ここにセクションを追加"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                    <span className="hidden group-hover/add:inline">追加</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
-                                </div>
-                                {/* 境界差し替えチェックボックス（モード時のみ表示） */}
-                                {boundaryFixMode &&
-                                 sectionIndex < sections.length - 1 &&
-                                 section.image?.filePath &&
-                                 sections[sectionIndex + 1].image?.filePath && (
-                                    <div className="relative h-0 z-10">
-                                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedBoundaries(prev => {
-                                                        const next = new Set(prev);
-                                                        if (next.has(sectionIndex)) {
-                                                            next.delete(sectionIndex);
-                                                        } else {
-                                                            next.add(sectionIndex);
-                                                        }
-                                                        return next;
-                                                    });
-                                                }}
-                                                className={clsx(
-                                                    "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full shadow-lg transition-all hover:scale-105 border-2",
-                                                    selectedBoundaries.has(sectionIndex)
-                                                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white"
-                                                        : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
-                                                )}
-                                            >
-                                                {selectedBoundaries.has(sectionIndex) ? (
-                                                    <Check className="h-4 w-4" />
-                                                ) : (
-                                                    <Scissors className="h-4 w-4" />
-                                                )}
-                                                境界 {sectionIndex + 1}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                {/* セクション追加ボタン（境界修正モードでない時に表示） */}
-                                {!boundaryFixMode && sectionIndex < sections.length - 1 && (
-                                    <div className="relative h-0 z-10">
-                                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setAddSectionIndex(sectionIndex + 1);
-                                                    setShowAddSectionModal(true);
-                                                }}
-                                                className="group/add flex items-center gap-1 px-3 py-1.5 bg-white/80 hover:bg-blue-500 text-gray-400 hover:text-white text-xs font-bold rounded-full shadow-lg transition-all hover:scale-110 border border-gray-200 hover:border-blue-500"
-                                                title="ここにセクションを追加"
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                                <span className="hidden group-hover/add:inline">追加</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </React.Fragment>
-                        ))}
+                                </React.Fragment>
+                            ))}
                         </>
                     )}
 
@@ -2304,6 +2405,60 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         >
                             <RefreshCw className="h-3.5 w-3.5" />
                             再生成実行
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* 背景色統一モード: フローティングアクションバー */}
+            {backgroundUnifyMode && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                    <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-2xl shadow-2xl border border-gray-200">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Palette className="h-4 w-4 text-amber-500" />
+                            <span>背景色統一</span>
+                            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {selectedSectionsForBackgroundUnify.size}件
+                            </span>
+                        </div>
+                        <div className="h-6 w-px bg-gray-200" />
+                        <button
+                            onClick={() => {
+                                const allSectionIds = sections
+                                    .filter(s => s.image?.filePath)
+                                    .map(s => s.id);
+                                if (selectedSectionsForBackgroundUnify.size === allSectionIds.length) {
+                                    setSelectedSectionsForBackgroundUnify(new Set());
+                                } else {
+                                    setSelectedSectionsForBackgroundUnify(new Set(allSectionIds));
+                                }
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            {selectedSectionsForBackgroundUnify.size === sections.filter(s => s.image?.filePath).length
+                                ? '全解除'
+                                : '全選択'}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setBackgroundUnifyMode(false);
+                                setSelectedSectionsForBackgroundUnify(new Set());
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            キャンセル
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (selectedSectionsForBackgroundUnify.size > 0) {
+                                    setShowBackgroundUnifyModal(true);
+                                }
+                            }}
+                            disabled={selectedSectionsForBackgroundUnify.size === 0}
+                            className="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        >
+                            <Palette className="h-3.5 w-3.5" />
+                            背景色を変更
                         </button>
                     </div>
                 </div>
@@ -2705,8 +2860,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     {/* サーバー側の永続履歴（編集ログ形式） */}
                                     {serverHistory.length > 0 ? (
                                         <div>
-                                            <h4 className="text-sm font-bold text-gray-600 mb-3">📝 編集ログ</h4>
-                                            <div className="space-y-3">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h4 className="text-sm font-bold text-gray-600">📝 編集ログ</h4>
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                    {serverHistory.length}件
+                                                </span>
+                                            </div>
+                                            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
                                                 {serverHistory.map((item, index) => (
                                                     <div
                                                         key={`server-${item.id}`}
@@ -2714,22 +2874,25 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     >
                                                         {/* ヘッダー：編集タイプと日時 */}
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                                item.actionType === 'design-unify' ? 'bg-purple-100 text-purple-700' :
-                                                                item.actionType === 'inpaint' ? 'bg-blue-100 text-blue-700' :
-                                                                item.actionType === 'regenerate' ? 'bg-orange-100 text-orange-700' :
-                                                                item.actionType === 'restore-canvas' ? 'bg-green-100 text-green-700' :
-                                                                item.actionType === 'boundary-design' ? 'bg-pink-100 text-pink-700' :
-                                                                item.actionType === 'revert' ? 'bg-gray-100 text-gray-700' :
-                                                                'bg-gray-100 text-gray-700'
-                                                            }`}>
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${item.actionType === 'design-unify' ? 'bg-purple-100 text-purple-700' :
+                                                                item.actionType === 'background-unify' ? 'bg-amber-100 text-amber-700' :
+                                                                    item.actionType === 'inpaint' ? 'bg-blue-100 text-blue-700' :
+                                                                        item.actionType === 'regenerate' ? 'bg-orange-100 text-orange-700' :
+                                                                            item.actionType === 'regenerate-heavy-mobile' ? 'bg-orange-100 text-orange-700' :
+                                                                                item.actionType === 'restore-canvas' ? 'bg-green-100 text-green-700' :
+                                                                                    item.actionType === 'boundary-design' ? 'bg-pink-100 text-pink-700' :
+                                                                                        item.actionType === 'revert' ? 'bg-gray-100 text-gray-700' :
+                                                                                            'bg-gray-100 text-gray-700'
+                                                                }`}>
                                                                 {item.actionType === 'design-unify' ? '🎨 デザイン統一' :
-                                                                 item.actionType === 'inpaint' ? '✏️ 部分編集' :
-                                                                 item.actionType === 'regenerate' ? '🔄 再生成' :
-                                                                 item.actionType === 'restore-canvas' ? '📐 キャンバス復元' :
-                                                                 item.actionType === 'boundary-design' ? '🔗 境界デザイン' :
-                                                                 item.actionType === 'revert' ? '↩️ 復元' :
-                                                                 item.actionType?.replace(/-/g, ' ') || '変更'}
+                                                                    item.actionType === 'background-unify' ? '🎨 背景色統一' :
+                                                                        item.actionType === 'inpaint' ? '✏️ 部分編集' :
+                                                                            item.actionType === 'regenerate' ? '🔄 再生成' :
+                                                                                item.actionType === 'regenerate-heavy-mobile' ? '🔄 モバイル再生成' :
+                                                                                    item.actionType === 'restore-canvas' ? '📐 キャンバス復元' :
+                                                                                        item.actionType === 'boundary-design' ? '🔗 境界デザイン' :
+                                                                                            item.actionType === 'revert' ? '↩️ 復元' :
+                                                                                                item.actionType?.replace(/-/g, ' ') || '変更'}
                                                             </span>
                                                             <span className="text-xs text-gray-500" suppressHydrationWarning>
                                                                 {new Date(item.createdAt).toLocaleString('ja-JP', {
@@ -2759,7 +2922,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                                     item.previousImageId,
                                                                     item.previousImage?.filePath
                                                                 )}
-                                                                className="flex-1 group relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border-2 border-transparent hover:border-green-500 transition-all"
+                                                                className="flex-1 group relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border-2 border-green-300 hover:border-green-500 transition-all"
                                                             >
                                                                 {item.previousImage?.filePath && (
                                                                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -2783,7 +2946,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                             <span className="text-gray-400 text-lg">→</span>
 
                                                             {/* After */}
-                                                            <div className="flex-1 relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border border-gray-300">
+                                                            <div className="flex-1 relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border-2 border-blue-300">
                                                                 {item.newImage?.filePath && (
                                                                     /* eslint-disable-next-line @next/next/no-img-element */
                                                                     <img
@@ -2834,7 +2997,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                         <div className="absolute bottom-1 left-1 right-1">
                                                             <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold">
                                                                 {img.sourceType === 'dual-import-desktop' ? 'インポート' :
-                                                                 img.sourceType === 'restyle-edit' ? 'リスタイル' : '元画像'}
+                                                                    img.sourceType === 'restyle-edit' ? 'リスタイル' : '元画像'}
                                                             </span>
                                                         </div>
                                                     </button>
@@ -3286,6 +3449,43 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 />
             )}
 
+            {/* 背景色統一モーダル（複数セクション対応） */}
+            {showBackgroundUnifyModal && selectedSectionsForBackgroundUnify.size > 0 && (
+                <BackgroundUnifyModal
+                    sections={sections}
+                    selectedSectionIds={Array.from(selectedSectionsForBackgroundUnify)}
+                    onClose={() => {
+                        setShowBackgroundUnifyModal(false);
+                    }}
+                    onSuccess={(results) => {
+                        // 各セクションの履歴保存と更新
+                        let updatedSections = [...sections];
+                        for (const result of results) {
+                            const currentSection = sections.find(s => s.id === result.sectionId);
+                            if (currentSection?.imageId && currentSection?.image) {
+                                setEditHistory(prev => ({
+                                    ...prev,
+                                    [result.sectionId]: [
+                                        { imageId: currentSection.imageId, image: currentSection.image, timestamp: Date.now() },
+                                        ...(prev[result.sectionId] || [])
+                                    ].slice(0, 10)
+                                }));
+                            }
+                            updatedSections = updatedSections.map(s =>
+                                s.id === result.sectionId
+                                    ? { ...s, imageId: result.newImageId, image: { ...s.image, id: result.newImageId, filePath: result.newImageUrl } }
+                                    : s
+                            );
+                        }
+                        setSections(updatedSections);
+                        setShowBackgroundUnifyModal(false);
+                        setBackgroundUnifyMode(false);
+                        setSelectedSectionsForBackgroundUnify(new Set());
+                        handleSave(updatedSections);
+                    }}
+                />
+            )}
+
             {/* セクション追加モーダル */}
             {showAddSectionModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
@@ -3406,35 +3606,206 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             {/* 4Kアップスケールモーダル */}
             {show4KModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-                    <div className="w-full max-w-sm bg-gray-900 rounded-xl shadow-2xl overflow-hidden border border-gray-700">
-                        {is4KProcessing && upscale4KProgress ? (
-                            <div className="p-8">
-                                {/* シンプルな進捗表示 */}
+                    {is4KProcessing && upscale4KProgress ? (
+                        /* レインボーシャドウ回転アニメーション付きカード */
+                        <div className="relative w-full max-w-xs">
+                            {/* 回転するレインボーグロー */}
+                            <div
+                                className="absolute -inset-1 rounded-2xl opacity-75 blur-lg"
+                                style={{
+                                    background: 'conic-gradient(from var(--rotation), #ff0080, #ff8c00, #40e0d0, #7b68ee, #ff0080)',
+                                    animation: 'spin4k 2s linear infinite',
+                                }}
+                            />
+                            <style>{`
+                                @property --rotation {
+                                    syntax: '<angle>';
+                                    initial-value: 0deg;
+                                    inherits: false;
+                                }
+                                @keyframes spin4k {
+                                    from { --rotation: 0deg; }
+                                    to { --rotation: 360deg; }
+                                }
+                            `}</style>
+                            {/* メインカード */}
+                            <div className="relative bg-gray-900 rounded-2xl p-8 border border-gray-800">
                                 <div className="text-center">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
-                                        <span className="text-2xl font-black text-white">4K</span>
-                                    </div>
-                                    <div className="text-4xl font-black text-white mb-2">
-                                        {upscale4KProgress.current}<span className="text-gray-500 text-2xl">/{upscale4KProgress.total}</span>
-                                    </div>
-                                    <div className="w-full bg-gray-800 rounded-full h-1 mb-4">
+                                    {/* 4Kバッジ（レインボーボーダー） */}
+                                    <div className="relative inline-flex mb-4">
                                         <div
-                                            className="bg-white h-1 rounded-full transition-all duration-500"
-                                            style={{ width: `${upscale4KProgress.total > 0 ? (upscale4KProgress.current / upscale4KProgress.total) * 100 : 0}%` }}
+                                            className="absolute -inset-0.5 rounded-full blur-sm"
+                                            style={{
+                                                background: 'conic-gradient(from var(--rotation), #ff0080, #ff8c00, #40e0d0, #7b68ee, #ff0080)',
+                                                animation: 'spin4k 2s linear infinite',
+                                            }}
+                                        />
+                                        <div className="relative w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center">
+                                            <span className="text-2xl font-black bg-gradient-to-r from-pink-500 via-yellow-500 to-cyan-500 bg-clip-text text-transparent">HD</span>
+                                        </div>
+                                    </div>
+                                    {/* 進捗数値 */}
+                                    <div className="text-5xl font-black text-white mb-1">
+                                        {upscale4KProgress.current}<span className="text-gray-600 text-3xl">/{upscale4KProgress.total}</span>
+                                    </div>
+                                    {/* レインボープログレスバー */}
+                                    <div className="w-full bg-gray-800 rounded-full h-1.5 mb-3 overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{
+                                                width: `${upscale4KProgress.total > 0 ? (upscale4KProgress.current / upscale4KProgress.total) * 100 : 0}%`,
+                                                background: 'linear-gradient(90deg, #ff0080, #ff8c00, #40e0d0, #7b68ee)',
+                                            }}
                                         />
                                     </div>
-                                    <p className="text-gray-400 text-sm">処理中...</p>
+                                    <p className="text-gray-500 text-sm">高画質化処理中...</p>
                                 </div>
                             </div>
-                        ) : (
+                        </div>
+                    ) : (
+                        <div className="w-full max-w-sm bg-gray-900 rounded-xl shadow-2xl overflow-hidden border border-gray-700">
                             <div className="p-6">
-                                <div className="text-center mb-6">
+                                <div className="text-center mb-4">
                                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-800 mb-3">
-                                        <span className="text-xl font-black text-white">4K</span>
+                                        <span className="text-xl font-black text-white">HD</span>
                                     </div>
-                                    <h2 className="text-white font-bold text-lg">高解像度化</h2>
+                                    <h2 className="text-white font-bold text-lg">HD高画質化</h2>
                                     <p className="text-gray-500 text-xs mt-1">{sections.filter(s => s.image?.filePath).length}セクション</p>
                                 </div>
+
+                                {/* 解像度選択 */}
+                                <div className="mb-3 p-3 bg-gray-800 rounded-lg">
+                                    <span className="text-white text-sm font-medium block mb-2">解像度</span>
+                                    <div className="flex gap-2">
+                                        {(['1K', '2K', '4K'] as const).map((res) => (
+                                            <button
+                                                key={res}
+                                                onClick={() => setUpscaleResolution(res)}
+                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${upscaleResolution === res
+                                                    ? 'bg-violet-600 text-white'
+                                                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {res}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-gray-500 text-xs mt-1.5">
+                                        {upscaleResolution === '1K' && '1024px幅 - 軽量'}
+                                        {upscaleResolution === '2K' && '2048px幅 - LP推奨'}
+                                        {upscaleResolution === '4K' && '3840px幅 - 高精細'}
+                                    </p>
+                                </div>
+
+                                {/* 全体/個別 切り替え */}
+                                <div className="mb-3 p-3 bg-gray-800 rounded-lg">
+                                    <span className="text-white text-sm font-medium block mb-2">対象</span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setUpscaleMode('all');
+                                                setSelectedUpscaleSections([]);
+                                            }}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${upscaleMode === 'all'
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                                }`}
+                                        >
+                                            全体
+                                        </button>
+                                        <button
+                                            onClick={() => setUpscaleMode('individual')}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${upscaleMode === 'individual'
+                                                ? 'bg-violet-600 text-white'
+                                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                                }`}
+                                        >
+                                            個別
+                                        </button>
+                                    </div>
+                                    <p className="text-gray-500 text-xs mt-1.5">
+                                        {upscaleMode === 'all' ? '全セクションを高画質化' : '選択したセクションのみ高画質化'}
+                                    </p>
+                                </div>
+
+                                {/* 個別選択時のセクション一覧 */}
+                                {upscaleMode === 'individual' && (
+                                    <div className="mb-3 p-3 bg-gray-800 rounded-lg max-h-48 overflow-y-auto">
+                                        <span className="text-white text-sm font-medium block mb-2">
+                                            セクション選択 ({selectedUpscaleSections.length}件)
+                                        </span>
+                                        <div className="space-y-1.5">
+                                            {sections.filter(s => s.image?.filePath).map((section, idx) => (
+                                                <label
+                                                    key={section.id}
+                                                    className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedUpscaleSections.includes(section.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedUpscaleSections(prev => [...prev, section.id]);
+                                                            } else {
+                                                                setSelectedUpscaleSections(prev => prev.filter(id => id !== section.id));
+                                                            }
+                                                        }}
+                                                        className="h-4 w-4 rounded border-gray-500 bg-gray-600 text-violet-600 focus:ring-violet-500"
+                                                    />
+                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                        <img
+                                                            src={section.image.filePath}
+                                                            alt=""
+                                                            className="w-8 h-8 object-cover rounded"
+                                                        />
+                                                        <span className="text-white text-xs truncate">
+                                                            {idx + 1}. {section.role || 'セクション'}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        {sections.filter(s => s.image?.filePath).length > 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    const allIds = sections.filter(s => s.image?.filePath).map(s => s.id);
+                                                    if (selectedUpscaleSections.length === allIds.length) {
+                                                        setSelectedUpscaleSections([]);
+                                                    } else {
+                                                        setSelectedUpscaleSections(allIds);
+                                                    }
+                                                }}
+                                                className="mt-2 text-xs text-violet-400 hover:text-violet-300"
+                                            >
+                                                {selectedUpscaleSections.length === sections.filter(s => s.image?.filePath).length
+                                                    ? '全て解除'
+                                                    : '全て選択'}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* 文字補正ON/OFFスイッチ */}
+                                <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <div>
+                                            <span className="text-white text-sm font-medium">文字補正</span>
+                                            <p className="text-gray-500 text-xs mt-0.5">日本語テキストを鮮明に修正</p>
+                                        </div>
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                checked={textCorrection4K}
+                                                onChange={(e) => setTextCorrection4K(e.target.checked)}
+                                                className="sr-only"
+                                            />
+                                            <div className={`w-11 h-6 rounded-full transition-colors ${textCorrection4K ? 'bg-violet-600' : 'bg-gray-600'}`}>
+                                                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${textCorrection4K ? 'translate-x-5' : ''}`} />
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => setShow4KModal(false)}
@@ -3444,15 +3815,18 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     </button>
                                     <button
                                         onClick={handle4KUpscale}
-                                        disabled={sections.filter(s => s.image?.filePath).length === 0}
+                                        disabled={
+                                            sections.filter(s => s.image?.filePath).length === 0 ||
+                                            (upscaleMode === 'individual' && selectedUpscaleSections.length === 0)
+                                        }
                                         className="flex-1 px-4 py-3 bg-white text-gray-900 text-sm font-bold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
                                     >
-                                        実行
+                                        {upscaleMode === 'individual' ? `${selectedUpscaleSections.length}件を実行` : '実行'}
                                     </button>
                                 </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -3508,34 +3882,34 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                                 {/* スタイル */}
                                 {regenerateStyle !== 'design-definition' && (
-                                <div>
-                                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                        スタイル
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { id: 'sampling', label: '元のまま' },
-                                            { id: 'professional', label: 'ビジネス' },
-                                            { id: 'pops', label: 'ポップ' },
-                                            { id: 'luxury', label: '高級' },
-                                            { id: 'minimal', label: 'シンプル' },
-                                            { id: 'emotional', label: '情熱' },
-                                        ].map((s) => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => setRegenerateStyle(s.id)}
-                                                className={clsx(
-                                                    "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
-                                                    regenerateStyle === s.id
-                                                        ? "border-purple-500 bg-purple-50 text-purple-700"
-                                                        : "border-gray-100 hover:border-gray-200 text-gray-600"
-                                                )}
-                                            >
-                                                {s.label}
-                                            </button>
-                                        ))}
+                                    <div>
+                                        <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            スタイル
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { id: 'sampling', label: '元のまま' },
+                                                { id: 'professional', label: 'ビジネス' },
+                                                { id: 'pops', label: 'ポップ' },
+                                                { id: 'luxury', label: '高級' },
+                                                { id: 'minimal', label: 'シンプル' },
+                                                { id: 'emotional', label: '情熱' },
+                                            ].map((s) => (
+                                                <button
+                                                    key={s.id}
+                                                    onClick={() => setRegenerateStyle(s.id)}
+                                                    className={clsx(
+                                                        "px-3 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                                                        regenerateStyle === s.id
+                                                            ? "border-purple-500 bg-purple-50 text-purple-700"
+                                                            : "border-gray-100 hover:border-gray-200 text-gray-600"
+                                                    )}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
                                 )}
 
                                 {/* カラー */}

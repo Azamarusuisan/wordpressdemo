@@ -162,7 +162,11 @@ export type GenerationType =
     | 'boundary-connector'
     | 'boundary-design'
     | '4k-upscale'
-    | 'section-generate';
+    | 'section-generate'
+    | 'design-unify'
+    | 'background-unify'
+    | 'ocr'
+    | 'text-fix';
 
 export interface GenerationRun {
     id: number;
