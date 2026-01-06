@@ -25,7 +25,11 @@ interface VideoData {
     autoplay?: boolean;
     loop?: boolean;
     muted?: boolean;
-    displayMode: 'background' | 'inline' | 'modal';
+    displayMode: 'background' | 'inline' | 'partial';
+    // 部分配置用のプロパティ
+    x?: number; // パーセント (0-100)
+    y?: number; // パーセント (0-100)
+    width?: number; // パーセント (10-100)
 }
 
 const VIDEO_SOURCES = [
@@ -36,9 +40,9 @@ const VIDEO_SOURCES = [
 ];
 
 const DISPLAY_MODES = [
-    { id: 'background', label: '背景動画', description: 'セクションの背景として表示' },
-    { id: 'inline', label: 'インライン', description: 'コンテンツ内に埋め込み' },
-    { id: 'modal', label: 'モーダル', description: 'クリックでポップアップ表示' },
+    { id: 'partial', label: '部分配置', description: '好きな位置に配置（ドラッグで移動可）' },
+    { id: 'background', label: '背景動画', description: 'セクション全体の背景' },
+    { id: 'inline', label: '全体表示', description: 'セクション全体に表示' },
 ];
 
 export default function VideoInsertModal({
@@ -51,7 +55,7 @@ export default function VideoInsertModal({
     const [videoSource, setVideoSource] = useState<'youtube' | 'upload' | 'embed' | 'ai-generate'>('youtube');
     const [videoUrl, setVideoUrl] = useState('');
     const [embedCode, setEmbedCode] = useState('');
-    const [displayMode, setDisplayMode] = useState<'background' | 'inline' | 'modal'>('inline');
+    const [displayMode, setDisplayMode] = useState<'background' | 'inline' | 'partial'>('partial');
     const [autoplay, setAutoplay] = useState(false);
     const [loop, setLoop] = useState(false);
     const [muted, setMuted] = useState(true);
@@ -60,6 +64,11 @@ export default function VideoInsertModal({
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
+
+    // 部分配置用
+    const [videoX, setVideoX] = useState(50); // 中央
+    const [videoY, setVideoY] = useState(50); // 中央
+    const [videoWidth, setVideoWidth] = useState(40); // 40%
 
     // AI生成用
     const [aiPrompt, setAiPrompt] = useState('');
@@ -111,7 +120,7 @@ export default function VideoInsertModal({
             const data = await response.json();
             setUploadedVideoUrl(data.video.url);
             setUploadProgress(100);
-            toast.success('動画をアップロードしました');
+            toast.success('アップロードが完了しました');
 
         } catch (error: any) {
             toast.error(error.message || '動画のアップロードに失敗しました');
@@ -219,7 +228,13 @@ export default function VideoInsertModal({
                 autoplay,
                 loop,
                 muted,
-                displayMode
+                displayMode,
+                // 部分配置の場合は位置とサイズを含める
+                ...(displayMode === 'partial' ? {
+                    x: videoX,
+                    y: videoY,
+                    width: videoWidth,
+                } : {})
             });
             toast.success('動画を挿入しました');
             onClose();
@@ -540,6 +555,49 @@ export default function VideoInsertModal({
                             ))}
                         </div>
                     </div>
+
+                    {/* 部分配置の設定 */}
+                    {displayMode === 'partial' && (
+                        <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                            <h3 className="text-sm font-bold text-gray-900 mb-3">配置設定</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-gray-600 mb-1 block">横位置: {videoX}%</label>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="90"
+                                        value={videoX}
+                                        onChange={(e) => setVideoX(Number(e.target.value))}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-600 mb-1 block">縦位置: {videoY}%</label>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="90"
+                                        value={videoY}
+                                        onChange={(e) => setVideoY(Number(e.target.value))}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-600 mb-1 block">サイズ: {videoWidth}%</label>
+                                    <input
+                                        type="range"
+                                        min="20"
+                                        max="80"
+                                        value={videoWidth}
+                                        onChange={(e) => setVideoWidth(Number(e.target.value))}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3">※ 挿入後、ドラッグで位置を調整できます</p>
+                        </div>
+                    )}
 
                     {/* オプション */}
                     <div className="space-y-3">

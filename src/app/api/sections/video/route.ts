@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
                 autoplay: videoData.autoplay || false,
                 loop: videoData.loop || false,
                 muted: videoData.muted || true,
-                displayMode: videoData.displayMode || 'inline', // 'background' | 'inline' | 'modal'
+                displayMode: videoData.displayMode || 'partial', // 'background' | 'inline' | 'partial'
+                // 部分配置用
+                x: videoData.x || 50,
+                y: videoData.y || 50,
+                width: videoData.width || 40,
             },
         };
 
