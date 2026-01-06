@@ -445,9 +445,11 @@ export default function CTAManagementModal({
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="text-xs font-medium text-gray-600 mb-1 block">
-                                                {editingArea.actionType === 'url' && 'URL'}
+                                        {/* リンク先URL - 目立つように強調 */}
+                                        <div className="p-3 bg-rose-50 border-2 border-rose-200 rounded-lg">
+                                            <label className="text-xs font-bold text-rose-700 mb-2 flex items-center gap-1">
+                                                <Link2 className="h-3.5 w-3.5" />
+                                                {editingArea.actionType === 'url' && 'リンク先URL（クリック時の遷移先）'}
                                                 {editingArea.actionType === 'email' && 'メールアドレス'}
                                                 {editingArea.actionType === 'phone' && '電話番号'}
                                                 {editingArea.actionType === 'scroll' && 'スクロール先ID'}
@@ -458,14 +460,21 @@ export default function CTAManagementModal({
                                                 value={editingArea.actionValue}
                                                 onChange={(e) => updateClickableArea(editingArea.id, { actionValue: e.target.value })}
                                                 placeholder={
-                                                    editingArea.actionType === 'url' ? 'https://...'
+                                                    editingArea.actionType === 'url' ? 'https://example.com/contact'
                                                         : editingArea.actionType === 'email' ? 'example@email.com'
                                                             : editingArea.actionType === 'phone' ? '03-1234-5678'
                                                                 : editingArea.actionType === 'scroll' ? '#section-id'
                                                                     : 'お問い合わせ'
                                                 }
-                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300"
+                                                className="w-full px-3 py-2.5 text-sm border-2 border-rose-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-medium"
                                             />
+                                            <p className="mt-1.5 text-[10px] text-rose-600">
+                                                {editingArea.actionType === 'url' && '例: https://example.com, /contact, #form'}
+                                                {editingArea.actionType === 'email' && '例: info@company.com'}
+                                                {editingArea.actionType === 'phone' && '例: 03-1234-5678, 0120-xxx-xxx'}
+                                                {editingArea.actionType === 'scroll' && '例: #contact, #form-section'}
+                                                {editingArea.actionType === 'form-input' && '例: お問い合わせフォーム'}
+                                            </p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
