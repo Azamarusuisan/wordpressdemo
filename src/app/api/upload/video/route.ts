@@ -11,6 +11,10 @@ const ALLOWED_VIDEO_TYPES = [
     'video/x-msvideo', // AVI
 ];
 
+// 使用するバケット（videosがなければimagesにフォールバック）
+const VIDEO_BUCKET = 'videos';
+const FALLBACK_BUCKET = 'images';
+
 export async function POST(request: NextRequest) {
     // ユーザー認証
     const supabaseAuth = await createClient();
@@ -53,35 +57,53 @@ export async function POST(request: NextRequest) {
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const finalFilename = `${uniqueSuffix}-${sanitizedName}`;
 
-        // Supabase Storageにアップロード（videosバケット）
-        const { data: uploadData, error: uploadError } = await supabase
+        // Supabase Storageにアップロード（videosバケット、なければimagesにフォールバック）
+        let usedBucket = VIDEO_BUCKET;
+        let uploadData: any;
+        let uploadError: any;
+
+        // まずvideosバケットを試す
+        const result1 = await supabase
             .storage
-            .from('videos')
+            .from(VIDEO_BUCKET)
             .upload(finalFilename, buffer, {
                 contentType: file.type,
                 cacheControl: '3600',
                 upsert: false
             });
 
+        uploadData = result1.data;
+        uploadError = result1.error;
+
+        // videosバケットがない場合、imagesバケットにフォールバック
+        if (uploadError?.message?.includes('Bucket not found') || uploadError?.message?.includes('not found')) {
+            console.log('[Video Upload] videos bucket not found, falling back to images bucket');
+            usedBucket = FALLBACK_BUCKET;
+
+            const result2 = await supabase
+                .storage
+                .from(FALLBACK_BUCKET)
+                .upload(`videos/${finalFilename}`, buffer, {
+                    contentType: file.type,
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            uploadData = result2.data;
+            uploadError = result2.error;
+        }
+
         if (uploadError) {
             console.error('Supabase video upload error:', uploadError);
-
-            // バケットが存在しない場合のエラーハンドリング
-            if (uploadError.message?.includes('Bucket not found')) {
-                return NextResponse.json(
-                    { error: 'videos バケットが存在しません。Supabaseダッシュボードで作成してください' },
-                    { status: 500 }
-                );
-            }
-
             return NextResponse.json({ error: 'Upload failed: ' + uploadError.message }, { status: 500 });
         }
 
         // Public URLを取得
+        const filePath = usedBucket === FALLBACK_BUCKET ? `videos/${finalFilename}` : finalFilename;
         const { data: { publicUrl } } = supabase
             .storage
-            .from('videos')
-            .getPublicUrl(finalFilename);
+            .from(usedBucket)
+            .getPublicUrl(filePath);
 
         // DBレコード作成
         const video = await prisma.mediaVideo.create({
