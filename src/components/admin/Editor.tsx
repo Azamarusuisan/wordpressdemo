@@ -10,7 +10,7 @@ import { BoundaryDesignModal } from '@/components/admin/BoundaryDesignModal';
 import { RestoreModal } from '@/components/admin/RestoreModal';
 import { DesignUnifyModal } from '@/components/admin/DesignUnifyModal';
 import { BackgroundUnifyModal } from '@/components/admin/BackgroundUnifyModal';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, TestTube2, LayoutTemplate, Video, Lock, Crown } from 'lucide-react';
 import type { ClickableArea } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -86,6 +86,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [showBoundaryFixModal, setShowBoundaryFixModal] = useState(false);
     const [boundaryFixMode, setBoundaryFixMode] = useState(false); // 境界選択モード
     const [selectedBoundaries, setSelectedBoundaries] = useState<Set<number>>(new Set()); // 選択された境界のインデックス
+
+    // セクション削除モード
+    const [sectionDeleteMode, setSectionDeleteMode] = useState(false);
+    const [selectedSectionsForDelete, setSelectedSectionsForDelete] = useState<Set<string>>(new Set());
 
     // 境界ドラッグ調整
     const [draggingBoundaryIndex, setDraggingBoundaryIndex] = useState<number | null>(null);
@@ -1697,193 +1701,73 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            {/* フローティングツールバー */}
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl px-4 py-2 border border-gray-200">
-                <button
-                    onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
-                    className={clsx(
-                        "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
-                        status === 'published'
-                            ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                    )}
-                >
-                    <span className={clsx(
-                        "w-1.5 h-1.5 rounded-full",
-                        status === 'published' ? "bg-white animate-pulse" : "bg-gray-400"
-                    )} />
-                    {status === 'published' ? '公開中' : '下書き'}
-                </button>
-                <div className="w-px h-6 bg-gray-200" />
-                <button
-                    onClick={() => document.getElementById('file-upload-input')?.click()}
-                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
-                    title="画像追加"
-                >
-                    <Plus className="h-4 w-4" />
-                </button>
-                <div className="w-px h-6 bg-gray-200" />
-                <Link href={`/p/${initialSlug || pageId}`} target="_blank" className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all" title="新しいタブでプレビュー">
-                    <Eye className="h-4 w-4" />
-                </Link>
-                {/* デスクトップ/モバイル切り替えトグル */}
-                <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-                    <button
-                        onClick={() => setViewMode('desktop')}
-                        className={clsx(
-                            "p-1.5 rounded-md transition-all",
-                            viewMode === 'desktop'
-                                ? "bg-white text-blue-600 shadow-sm"
-                                : "text-gray-400 hover:text-gray-600"
-                        )}
-                        title="デスクトップ表示"
-                    >
-                        <Monitor className="h-4 w-4" />
-                    </button>
-                    <button
-                        onClick={() => setViewMode('mobile')}
-                        className={clsx(
-                            "p-1.5 rounded-md transition-all",
-                            viewMode === 'mobile'
-                                ? "bg-white text-blue-600 shadow-sm"
-                                : "text-gray-400 hover:text-gray-600"
-                        )}
-                        title="モバイル表示"
-                    >
-                        <Smartphone className="h-4 w-4" />
-                    </button>
-                </div>
-                <button
-                    onClick={() => setShowDesktopPreview(true)}
-                    disabled={sections.filter(s => s.image?.filePath).length === 0}
-                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="フルスクリーンプレビュー"
-                >
-                    <Eye className="h-4 w-4" />
-                </button>
-                <button onClick={handleExport} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-all" title="ZIPダウンロード">
-                    <Download className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={() => setShowAIPanel(!showAIPanel)}
-                    className={clsx(
-                        "p-2 rounded-lg transition-all",
-                        showAIPanel ? "bg-purple-100 text-purple-600" : "text-gray-500 hover:bg-gray-100"
-                    )}
-                    title="AIアシスタント"
-                >
-                    <Sparkles className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={() => {
-                        if (boundaryFixMode) {
-                            setBoundaryFixMode(false);
-                            setSelectedBoundaries(new Set());
-                        } else {
-                            setBoundaryFixMode(true);
-                            setBatchRegenerateMode(false);
-                            setSelectedSectionsForRegenerate(new Set());
-                        }
-                    }}
-                    disabled={sections.filter((s, i) => i < sections.length - 1 && s.image?.filePath && sections[i + 1]?.image?.filePath).length === 0}
-                    className={clsx(
-                        "p-2 rounded-lg transition-all",
-                        boundaryFixMode ? "bg-purple-100 text-purple-600" : "text-gray-500 hover:bg-gray-100",
-                        "disabled:opacity-30 disabled:cursor-not-allowed"
-                    )}
-                    title="境界修正"
-                >
-                    <Scissors className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={() => {
-                        if (batchRegenerateMode) {
-                            setBatchRegenerateMode(false);
-                            setSelectedSectionsForRegenerate(new Set());
-                        } else {
-                            setBatchRegenerateMode(true);
-                            setBoundaryFixMode(false);
-                            setSelectedBoundaries(new Set());
-                        }
-                    }}
-                    disabled={sections.filter(s => s.image?.filePath).length === 0}
-                    className={clsx(
-                        "p-2 rounded-lg transition-all",
-                        batchRegenerateMode ? "bg-orange-100 text-orange-600" : "text-gray-500 hover:bg-gray-100",
-                        "disabled:opacity-30 disabled:cursor-not-allowed"
-                    )}
-                    title="一括再生成（複数選択）"
-                >
-                    <RotateCw className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={() => {
-                        if (backgroundUnifyMode) {
-                            setBackgroundUnifyMode(false);
-                            setSelectedSectionsForBackgroundUnify(new Set());
-                        } else {
-                            setBackgroundUnifyMode(true);
-                            setBatchRegenerateMode(false);
-                            setSelectedSectionsForRegenerate(new Set());
-                            setBoundaryFixMode(false);
-                            setSelectedBoundaries(new Set());
-                        }
-                    }}
-                    disabled={sections.filter(s => s.image?.filePath).length === 0}
-                    className={clsx(
-                        "p-2 rounded-lg transition-all",
-                        backgroundUnifyMode ? "bg-amber-100 text-amber-600" : "text-gray-500 hover:bg-gray-100",
-                        "disabled:opacity-30 disabled:cursor-not-allowed"
-                    )}
-                    title="背景色統一（複数選択）"
-                >
-                    <Palette className="h-4 w-4" />
-                </button>
-                <div className="w-px h-6 bg-gray-200" />
+        <div className="min-h-screen bg-gray-100 pr-[360px]">
+            {/* フローティングツールバー（必須機能のみ） */}
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl px-4 py-2.5 border border-gray-200" style={{ transform: 'translateX(calc(-50% - 180px))' }}>
                 {/* HD高画質化 */}
                 <button
                     onClick={() => setShow4KModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm whitespace-nowrap"
-                    title="HD高画質化＆文字修復"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm"
+                    title="HD高画質化"
                 >
                     <span className="text-white font-black text-xs">HD</span>
-                    <span className="text-violet-200 text-xs hidden sm:inline">高画質化</span>
+                    <span className="text-violet-200 text-xs">高画質化</span>
                 </button>
 
-                {/* ステータス＆アクションバー */}
-                <div className="flex items-center p-1 bg-white rounded-xl border border-gray-200 shadow-sm h-10">
-                    {apiCost && (
-                        <>
-                            <div className="flex items-center gap-3 px-3">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
-                                    <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
-                                </div>
-                                <div className="w-px h-4 bg-gray-200" />
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
-                                    <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
-                                </div>
-                            </div>
-                            <div className="w-px h-6 bg-gray-100 mx-1" />
-                        </>
-                    )}
+                <div className="w-px h-6 bg-gray-200" />
 
-                    <button
-                        onClick={() => handleSave()}
-                        disabled={isSaving}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm h-full"
-                    >
-                        {isSaving ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="h-4 w-4" />
-                        )}
-                        <span className="whitespace-nowrap">{isSaving ? '保存中...' : '保存'}</span>
-                    </button>
-                </div>
+                {/* API料金 */}
+                {apiCost && (
+                    <div className="flex items-center gap-3 px-2">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
+                            <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
+                        </div>
+                        <div className="w-px h-4 bg-gray-200" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
+                            <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
+                        </div>
+                    </div>
+                )}
+
+                <div className="w-px h-6 bg-gray-200" />
+
+                {/* 履歴ボタン */}
+                <button
+                    onClick={() => {
+                        // 履歴パネルを表示（セクション一覧から選択）
+                        const sectionsWithHistory = sections.filter(s => editHistory[s.id]?.length > 0);
+                        if (sectionsWithHistory.length > 0) {
+                            setRestoreSectionId(sectionsWithHistory[0].id);
+                            setShowRestoreModal(true);
+                        } else {
+                            toast('編集履歴がありません');
+                        }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                    title="変更履歴"
+                >
+                    <Undo2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">履歴</span>
+                </button>
+
+                <div className="w-px h-6 bg-gray-200" />
+
+                {/* 保存ボタン */}
+                <button
+                    onClick={() => handleSave()}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
+                >
+                    {isSaving ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Save className="h-4 w-4" />
+                    )}
+                    <span className="whitespace-nowrap">{isSaving ? '保存中...' : '保存'}</span>
+                </button>
             </div>
 
             {/* Hidden file input */}
@@ -1955,10 +1839,22 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             "relative group cursor-pointer",
                                             batchRegenerateMode && batchReferenceSection === section.id && "ring-4 ring-blue-500",
                                             batchRegenerateMode && selectedSectionsForRegenerate.has(section.id) && batchReferenceSection !== section.id && "ring-4 ring-orange-500",
-                                            backgroundUnifyMode && selectedSectionsForBackgroundUnify.has(section.id) && "ring-4 ring-amber-500"
+                                            backgroundUnifyMode && selectedSectionsForBackgroundUnify.has(section.id) && "ring-4 ring-amber-500",
+                                            sectionDeleteMode && selectedSectionsForDelete.has(section.id) && "ring-4 ring-red-500"
                                         )}
                                         onClick={() => {
-                                            if (batchRegenerateMode && section.image?.filePath) {
+                                            if (sectionDeleteMode) {
+                                                // セクション削除モード: 選択/解除
+                                                setSelectedSectionsForDelete(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(section.id)) {
+                                                        next.delete(section.id);
+                                                    } else {
+                                                        next.add(section.id);
+                                                    }
+                                                    return next;
+                                                });
+                                            } else if (batchRegenerateMode && section.image?.filePath) {
                                                 // 参照セクションをクリックした場合は解除
                                                 if (batchReferenceSection === section.id) {
                                                     setBatchReferenceSection(null);
@@ -2076,18 +1972,35 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                         )}
                                                     </div>
                                                 )}
+                                                {/* セクション削除モード選択インジケーター */}
+                                                {sectionDeleteMode && (
+                                                    <div className={clsx(
+                                                        "absolute top-3 left-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                                                        selectedSectionsForDelete.has(section.id)
+                                                            ? "bg-red-500 text-white"
+                                                            : "bg-white/90 text-gray-400 border-2 border-gray-300"
+                                                    )}>
+                                                        {selectedSectionsForDelete.has(section.id) ? (
+                                                            <Check className="h-5 w-5" />
+                                                        ) : (
+                                                            <span className="text-xs font-bold">{sectionIndex + 1}</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {/* ホバーオーバーレイ */}
                                                 <div className={clsx(
                                                     "absolute inset-0 transition-all duration-200 flex items-center justify-center",
-                                                    batchRegenerateMode
-                                                        ? selectedSectionsForRegenerate.has(section.id) ? "bg-orange-500/20" : "bg-black/0 hover:bg-orange-500/10"
-                                                        : backgroundUnifyMode
-                                                            ? selectedSectionsForBackgroundUnify.has(section.id) ? "bg-amber-500/20" : "bg-black/0 hover:bg-amber-500/10"
-                                                            : "bg-black/0 group-hover:bg-black/30"
+                                                    sectionDeleteMode
+                                                        ? selectedSectionsForDelete.has(section.id) ? "bg-red-500/20" : "bg-black/0 hover:bg-red-500/10"
+                                                        : batchRegenerateMode
+                                                            ? selectedSectionsForRegenerate.has(section.id) ? "bg-orange-500/20" : "bg-black/0 hover:bg-orange-500/10"
+                                                            : backgroundUnifyMode
+                                                                ? selectedSectionsForBackgroundUnify.has(section.id) ? "bg-amber-500/20" : "bg-black/0 hover:bg-amber-500/10"
+                                                                : "bg-black/0 group-hover:bg-black/30"
                                                 )}>
                                                     <div className={clsx(
                                                         "transition-opacity duration-200 flex flex-col items-center gap-3",
-                                                        batchRegenerateMode ? "hidden" : "opacity-0 group-hover:opacity-100"
+                                                        (batchRegenerateMode || sectionDeleteMode || backgroundUnifyMode) ? "hidden" : "opacity-0 group-hover:opacity-100"
                                                     )}>
                                                         <div className="flex gap-3">
                                                             <div className="h-14 w-14 rounded-full bg-white flex items-center justify-center shadow-xl">
@@ -2186,100 +2099,51 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             </div>
                                         )}
                                     </div>
-                                    {/* 境界ドラッグハンドル（通常モード時）または境界差し替えチェックボックス（境界修正モード時） */}
-                                    {sectionIndex < sections.length - 1 &&
-                                        section.image?.filePath &&
-                                        sections[sectionIndex + 1].image?.filePath && (
-                                            <div
-                                                className="relative h-0 z-10"
-                                                style={{
-                                                    // ドラッグ中は保存済み+ドラッグオフセット、それ以外は保存済みのみ
-                                                    transform: `translateY(${
-                                                        draggingBoundaryIndex === sectionIndex
-                                                            ? Math.max(-300, Math.min(300, (section.boundaryOffsetBottom || 0) + boundaryDragOffset))
-                                                            : (section.boundaryOffsetBottom || 0)
-                                                    }px)`
-                                                }}
-                                            >
-                                                <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                                    {boundaryFixMode ? (
-                                                        // 境界修正モード: チェックボックス
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedBoundaries(prev => {
-                                                                    const next = new Set(prev);
-                                                                    if (next.has(sectionIndex)) {
-                                                                        next.delete(sectionIndex);
-                                                                    } else {
-                                                                        next.add(sectionIndex);
-                                                                    }
-                                                                    return next;
-                                                                });
-                                                            }}
-                                                            className={clsx(
-                                                                "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full shadow-lg transition-all hover:scale-105 border-2",
-                                                                selectedBoundaries.has(sectionIndex)
-                                                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white"
-                                                                    : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
-                                                            )}
-                                                        >
-                                                            {selectedBoundaries.has(sectionIndex) ? (
-                                                                <Check className="h-4 w-4" />
-                                                            ) : (
-                                                                <Scissors className="h-4 w-4" />
-                                                            )}
-                                                            境界 {sectionIndex + 1}
-                                                        </button>
-                                                    ) : (
-                                                        // 通常モード: ドラッグ可能な境界ハンドル
-                                                        <div
-                                                            className={clsx(
-                                                                "flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-full shadow-lg border-2 cursor-ns-resize select-none transition-all",
-                                                                draggingBoundaryIndex === sectionIndex
-                                                                    ? "bg-purple-600 text-white border-purple-400 scale-110"
-                                                                    : "bg-white/90 text-gray-600 border-gray-300 hover:border-purple-400 hover:text-purple-600"
-                                                            )}
-                                                            onMouseDown={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                setDraggingBoundaryIndex(sectionIndex);
-                                                                setBoundaryDragStartY(e.clientY);
-                                                                setBoundaryDragOffset(0);
-                                                            }}
-                                                            title="上下にドラッグして境界を調整"
-                                                        >
-                                                            <GripVertical className="h-5 w-5" />
-                                                            境界 {sectionIndex + 1}
-                                                        </div>
-                                                    )}
-                                                </div>
+
+                                    {/* 境界選択UI - boundaryFixModeがtrueの時に表示 */}
+                                    {boundaryFixMode && sectionIndex < sections.length - 1 && (
+                                        <div
+                                            className={clsx(
+                                                "relative h-12 flex items-center justify-center cursor-pointer transition-all",
+                                                selectedBoundaries.has(sectionIndex)
+                                                    ? "bg-gradient-to-r from-rose-500 to-pink-500"
+                                                    : "bg-gradient-to-r from-gray-200 to-gray-300 hover:from-rose-200 hover:to-pink-200"
+                                            )}
+                                            onClick={() => {
+                                                setSelectedBoundaries(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(sectionIndex)) {
+                                                        next.delete(sectionIndex);
+                                                    } else {
+                                                        next.add(sectionIndex);
+                                                    }
+                                                    return next;
+                                                });
+                                            }}
+                                        >
+                                            <div className={clsx(
+                                                "flex items-center gap-2 px-4 py-2 rounded-full transition-all",
+                                                selectedBoundaries.has(sectionIndex)
+                                                    ? "bg-white/20 text-white"
+                                                    : "bg-white shadow-sm text-gray-600"
+                                            )}>
+                                                {selectedBoundaries.has(sectionIndex) ? (
+                                                    <>
+                                                        <Check className="h-4 w-4" />
+                                                        <span className="text-xs font-bold">境界 {sectionIndex + 1} を削除</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Scissors className="h-4 w-4" />
+                                                        <span className="text-xs font-medium">境界 {sectionIndex + 1}</span>
+                                                    </>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
+                                    )}
                                 </React.Fragment>
                             ))}
                         </>
-                    )}
-
-                    {/* 境界を追加ボタン（セクションが2つ以上ある場合） */}
-                    {sections.length >= 2 && !boundaryFixMode && (
-                        <div className="py-6 flex justify-center">
-                            <button
-                                onClick={() => {
-                                    // 全セクションの境界オフセットをリセット（新規追加モード）
-                                    setSections(prev => prev.map(s => ({
-                                        ...s,
-                                        boundaryOffsetTop: 0,
-                                        boundaryOffsetBottom: 0
-                                    })));
-                                    toast.success('境界オフセットをリセットしました。各境界をドラッグして調整してください。');
-                                }}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm"
-                            >
-                                <Expand className="h-5 w-5" />
-                                境界を調整（リセット）
-                            </button>
-                        </div>
                     )}
 
                     {/* フッター */}
@@ -2288,61 +2152,6 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     </footer>
                 </div>
             </div>
-
-            {/* 境界修正モードのフローティングアクションバー */}
-            {boundaryFixMode && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom duration-300">
-                    <div className="flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-gray-200 px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Scissors className="h-4 w-4 text-purple-500" />
-                            <span>境界修正</span>
-                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                                {selectedBoundaries.size}件選択中
-                            </span>
-                        </div>
-                        <div className="h-6 w-px bg-gray-200" />
-                        <button
-                            onClick={() => {
-                                // 全選択/全解除
-                                const allBoundaryIndices = sections
-                                    .map((s, i) => i)
-                                    .filter(i => i < sections.length - 1 && sections[i].image?.filePath && sections[i + 1].image?.filePath);
-                                if (selectedBoundaries.size === allBoundaryIndices.length) {
-                                    setSelectedBoundaries(new Set());
-                                } else {
-                                    setSelectedBoundaries(new Set(allBoundaryIndices));
-                                }
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            {selectedBoundaries.size === sections.filter((s, i) => i < sections.length - 1 && s.image?.filePath && sections[i + 1]?.image?.filePath).length
-                                ? '全解除'
-                                : '全選択'}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setBoundaryFixMode(false);
-                                setSelectedBoundaries(new Set());
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            キャンセル
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (selectedBoundaries.size > 0) {
-                                    setShowBoundaryFixModal(true);
-                                }
-                            }}
-                            disabled={selectedBoundaries.size === 0}
-                            className="px-4 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                        >
-                            <Scissors className="h-3.5 w-3.5" />
-                            修正実行
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* 一括再生成モードのフローティングアクションバー */}
             {batchRegenerateMode && (
@@ -2473,6 +2282,61 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         >
                             <Palette className="h-3.5 w-3.5" />
                             背景色を変更
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* セクション削除モード: フローティングアクションバー */}
+            {sectionDeleteMode && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom duration-300" style={{ transform: 'translateX(calc(-50% - 180px))' }}>
+                    <div className="flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-gray-200 px-5 py-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <span>セクション削除</span>
+                            <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {selectedSectionsForDelete.size}件選択
+                            </span>
+                        </div>
+                        <div className="h-6 w-px bg-gray-200" />
+                        <button
+                            onClick={() => {
+                                // 全選択/全解除
+                                if (selectedSectionsForDelete.size === sections.length) {
+                                    setSelectedSectionsForDelete(new Set());
+                                } else {
+                                    setSelectedSectionsForDelete(new Set(sections.map(s => s.id)));
+                                }
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            {selectedSectionsForDelete.size === sections.length ? '全解除' : '全選択'}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSectionDeleteMode(false);
+                                setSelectedSectionsForDelete(new Set());
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            キャンセル
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (selectedSectionsForDelete.size > 0) {
+                                    if (confirm(`${selectedSectionsForDelete.size}件のセクションを削除しますか？`)) {
+                                        setSections(prev => prev.filter(s => !selectedSectionsForDelete.has(s.id)));
+                                        toast.success(`${selectedSectionsForDelete.size}件のセクションを削除しました`);
+                                        setSectionDeleteMode(false);
+                                        setSelectedSectionsForDelete(new Set());
+                                    }
+                                }
+                            }}
+                            disabled={selectedSectionsForDelete.size === 0}
+                            className="px-4 py-1.5 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs font-bold rounded-lg hover:from-red-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            削除実行
                         </button>
                     </div>
                 </div>
@@ -3242,114 +3106,513 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 </div>
             )}
 
-            {/* Copilot サイドパネル */}
-            <div className={`fixed right-0 top-0 h-full w-[400px] bg-white border-l border-gray-200 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${showCopilot ? 'translate-x-0' : 'translate-x-full'}`}>
+            {/* 右サイドバー - 補助ツール */}
+            <div className="fixed right-0 top-0 h-full w-[360px] bg-white border-l border-gray-200 shadow-xl z-40 flex flex-col">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-slate-50">
                     <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-200">
-                            <MessageCircle className="h-4 w-4 text-white" />
+                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-600 to-gray-700 flex items-center justify-center shadow-lg">
+                            <Wand2 className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-bold text-gray-900">Prompt Copilot</h3>
-                            <p className="text-[10px] text-gray-400">AI-powered prompt assistant</p>
+                            <h3 className="text-sm font-bold text-gray-900">補助ツール</h3>
+                            <p className="text-[10px] text-gray-500 font-medium">編集をサポート</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setShowCopilot(false)}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
                 </div>
 
-                {/* チャットメッセージエリア */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {chatMessages.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user'
-                                ? 'bg-gray-900 text-white'
-                                : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                {/* プロンプト例がある場合は「使う」ボタンを表示 */}
-                                {msg.role === 'assistant' && extractPromptExample(msg.content) && (
-                                    <button
-                                        onClick={() => handleUsePrompt(extractPromptExample(msg.content)!)}
-                                        className="mt-3 flex items-center gap-2 text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors"
-                                    >
-                                        {copiedPrompt === extractPromptExample(msg.content) ? (
-                                            <>
-                                                <Check className="h-3 w-3" />
-                                                <span>プロンプトに追加しました</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Copy className="h-3 w-3" />
-                                                <span>このプロンプトを使う</span>
-                                            </>
-                                        )}
-                                    </button>
+                {/* ツールメニュー */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* 基本操作 */}
+                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">基本操作</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {/* 公開設定 */}
+                            <button
+                                onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
+                                className={clsx(
+                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                    status === 'published'
+                                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                        : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"
                                 )}
-                            </div>
+                            >
+                                <span className={clsx(
+                                    "w-2 h-2 rounded-full",
+                                    status === 'published' ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                                )} />
+                                {status === 'published' ? '公開中' : '下書き'}
+                            </button>
+                            {/* 画像追加 */}
+                            <button
+                                onClick={() => document.getElementById('file-upload-input')?.click()}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                画像追加
+                            </button>
+                            {/* プレビュー */}
+                            <Link
+                                href={`/p/${initialSlug || pageId}`}
+                                target="_blank"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
+                            >
+                                <Eye className="h-3.5 w-3.5" />
+                                プレビュー
+                            </Link>
+                            {/* ダウンロード */}
+                            <button
+                                onClick={handleExport}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                ZIP出力
+                            </button>
                         </div>
-                    ))}
-                    {isChatLoading && (
-                        <div className="flex justify-start">
-                            <div className="bg-gray-100 rounded-2xl px-4 py-3">
-                                <div className="flex items-center gap-2 text-gray-500">
-                                    <div className="flex gap-1">
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                    </div>
+                        {/* 表示切替 */}
+                        <div className="flex items-center justify-center gap-1 mt-2 pt-2 border-t border-gray-100">
+                            <span className="text-[10px] text-gray-400 mr-2">表示:</span>
+                            <button
+                                onClick={() => setViewMode('desktop')}
+                                className={clsx(
+                                    "p-1.5 rounded-md transition-all",
+                                    viewMode === 'desktop'
+                                        ? "bg-blue-100 text-blue-600"
+                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                )}
+                            >
+                                <Monitor className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('mobile')}
+                                className={clsx(
+                                    "p-1.5 rounded-md transition-all",
+                                    viewMode === 'mobile'
+                                        ? "bg-blue-100 text-blue-600"
+                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                )}
+                            >
+                                <Smartphone className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* AIチャットボット */}
+                    <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                                    <MessageCircle className="h-4 w-4 text-white" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-900">AIアシスタント</h4>
+                                    <p className="text-[10px] text-gray-500">Gemini Flash • 最速・最安</p>
                                 </div>
                             </div>
+                            {chatMessages.length > 0 && (
+                                <button
+                                    onClick={() => setChatMessages([{ role: 'assistant', content: 'こんにちは！LP画像生成のプロンプト作成をお手伝いします。\nどんな商材やサービスのLPを作りたいですか？' }])}
+                                    className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    リセット
+                                </button>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                {/* クイックアクション */}
-                <div className="px-4 py-2 border-t border-gray-100">
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                        {[
-                            'プロンプトを作って',
-                            'もっと具体的に',
-                            'ターゲット層は？',
-                            '色味を変えたい'
-                        ].map((suggestion) => (
+                        {/* チャットメッセージ */}
+                        <div className="bg-white/70 rounded-lg p-3 mb-3 max-h-64 overflow-y-auto space-y-3">
+                            {chatMessages.map((msg, idx) => (
+                                <div key={idx} className={`text-xs ${msg.role === 'user' ? 'ml-6' : 'mr-2'}`}>
+                                    <div className={`p-2.5 rounded-xl ${msg.role === 'user' ? 'bg-violet-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                                    </div>
+                                    {/* プロンプト例があれば画像生成ボタンを表示 */}
+                                    {msg.role === 'assistant' && extractPromptExample(msg.content) && (
+                                        <div className="mt-2 flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    const prompt = extractPromptExample(msg.content);
+                                                    if (prompt) handleUsePrompt(prompt);
+                                                }}
+                                                className="flex-1 py-1.5 px-2 bg-violet-100 text-violet-700 text-[10px] font-medium rounded-lg hover:bg-violet-200 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Copy className="h-3 w-3" />
+                                                プロンプトをコピー
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const prompt = extractPromptExample(msg.content);
+                                                    if (!prompt) return;
+
+                                                    // 新しいセクションとして画像生成
+                                                    const tempId = `temp-${Date.now()}`;
+                                                    const newSection = {
+                                                        id: tempId,
+                                                        role: 'ai-generated',
+                                                        order: sections.length,
+                                                        imageId: null,
+                                                        image: null,
+                                                        config: { prompt }
+                                                    };
+                                                    setSections(prev => [...prev, newSection]);
+                                                    setGeneratingImageSectionIds(prev => new Set(prev).add(tempId));
+
+                                                    try {
+                                                        const res = await fetch('/api/ai/generate-image', {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({
+                                                                prompt,
+                                                                taste: headerConfig.taste || 'シンプル・清潔',
+                                                                aspectRatio: '9:16',
+                                                                designDefinition
+                                                            })
+                                                        });
+
+                                                        if (!res.ok) throw new Error('画像生成に失敗しました');
+
+                                                        const imageData = await res.json();
+                                                        setSections(prev => prev.map(s =>
+                                                            s.id === tempId
+                                                                ? { ...s, imageId: imageData.id, image: imageData }
+                                                                : s
+                                                        ));
+                                                        toast.success('画像を生成しました！');
+                                                    } catch (err: any) {
+                                                        toast.error(err.message || '画像生成に失敗しました');
+                                                        setSections(prev => prev.filter(s => s.id !== tempId));
+                                                    } finally {
+                                                        setGeneratingImageSectionIds(prev => {
+                                                            const next = new Set(prev);
+                                                            next.delete(tempId);
+                                                            return next;
+                                                        });
+                                                    }
+                                                }}
+                                                className="flex-1 py-1.5 px-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[10px] font-bold rounded-lg hover:from-pink-600 hover:to-rose-600 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Sparkles className="h-3 w-3" />
+                                                画像生成
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {isChatLoading && (
+                                <div className="flex gap-1 p-2 mr-2">
+                                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" />
+                                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 入力エリア */}
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+                                placeholder="商材やサービスについて教えてください..."
+                                className="flex-1 px-3 py-2 rounded-lg bg-white text-xs outline-none focus:ring-2 focus:ring-violet-300 border border-gray-200"
+                            />
                             <button
-                                key={suggestion}
-                                onClick={() => {
-                                    setChatInput(suggestion);
-                                }}
-                                className="flex-shrink-0 px-3 py-1.5 rounded-full bg-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                                onClick={handleSendChat}
+                                disabled={!chatInput.trim() || isChatLoading}
+                                className="px-3 py-2 rounded-lg bg-violet-500 text-white hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
-                                {suggestion}
+                                <Send className="h-3.5 w-3.5" />
                             </button>
-                        ))}
-                    </div>
-                </div>
+                        </div>
 
-                {/* 入力エリア */}
-                <div className="p-4 border-t border-gray-100">
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
-                            placeholder="メッセージを入力..."
-                            className="flex-1 px-4 py-3 rounded-xl bg-gray-100 text-sm outline-none focus:bg-gray-50 focus:ring-2 focus:ring-violet-500 transition-all"
-                        />
+                        {/* モデル情報 */}
+                        <div className="flex justify-center gap-2 mt-2 text-[9px] text-gray-400">
+                            <span>💬 Flash 8B</span>
+                            <span>•</span>
+                            <span>🎨 Banana Pro</span>
+                        </div>
+                    </div>
+
+                    {/* セクション削除 */}
+                    <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl p-4 border border-red-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shadow-md">
+                                <Trash2 className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">セクション削除</h4>
+                                <p className="text-[10px] text-gray-500">不要なセクションを削除</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            複数のセクションを選択して一括削除できます。
+                        </p>
                         <button
-                            onClick={handleSendChat}
-                            disabled={!chatInput.trim() || isChatLoading}
-                            className="h-12 w-12 rounded-xl bg-violet-600 text-white flex items-center justify-center hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-200"
+                            onClick={() => {
+                                setSectionDeleteMode(true);
+                                setBatchRegenerateMode(false);
+                                setBackgroundUnifyMode(false);
+                                setBoundaryFixMode(false);
+                            }}
+                            disabled={sections.length === 0}
+                            className="w-full py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold rounded-lg hover:from-red-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            <Send className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
+                            セクション選択
                         </button>
                     </div>
+
+                    {/* 履歴機能 */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md">
+                                <Undo2 className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">編集履歴</h4>
+                                <p className="text-[10px] text-gray-500">過去の状態に戻す</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            各セクションの編集履歴を確認し、元に戻せます。
+                        </p>
+                        <div className="text-xs text-gray-500 bg-white/50 rounded-lg p-2 text-center">
+                            セクションの「履歴」ボタンから確認
+                        </div>
+                    </div>
+
+                    {/* 一括再生成 */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                                <RefreshCw className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">一括再生成</h4>
+                                <p className="text-[10px] text-gray-500">複数セクションをまとめて</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            選択したセクションのデザインを一括で再生成します。
+                        </p>
+                        <button
+                            onClick={() => {
+                                setBatchRegenerateMode(true);
+                                setBoundaryFixMode(false);
+                                setBackgroundUnifyMode(false);
+                            }}
+                            disabled={sections.filter(s => s.image?.filePath).length === 0}
+                            className="w-full py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            セクション選択
+                        </button>
+                    </div>
+
+                    {/* 背景色統一 */}
+                    <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-md">
+                                <Palette className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">背景色統一</h4>
+                                <p className="text-[10px] text-gray-500">全体の色味を揃える</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            選択したセクションの背景色を統一します。
+                        </p>
+                        <button
+                            onClick={() => {
+                                setBackgroundUnifyMode(true);
+                                setBatchRegenerateMode(false);
+                                setBoundaryFixMode(false);
+                            }}
+                            disabled={sections.filter(s => s.image?.filePath).length === 0}
+                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-sm font-bold rounded-lg hover:from-amber-600 hover:to-yellow-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <Palette className="h-4 w-4" />
+                            セクション選択
+                        </button>
+                    </div>
+
+                    {/* 区切り線 */}
+                    <div className="border-t border-gray-200 my-2" />
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider px-1">高度な機能</p>
+
+                    {/* カラーパレット */}
+                    <div className="bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl p-4 border border-cyan-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md">
+                                <Droplet className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">カラーパレット</h4>
+                                <p className="text-[10px] text-gray-500">LP全体の配色を管理</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            メインカラー、アクセントカラーを設定し、全セクションに適用します。
+                        </p>
+                        <button
+                            onClick={() => toast('カラーパレット機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-sm font-bold rounded-lg hover:from-cyan-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Droplet className="h-4 w-4" />
+                            配色を設定
+                        </button>
+                    </div>
+
+                    {/* コピー編集 */}
+                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-md">
+                                <Type className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">コピー編集</h4>
+                                <p className="text-[10px] text-gray-500">AIでキャッチコピー生成</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            セクションごとのテキストをAIで生成・編集します。
+                        </p>
+                        <button
+                            onClick={() => toast('コピー編集機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-bold rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Type className="h-4 w-4" />
+                            コピーを編集
+                        </button>
+                    </div>
+
+                    {/* CTA配置 */}
+                    <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-4 border border-rose-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-md">
+                                <MousePointer className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">CTA配置</h4>
+                                <p className="text-[10px] text-gray-500">ボタン・リンク領域を設定</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            クリック領域やボタンのリンク先URLを管理します。
+                        </p>
+                        <button
+                            onClick={() => toast('CTA配置機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-bold rounded-lg hover:from-rose-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <MousePointer className="h-4 w-4" />
+                            CTAを設定
+                        </button>
+                    </div>
+
+                    {/* モバイル最適化 */}
+                    <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl p-4 border border-sky-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-md">
+                                <Smartphone className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">モバイル最適化</h4>
+                                <p className="text-[10px] text-gray-500">スマホ向け画像を自動生成</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            モバイル専用画像を自動生成し、レスポンシブ対応します。
+                        </p>
+                        <button
+                            onClick={() => toast('モバイル最適化機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-sky-500 to-blue-500 text-white text-sm font-bold rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Smartphone className="h-4 w-4" />
+                            モバイル版を生成
+                        </button>
+                    </div>
+
+                    {/* ABテスト */}
+                    <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 rounded-xl p-4 border border-fuchsia-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-fuchsia-500 to-purple-500 flex items-center justify-center shadow-md">
+                                <TestTube2 className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">ABテスト</h4>
+                                <p className="text-[10px] text-gray-500">バリエーションを作成</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            ヘッドラインや色違いの複数パターンを生成します。
+                        </p>
+                        <button
+                            onClick={() => toast('ABテスト機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-fuchsia-500 to-purple-500 text-white text-sm font-bold rounded-lg hover:from-fuchsia-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2"
+                        >
+                            <TestTube2 className="h-4 w-4" />
+                            バリエーション作成
+                        </button>
+                    </div>
+
+                    {/* 構成テンプレート - Premium以上 */}
+                    <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl p-4 border border-slate-200 relative">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-slate-600 to-gray-700 flex items-center justify-center shadow-md">
+                                <LayoutTemplate className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                    構成テンプレート
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded font-bold">Premium</span>
+                                </h4>
+                                <p className="text-[10px] text-gray-500">業種別LP構成を適用</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            ヒーロー→問題提起→解決策→CTAなど、効果的な構成を適用します。
+                        </p>
+                        <button
+                            onClick={() => toast('構成テンプレート機能は開発中です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-slate-600 to-gray-700 text-white text-sm font-bold rounded-lg hover:from-slate-700 hover:to-gray-800 transition-all flex items-center justify-center gap-2"
+                        >
+                            <LayoutTemplate className="h-4 w-4" />
+                            テンプレートを選択
+                        </button>
+                    </div>
+
+                    {/* 動画挿入 - Max Plan限定 */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl p-4 border border-indigo-200 relative overflow-hidden">
+                        {/* Max限定バッジ */}
+                        <div className="absolute top-2 right-2">
+                            <span className="flex items-center gap-1 text-[9px] px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold shadow-sm">
+                                <Crown className="h-3 w-3" />
+                                Max限定
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md">
+                                <Video className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">動画挿入</h4>
+                                <p className="text-[10px] text-gray-500">LPに動画を追加</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-3">
+                            背景動画やプロモーション動画をセクションに挿入できます。
+                        </p>
+                        <button
+                            onClick={() => toast('動画挿入機能はMax Planユーザー限定です')}
+                            className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-bold rounded-lg hover:from-indigo-600 hover:to-violet-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            <Video className="h-4 w-4" />
+                            動画を追加
+                        </button>
+                    </div>
+
                 </div>
             </div>
 

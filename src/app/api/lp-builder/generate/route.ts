@@ -12,6 +12,24 @@ import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { businessInfoSchema, validateRequest } from '@/lib/validations';
 
+// ============================================
+// モデル定数（停止・名称変更に対応しやすくする）
+// ============================================
+const MODELS = {
+    // テキスト生成: gemini-1.5-flash は 2025-09-29 に停止済み → gemini-2.5-flash に移行
+    TEXT: 'gemini-2.5-flash',
+    // 画像生成 Primary: Nano Banana Pro（日本語指示に強い）
+    IMAGE_PRIMARY: 'gemini-3-pro-image-preview',
+    // 画像生成 Fallback: Nano Banana（高速・安価）
+    IMAGE_FALLBACK: 'gemini-2.5-flash-image',
+} as const;
+
+// 9:16の解像度テーブル（モデルごとに微妙に異なる）
+const IMAGE_DIMENSIONS = {
+    'gemini-3-pro-image-preview': { width: 768, height: 1376 },
+    'gemini-2.5-flash-image': { width: 768, height: 1344 },
+} as const;
+
 // ビジネス情報から不足している変数を自動生成
 function enrichBusinessInfo(info: any): Record<string, string> {
     const toneDescriptions: Record<string, { urgency: string; guarantee: string }> = {
@@ -74,60 +92,135 @@ const log = {
     progress: (msg: string) => console.log(`\x1b[35m[PROGRESS]\x1b[0m → ${msg}`),
 };
 
-// セクションタイプ別の画像生成プロンプト
+// ============================================
+// v2: 画像生成プロンプトテンプレート
+// ============================================
+
+// 共通プロンプト：スタイル固定（Anchor）+ 禁止事項
+const COMMON_IMAGE_PROMPT = `
+【役割】
+あなたはLP広告用の"背景/キービジュアル"を制作するアートディレクターです。
+参照画像（Style Anchor）の色・質感・照明・グラデーションの方向性を厳密に踏襲してください。
+
+【スタイル固定（最優先）】
+- 支配的な色相（hue）と彩度（saturation）を参照画像から変えない
+- 背景の質感（マット/グロス/粒状/ノイズ感）を揃える
+- 光源方向とコントラストを揃える
+- 新しい"目立つ色"を追加しない（アクセントは参照画像の範囲内）
+
+【禁止事項（絶対厳守）】
+- 文字、英数字、記号、ロゴ、UI、透かし、看板、ラベル、字幕、タイポグラフィ要素を一切入れない
+- "文字っぽく見える模様"も避ける（標識・ポスター・紙・画面・パッケージ類は禁止）
+- 既存ブランドを想起させる要素は禁止
+
+【出力要件】
+- 高解像度、シャープ
+- 広告LPに適した"余白（negative space）"を確保
+- 情報を邪魔しない背景として成立すること
+`;
+
+// 境界接続用プロンプト（Seam Reference使用時）
+const SEAM_REFERENCE_PROMPT = `
+【境界接続（超重要）】
+添付されている2枚目の参照画像は「前セクション画像の下端ストリップ」です。
+生成する画像の上端20%は、このストリップと自然に連続するようにしてください。
+- 色調、グラデーション、ノイズ、陰影の流れを一致させる
+- 上端で不自然な切り替わり・段差・色相ジャンプを起こさない
+`;
+
+// セクションタイプ別の画像生成プロンプト（v2: 構図ルール分離）
 const SECTION_IMAGE_PROMPTS: Record<string, (info: any) => string> = {
-    hero: (info) => `${info.industry}業界の${info.businessName}のLPヒーローセクション用画像。
-${info.service}を象徴する、${info.tone === 'luxury' ? '高級感のある' : info.tone === 'friendly' ? '親しみやすい' : info.tone === 'energetic' ? '活気のある' : 'プロフェッショナルな'}ビジュアル。
-ターゲット: ${info.target}。メインイメージとして使える印象的な画像。人物やプロダクトを含めてもOK。`,
+    hero: (info) => `【このセクションの目的：HERO】
+- 第一印象で価値が伝わる"象徴的なメインモチーフ"を1つ
+- ただし文字を置ける余白を残す（中央〜上部に余白多め）
+- ビジネス内容：${info.industry} / ${info.service}
+- ターゲット：${info.target}
+- トーン：${info.tone === 'luxury' ? '高級感・洗練' : info.tone === 'friendly' ? '親しみやすさ・明るさ' : info.tone === 'energetic' ? '活気・情熱' : 'プロフェッショナル・信頼'}
+- 人物やプロダクトを含めてもOK（ただしテキスト禁止）`,
 
-    features: (info) => `${info.industry}業界の${info.businessName}の特徴・メリットを表現する画像。
-${info.strengths}を視覚的に表現。信頼感と価値を伝えるクリーンなビジュアル。アイコンや図解的な要素は不要。`,
+    features: (info) => `【このセクションの目的：FEATURES（特徴紹介）】
+- 抽象的なパターンや質感を活用
+- アイコン風の形状はOKだが「文字っぽい形」はNG
+- ${info.strengths}を連想させる視覚要素
+- 情報密度は中程度、余白を確保`,
 
-    pricing: (info) => `${info.industry}業界の${info.businessName}の料金・プランセクション用背景画像。
-${info.tone === 'luxury' ? 'プレミアム感のある' : 'シンプルで清潔感のある'}背景。価格表の背景として適した、邪魔にならない上品なビジュアル。`,
+    pricing: (info) => `【このセクションの目的：PRICING（料金表）】
+- 表の背景として使う前提
+- コントラストは弱め、均一な面積を多めに
+- ${info.tone === 'luxury' ? 'プレミアム感のある上品な背景' : 'シンプルで清潔感のある背景'}
+- 価格表示を邪魔しない控えめなビジュアル`,
 
-    testimonials: (info) => `${info.industry}業界の${info.businessName}のお客様の声セクション用画像。
-実際のユーザーや顧客を想起させる、${info.target}層に響く信頼感のあるビジュアル。笑顔や満足感を表現。`,
+    testimonials: (info) => `【このセクションの目的：TESTIMONIALS（お客様の声）】
+- 信頼感・安心感を表現
+- ${info.target}層に響く温かみのあるビジュアル
+- 人物のシルエットや抽象的な"つながり"を表現してもOK
+- テキストカードを配置できる余白を確保`,
 
-    faq: (info) => `${info.industry}業界の${info.businessName}のFAQセクション用背景画像。
-疑問解決、サポート、安心感を表現する明るくクリーンなビジュアル。`,
+    faq: (info) => `【このセクションの目的：FAQ（よくある質問）】
+- 安心感を表現、刺激要素は少なめ
+- 明るさ一定、穏やかなトーン
+- Q&Aリストを配置できる広い余白
+- 疑問解決・サポートを連想させる要素`,
 
-    cta: (info) => `${info.industry}業界の${info.businessName}のCTA（行動喚起）セクション用画像。
-${info.tone === 'energetic' ? 'ダイナミックで情熱的な' : info.tone === 'luxury' ? '洗練された高級感のある' : '行動を促す力強い'}ビジュアル。
-今すぐアクションを起こしたくなるようなインパクトのある画像。`,
+    cta: (info) => `【このセクションの目的：CTA（行動喚起）】
+- やや強めのインパクト（ただし派手な新色は禁止）
+- 参照色の範囲内でコントラストを上げる
+- ${info.tone === 'energetic' ? 'ダイナミックで情熱的' : info.tone === 'luxury' ? '洗練された高級感' : '行動を促す力強さ'}
+- CTAボタンが目立つ余白と背景のバランス`,
 };
 
-// 画像生成関数（リトライ付き・参照画像対応）
+// リトライ時の追加プロンプト（色ズレ対策強化）
+const RETRY_COLOR_FIX_PROMPT = `
+【色の厳密固定（再生成時のみ追加）】
+参照画像から外れる色相変化は禁止。
+特に背景色のベース（background）を変更しない。
+新しいアクセントカラーの追加は禁止。
+前回の生成で色がズレた可能性があるため、参照画像の色を100%踏襲すること。
+`;
+
+// ============================================
+// v2: 画像生成関数（Style Anchor + Seam Reference 方式）
+// ============================================
+
+// Seam Reference用：画像の下端20%を切り出す
+async function extractSeamStrip(base64Image: string, stripRatio: number = 0.2): Promise<string> {
+    // Note: 本番環境ではsharpなどのライブラリを使用して正確に切り出す
+    // ここでは簡易的に全体を返す（将来的にsharp導入時に置き換え）
+    // TODO: sharp導入後に下端切り出しを実装
+    // const buffer = Buffer.from(base64Image, 'base64');
+    // const metadata = await sharp(buffer).metadata();
+    // const stripHeight = Math.floor(metadata.height! * stripRatio);
+    // const seamBuffer = await sharp(buffer)
+    //     .extract({ left: 0, top: metadata.height! - stripHeight, width: metadata.width!, height: stripHeight })
+    //     .toBuffer();
+    // return seamBuffer.toString('base64');
+
+    // 暫定：全体を返す（参照としては機能する）
+    return base64Image;
+}
+
+// 画像生成関数（v2: Style Anchor + Seam Reference 対応）
 async function generateSectionImage(
     sectionType: string,
     businessInfo: any,
     apiKey: string,
     userId: string | null,
     maxRetries: number = 3,
-    designDefinition?: any, // Added Design Definition
-    referenceImageBase64?: string // 参照画像（前のセクションの画像）
-): Promise<{ imageId: number | null; base64: string | null }> {
+    styleAnchorBase64?: string,    // Style Anchor: 色・質感の基準（全セクション共通）
+    seamReferenceBase64?: string,  // Seam Reference: 前画像の下端ストリップ（境界接続用）
+    designDefinition?: any         // デザイン定義（ユーザーアップロード画像から抽出）
+): Promise<{ imageId: number | null; base64: string | null; usedModel: string | null }> {
     const promptGenerator = SECTION_IMAGE_PROMPTS[sectionType];
     if (!promptGenerator) {
         log.warn(`No image prompt defined for section type: ${sectionType}`);
-        return { imageId: null, base64: null };
+        return { imageId: null, base64: null, usedModel: null };
     }
 
-    const imagePrompt = promptGenerator(businessInfo);
+    // セクション固有プロンプト
+    const sectionPrompt = promptGenerator(businessInfo);
 
-    // テイストに応じたスタイル
-    const tasteStyles: Record<string, string> = {
-        'professional': '青系の落ち着いた色調、クリーンでプロフェッショナル、信頼感のあるビジネスライクなスタイル',
-        'friendly': '明るくカラフル、親しみやすい、楽しげで活気のあるスタイル',
-        'luxury': 'ダークトーンまたはゴールド系、高級感、ミニマルで洗練されたスタイル',
-        'energetic': '赤やオレンジの暖色系、ダイナミック、感情に訴えかけるスタイル'
-    };
-
-    let styleInstruction = businessInfo.tone && tasteStyles[businessInfo.tone]
-        ? `\nスタイル: ${tasteStyles[businessInfo.tone]}`
-        : '';
-
-    // Override with Design Definition if present (with safe property access)
+    // デザイン定義からのスタイル指示
+    let designInstruction = '';
     if (designDefinition && designDefinition.colorPalette) {
         const vibe = designDefinition.vibe || 'Modern';
         const primaryColor = designDefinition.colorPalette?.primary || '#000000';
@@ -135,60 +228,70 @@ async function generateSectionImage(
         const description = designDefinition.description || '';
         const mood = designDefinition.typography?.mood || 'Professional';
 
-        styleInstruction = `
-\n【DESIGN INSTRUCTION - STRICTLY FOLLOW】
-Reference Design Vibe: ${vibe}
-Colors: Primary=${primaryColor}, Background=${bgColor}
-Style: ${description}
-Mood: ${mood}
-The generated image MUST match this specific visual style.
+        designInstruction = `
+【参照デザインからの指示】
+- Vibe: ${vibe}
+- Primary Color: ${primaryColor}
+- Background Color: ${bgColor}
+- Style: ${description}
+- Mood: ${mood}
 `;
     }
-
-    // 参照画像がある場合は統一感を強調
-    const referenceInstruction = referenceImageBase64
-        ? `\n\n【最重要：デザイン統一】
-この画像は、添付した参照画像と同じLPの一部として生成してください。
-- 参照画像と完全に同じ色調・背景色・グラデーションを使用
-- 同じ雰囲気・スタイル・照明条件を維持
-- 境界部分が自然に繋がるように配色を合わせる
-- 参照画像のデザインテイストを100%引き継ぐこと`
-        : '';
-
-    const fullPrompt = `${imagePrompt}${styleInstruction}${referenceInstruction}
-
-【要件】
-- 縦長の画像（アスペクト比 9:16）を生成すること
-- 高解像度、シャープな画質
-- LP/広告に適した構図
-- テキストや文字は一切含めない（純粋な画像のみ）`;
 
     // リトライループ
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             log.progress(`Generating image for [${sectionType}] section... (attempt ${attempt}/${maxRetries})`);
 
-            // リクエストのpartsを構築（参照画像があれば含める）
+            // プロンプト構築
+            let fullPrompt = COMMON_IMAGE_PROMPT + sectionPrompt + designInstruction;
+
+            // Seam Referenceがある場合は境界接続プロンプトを追加
+            if (seamReferenceBase64) {
+                fullPrompt += SEAM_REFERENCE_PROMPT;
+            }
+
+            // リトライ時は色ズレ対策を強化
+            if (attempt > 1) {
+                fullPrompt += RETRY_COLOR_FIX_PROMPT;
+            }
+
+            // リクエストのpartsを構築
             const requestParts: any[] = [];
 
-            if (referenceImageBase64) {
-                // 参照画像を最初に追加
+            // 1. Style Anchor（色・質感の基準）
+            if (styleAnchorBase64) {
                 requestParts.push({
                     inlineData: {
                         mimeType: 'image/png',
-                        data: referenceImageBase64
+                        data: styleAnchorBase64
                     }
                 });
                 requestParts.push({
-                    text: `上記の画像は、このLPの他のセクションです。この画像と完全に統一されたデザインで、以下のセクションを生成してください：\n\n${fullPrompt}`
+                    text: '【Style Anchor】上記の画像は色・質感・照明の基準です。この画像のスタイルを厳密に踏襲してください。'
                 });
-            } else {
-                requestParts.push({ text: fullPrompt });
             }
 
-            // Gemini 3 Pro Image で画像生成
+            // 2. Seam Reference（境界接続用：前画像の下端）
+            if (seamReferenceBase64) {
+                requestParts.push({
+                    inlineData: {
+                        mimeType: 'image/png',
+                        data: seamReferenceBase64
+                    }
+                });
+                requestParts.push({
+                    text: '【Seam Reference】上記は前セクションの下端部分です。生成画像の上端がこれと自然に繋がるようにしてください。'
+                });
+            }
+
+            // 3. メインプロンプト
+            requestParts.push({ text: fullPrompt });
+
+            // Primary Model: Gemini 3 Pro Image (Nano Banana Pro)
+            let usedModel: string = MODELS.IMAGE_PRIMARY;
             let response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${MODELS.IMAGE_PRIMARY}:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -197,7 +300,12 @@ The generated image MUST match this specific visual style.
                             parts: requestParts
                         }],
                         generationConfig: {
-                            responseModalities: ["IMAGE", "TEXT"]
+                            // v2: IMAGEのみ（TEXTを含めない）
+                            responseModalities: ["IMAGE"],
+                            // v2: アスペクト比をAPI設定で明示（プロンプト頼みにしない）
+                            imageConfig: {
+                                aspectRatio: "9:16"
+                            }
                         }
                     })
                 }
@@ -206,21 +314,26 @@ The generated image MUST match this specific visual style.
             let data;
             if (!response.ok) {
                 const errorText = await response.text();
-                log.warn(`Primary model failed (${response.status}): ${errorText.substring(0, 200)}`);
+                log.warn(`Primary model (${MODELS.IMAGE_PRIMARY}) failed (${response.status}): ${errorText.substring(0, 200)}`);
 
-                // Fallback to Gemini 2.5 Flash
-                log.info('Trying fallback model...');
+                // Fallback: Gemini 2.5 Flash Image (Nano Banana)
+                log.info(`Trying fallback model (${MODELS.IMAGE_FALLBACK})...`);
+                usedModel = MODELS.IMAGE_FALLBACK;
+
                 const fallbackResponse = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-image-generation:generateContent?key=${apiKey}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/${MODELS.IMAGE_FALLBACK}:generateContent?key=${apiKey}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{
-                                parts: [{ text: fullPrompt }]
+                                parts: requestParts
                             }],
                             generationConfig: {
-                                responseModalities: ["IMAGE", "TEXT"]
+                                responseModalities: ["IMAGE"],
+                                imageConfig: {
+                                    aspectRatio: "9:16"
+                                }
                             }
                         })
                     }
@@ -230,15 +343,22 @@ The generated image MUST match this specific visual style.
                     const fallbackError = await fallbackResponse.text();
                     log.error(`Fallback model also failed (${fallbackResponse.status}): ${fallbackError.substring(0, 200)}`);
 
-                    // リトライ前に待機（指数バックオフ）
-                    if (attempt < maxRetries) {
-                        const waitTime = Math.pow(2, attempt) * 2000; // 4s, 8s, 16s
+                    // 429/RESOURCE_EXHAUSTED の場合は長めに待機
+                    if (fallbackResponse.status === 429) {
+                        const waitTime = Math.pow(2, attempt) * 5000; // 10s, 20s, 40s
+                        log.info(`Rate limited. Waiting ${waitTime}ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                    } else if (attempt < maxRetries) {
+                        const waitTime = Math.pow(2, attempt) * 2000;
                         log.info(`Waiting ${waitTime}ms before retry...`);
                         await new Promise(resolve => setTimeout(resolve, waitTime));
-                        continue;
                     }
-                    log.error(`[${sectionType}] 画像生成に失敗しました（両モデルでエラー）`);
-                    return { imageId: null, base64: null };
+
+                    if (attempt >= maxRetries) {
+                        log.error(`[${sectionType}] 画像生成に失敗しました（両モデルでエラー）`);
+                        return { imageId: null, base64: null, usedModel: null };
+                    }
+                    continue;
                 }
                 data = await fallbackResponse.json();
             } else {
@@ -265,7 +385,7 @@ The generated image MUST match this specific visual style.
                     continue;
                 }
                 log.error(`[${sectionType}] 画像データが取得できませんでした`);
-                return { imageId: null, base64: null };
+                return { imageId: null, base64: null, usedModel: null };
             }
 
             // 成功 - 画像をアップロード
@@ -287,7 +407,7 @@ The generated image MUST match this specific visual style.
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     continue;
                 }
-                return { imageId: null, base64: null };
+                return { imageId: null, base64: null, usedModel: null };
             }
 
             const { data: { publicUrl } } = supabase
@@ -295,19 +415,23 @@ The generated image MUST match this specific visual style.
                 .from('images')
                 .getPublicUrl(filename);
 
+            // v2: 解像度はモデルに応じた値を使用（固定値ではなく）
+            const dimensions = IMAGE_DIMENSIONS[usedModel as keyof typeof IMAGE_DIMENSIONS]
+                || { width: 768, height: 1376 };
+
             // MediaImageレコード作成
             const media = await prisma.mediaImage.create({
                 data: {
                     userId,
                     filePath: publicUrl,
                     mime: 'image/png',
-                    width: 768,
-                    height: 1366,
+                    width: dimensions.width,
+                    height: dimensions.height,
                 },
             });
 
-            log.success(`Image generated for [${sectionType}] → ID: ${media.id}`);
-            return { imageId: media.id, base64: base64Image };
+            log.success(`Image generated for [${sectionType}] → ID: ${media.id} (model: ${usedModel})`);
+            return { imageId: media.id, base64: base64Image, usedModel };
 
         } catch (error: any) {
             log.error(`Exception on attempt ${attempt} for [${sectionType}]: ${error.message || error}`);
@@ -320,7 +444,7 @@ The generated image MUST match this specific visual style.
     }
 
     log.error(`====== [${sectionType}] 画像生成に完全に失敗しました（${maxRetries}回リトライ後）======`);
-    return { imageId: null, base64: null };
+    return { imageId: null, base64: null, usedModel: null };
 }
 
 export async function POST(req: NextRequest) {
@@ -398,8 +522,9 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
 
 
         // Call Gemini API for text content (using user's API key)
+        // v2: gemini-1.5-flash は停止済み → gemini-2.5-flash に移行
         const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-        const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const textModel = genAI.getGenerativeModel({ model: MODELS.TEXT });
 
         const result = await textModel.generateContent([
             { text: SYSTEM_PROMPT },
@@ -452,12 +577,24 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             }, { status: 500 });
         }
 
-        // 各セクションの画像を順次生成（参照画像方式で統一感を確保）
+        // ============================================
+        // v2: Style Anchor + Seam Reference 方式で画像生成
+        // ============================================
         const sections = generatedData.sections || [];
         const sectionCount = sections.length;
-        log.info(`========== Starting SEQUENTIAL image generation with reference for ${sectionCount} sections ==========`);
+        log.info(`========== Starting SEQUENTIAL image generation (v2: Anchor + Seam) for ${sectionCount} sections ==========`);
 
-        // 順次生成：前のセクションの画像を参照として渡す
+        // Style Anchor: ユーザーがデザイン画像をアップロードしていればそれを使用
+        // なければ最初のheroセクション生成後にheroをAnchorとして固定
+        let styleAnchorBase64: string | null = null;
+
+        // ユーザーアップロード画像からの参照（designDefinitionに含まれていれば）
+        if (body.designImageBase64) {
+            styleAnchorBase64 = body.designImageBase64;
+            log.info('Using user-uploaded design image as Style Anchor');
+        }
+
+        // 順次生成：Style Anchor（固定）+ Seam Reference（前画像の下端）
         const sectionsWithImages: any[] = [];
         let previousImageBase64: string | null = null;
 
@@ -465,14 +602,21 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             const section = sections[index];
             log.progress(`Processing section ${index + 1}/${sections.length}: ${section.type}`);
 
+            // Seam Reference: 前画像の下端ストリップを作成
+            let seamReference: string | undefined;
+            if (previousImageBase64) {
+                seamReference = await extractSeamStrip(previousImageBase64, 0.2);
+            }
+
             const result = await generateSectionImage(
                 section.type,
                 businessInfo,
                 GOOGLE_API_KEY,
                 user.id,
                 3, // maxRetries
-                body.designDefinition, // Pass Design Definition
-                previousImageBase64 || undefined // 前のセクションの画像を参照として渡す
+                styleAnchorBase64 || undefined,  // Style Anchor（色・質感の基準）
+                seamReference,                    // Seam Reference（境界接続用）
+                body.designDefinition             // デザイン定義
             );
 
             sectionsWithImages.push({
@@ -481,15 +625,23 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
                 properties: section.data || section.properties || {},
             });
 
-            // 成功した場合、この画像を次のセクションの参照として保持
+            // 成功した場合の処理
             if (result.base64) {
                 previousImageBase64 = result.base64;
-                log.info(`Reference image updated for next section`);
+
+                // 最初のセクション（hero）が成功したら、それをStyle Anchorとして固定
+                // （ユーザーアップロード画像がない場合のみ）
+                if (index === 0 && !styleAnchorBase64) {
+                    styleAnchorBase64 = result.base64;
+                    log.info('Hero section set as Style Anchor for remaining sections');
+                }
+
+                log.info(`Seam reference updated for next section`);
             }
 
-            // レート制限回避のため少し待機
+            // レート制限回避のため少し待機（previewモデルは制限が厳しめ）
             if (index < sections.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
         }
 
@@ -508,7 +660,7 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             userId: user.id,
             type: 'lp-generate',
             endpoint: '/api/lp-builder/generate',
-            model: 'gemini-1.5-flash',
+            model: MODELS.TEXT,
             inputPrompt: prompt,
             outputResult: JSON.stringify(generatedData),
             status: 'succeeded',
@@ -521,8 +673,8 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
                 userId: user.id,
                 type: 'lp-generate',
                 endpoint: '/api/lp-builder/generate',
-                model: 'gemini-3-pro-image-preview',
-                inputPrompt: `LP image generation for ${sectionsWithImages.length} sections`,
+                model: MODELS.IMAGE_PRIMARY,
+                inputPrompt: `LP image generation for ${sectionsWithImages.length} sections (v2: Anchor+Seam)`,
                 imageCount: successCount,
                 status: 'succeeded',
                 startTime
@@ -566,7 +718,7 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             userId: user.id,
             type: 'lp-generate',
             endpoint: '/api/lp-builder/generate',
-            model: 'gemini-1.5-flash',
+            model: MODELS.TEXT,
             inputPrompt: prompt || 'Error before prompt',
             status: 'failed',
             errorMessage: error.message,

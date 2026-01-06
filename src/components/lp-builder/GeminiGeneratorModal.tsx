@@ -75,6 +75,16 @@ export const GeminiGeneratorModal: React.FC<GeminiGeneratorModalProps> = ({
         setStep('generating');
 
         try {
+            // v2: designImageBase64をStyle Anchorとして送信（Base64のdataプレフィックスを除去）
+            let designImageBase64: string | undefined;
+            if (designImage) {
+                // "data:image/png;base64,xxxxx" から "xxxxx" 部分だけ抽出
+                const base64Match = designImage.match(/^data:image\/[^;]+;base64,(.+)$/);
+                if (base64Match) {
+                    designImageBase64 = base64Match[1];
+                }
+            }
+
             const response = await fetch('/api/lp-builder/generate', {
                 method: 'POST',
                 headers: {
@@ -82,7 +92,8 @@ export const GeminiGeneratorModal: React.FC<GeminiGeneratorModalProps> = ({
                 },
                 body: JSON.stringify({
                     businessInfo: data,
-                    designDefinition: designDefinition // Pass optional design definition
+                    designDefinition: designDefinition, // デザイン分析結果（色・トーン情報）
+                    designImageBase64: designImageBase64 // v2: Style Anchor用の画像データ
                 }),
             });
 
