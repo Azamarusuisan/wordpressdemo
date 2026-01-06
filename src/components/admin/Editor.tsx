@@ -5816,7 +5816,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             <div className="flex items-center gap-2">
                                 {/* 新しいタブで開く */}
                                 <button
-                                    onClick={() => window.open(`/p/${pageId}`, '_blank')}
+                                    onClick={() => window.open(`/p/${initialSlug || pageId}`, '_blank')}
                                     className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                                     title="新しいタブで開く"
                                 >
@@ -5834,7 +5834,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         {/* プレビューコンテンツ（iframe） */}
                         <div className="flex-1 overflow-hidden bg-gray-100">
                             <iframe
-                                src={`/p/${pageId}`}
+                                src={`/p/${initialSlug || pageId}`}
                                 className="w-full h-full border-0"
                                 title="ページプレビュー"
                             />
@@ -5842,7 +5842,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         {/* フッター */}
                         <div className="p-3 border-t bg-gray-50 text-center">
                             <p className="text-xs text-gray-500">
-                                URL: <code className="bg-gray-200 px-2 py-0.5 rounded">/p/{pageId}</code>
+                                URL: <code className="bg-gray-200 px-2 py-0.5 rounded">/p/{initialSlug || pageId}</code>
                             </p>
                         </div>
                     </div>
