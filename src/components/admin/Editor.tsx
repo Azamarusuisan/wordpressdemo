@@ -2478,92 +2478,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                                 ? selectedSectionsForBackgroundUnify.has(section.id) ? "bg-amber-500/20" : "bg-black/0 hover:bg-amber-500/10"
                                                                 : "bg-black/0 group-hover:bg-black/30"
                                                 )}>
-                                                    <div className={clsx(
-                                                        "transition-opacity duration-200 flex flex-col items-center gap-3",
-                                                        (batchRegenerateMode || sectionDeleteMode || backgroundUnifyMode) ? "hidden" : "opacity-0 group-hover:opacity-100"
-                                                    )}>
-                                                        <div className="flex gap-3">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
-                                                                        ? section.mobileImage.filePath
-                                                                        : section.image?.filePath;
-                                                                    if (imageUrl) {
-                                                                        setOverlayEditSectionId(String(section.id));
-                                                                        setOverlayEditImageUrl(imageUrl);
-                                                                        setShowOverlayEditor(true);
-                                                                    }
-                                                                }}
-                                                                className="h-14 w-14 rounded-full bg-cyan-600 flex items-center justify-center shadow-xl hover:bg-cyan-700 transition-colors"
-                                                                title="ボタン・テキストを重ねる"
-                                                            >
-                                                                <Layers className="h-6 w-6 text-white" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleOpenRegenerate(section.id);
-                                                                }}
-                                                                className="h-14 w-14 rounded-full bg-purple-600 flex items-center justify-center shadow-xl hover:bg-purple-700 transition-colors"
-                                                                title="このセクションを再生成"
-                                                            >
-                                                                <RotateCw className="h-6 w-6 text-white" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setRestoreSectionId(section.id);
-                                                                    setShowRestoreModal(true);
-                                                                }}
-                                                                className="h-14 w-14 rounded-full bg-green-600 flex items-center justify-center shadow-xl hover:bg-green-700 transition-colors"
-                                                                title="カットしすぎた部分を復元"
-                                                            >
-                                                                <Expand className="h-6 w-6 text-white" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setDesignUnifySectionId(section.id);
-                                                                    setShowDesignUnifyModal(true);
-                                                                }}
-                                                                className="h-14 w-14 rounded-full bg-indigo-600 flex items-center justify-center shadow-xl hover:bg-indigo-700 transition-colors"
-                                                                title="他セクションのデザインに統一"
-                                                            >
-                                                                <Wand2 className="h-6 w-6 text-white" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (confirm('このセクションを削除しますか？')) {
-                                                                        setSections(prev => prev.filter(s => s.id !== section.id));
-                                                                        toast.success('セクションを削除しました');
-                                                                    }
-                                                                }}
-                                                                className="h-14 w-14 rounded-full bg-red-600 flex items-center justify-center shadow-xl hover:bg-red-700 transition-colors"
-                                                                title="このセクションを削除"
-                                                            >
-                                                                <Trash2 className="h-6 w-6 text-white" />
-                                                            </button>
+                                                    {/* セクション番号表示（選択モード以外） */}
+                                                    {!batchRegenerateMode && !sectionDeleteMode && !backgroundUnifyMode && (
+                                                        <div className="absolute top-3 left-3 z-10 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {sectionIndex + 1}
                                                         </div>
-                                                        <div className="flex gap-2">
-                                                            <span className="text-white text-xs font-bold bg-cyan-600/80 px-3 py-1.5 rounded-full">
-                                                                重ねる
-                                                            </span>
-                                                            <span className="text-white text-xs font-bold bg-purple-600/80 px-3 py-1.5 rounded-full">
-                                                                再生成
-                                                            </span>
-                                                            <span className="text-white text-xs font-bold bg-green-600/80 px-3 py-1.5 rounded-full">
-                                                                復元
-                                                            </span>
-                                                            <span className="text-white text-xs font-bold bg-indigo-600/80 px-3 py-1.5 rounded-full">
-                                                                統一
-                                                            </span>
-                                                            <span className="text-white text-xs font-bold bg-red-600/80 px-3 py-1.5 rounded-full">
-                                                                削除
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                    )}
                                                 </div>
                                                 {/* 履歴ボタン - 常に表示 */}
                                                 <button
@@ -3975,6 +3895,72 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         )}
                     </div>
 
+                    {/* オーバーレイ追加（重ねる） */}
+                    <div className="bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl border border-cyan-100 overflow-hidden">
+                        <button
+                            onClick={() => toggleTool('overlay')}
+                            className="w-full flex items-center justify-between p-3 hover:bg-cyan-100/50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500 flex items-center justify-center shadow-md">
+                                    <Layers className="h-4 w-4 text-white" />
+                                </div>
+                                <div className="text-left">
+                                    <h4 className="text-sm font-bold text-gray-900">オーバーレイ追加</h4>
+                                    <p className="text-[10px] text-gray-500">テキスト・ボタンを重ねる</p>
+                                </div>
+                            </div>
+                            {expandedTools.has('overlay') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                        </button>
+                        {expandedTools.has('overlay') && (
+                            <div className="px-3 pb-3 pt-0">
+                                <p className="text-xs text-gray-600 mb-3">
+                                    画像の上にテキストやボタンを配置できます。
+                                </p>
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                    {sections.filter(s => s.image?.filePath).map((section, idx) => (
+                                        <button
+                                            key={section.id}
+                                            onClick={() => {
+                                                const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
+                                                    ? section.mobileImage.filePath
+                                                    : section.image?.filePath;
+                                                if (imageUrl) {
+                                                    setOverlayEditSectionId(String(section.id));
+                                                    setOverlayEditImageUrl(imageUrl);
+                                                    setShowOverlayEditor(true);
+                                                }
+                                            }}
+                                            className="w-full flex items-center gap-3 p-2 bg-white border border-cyan-200 rounded-lg hover:bg-cyan-50 hover:border-cyan-300 transition-all text-left group"
+                                        >
+                                            <div className="w-10 h-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
+                                                <img
+                                                    src={section.image?.filePath}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-medium text-gray-900 truncate">
+                                                    {section.role || `セクション ${idx + 1}`}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400">
+                                                    {section.config?.overlays?.length || 0}個のオーバーレイ
+                                                </p>
+                                            </div>
+                                            <Layers className="h-3.5 w-3.5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+                                    ))}
+                                    {sections.filter(s => s.image?.filePath).length === 0 && (
+                                        <p className="text-xs text-gray-400 text-center py-3">
+                                            画像のあるセクションがありません
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* セクション削除 */}
                     <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-100 overflow-hidden">
                         <button
@@ -4513,7 +4499,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     );
                                     return true;
                                 } else if (response.status === 500 && attempt < retries) {
-                                    await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+                                    await new Promise(resolve => setTimeout(resolve, attempt * 5000));
                                     continue;
                                 } else {
                                     console.error(`Section ${section.id} regenerate failed:`, data.error);
@@ -4521,7 +4507,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 }
                             } catch (error) {
                                 if (attempt < retries) {
-                                    await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+                                    await new Promise(resolve => setTimeout(resolve, attempt * 5000));
                                     continue;
                                 }
                                 console.error(`Section ${section.id} regenerate error:`, error);
@@ -4538,7 +4524,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         const copyText = section.config?.text || '';
 
                         if (i > 0) {
-                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            // API rate limit対策: 5秒待機
+                            await new Promise(resolve => setTimeout(resolve, 5000));
                         }
 
                         const success = await regenerateWithRetry(section, copyText);
@@ -4742,8 +4729,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     return true;
                                 } else if (response.status === 500 && attempt < retries) {
                                     // 500エラーの場合、待機してリトライ
-                                    console.log(`Section ${section.id} attempt ${attempt} failed (500), retrying in ${attempt * 3}s...`);
-                                    await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+                                    console.log(`Section ${section.id} attempt ${attempt} failed (500), retrying in ${attempt * 5}s...`);
+                                    await new Promise(resolve => setTimeout(resolve, attempt * 5000));
                                     continue;
                                 } else {
                                     console.error(`Section ${section.id} regenerate failed:`, data.error);
@@ -4752,7 +4739,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             } catch (error) {
                                 if (attempt < retries) {
                                     console.log(`Section ${section.id} attempt ${attempt} error, retrying...`);
-                                    await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+                                    await new Promise(resolve => setTimeout(resolve, attempt * 5000));
                                     continue;
                                 }
                                 console.error(`Section ${section.id} regenerate error:`, error);
@@ -4766,9 +4753,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     for (let i = 0; i < sectionsWithImages.length; i++) {
                         const section = sectionsWithImages[i];
 
-                        // 最初のセクション以外は2秒待機
+                        // 最初のセクション以外は5秒待機（API rate limit対策）
                         if (i > 0) {
-                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            await new Promise(resolve => setTimeout(resolve, 5000));
                         }
 
                         const success = await regenerateWithRetry(section);
