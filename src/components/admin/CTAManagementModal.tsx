@@ -261,7 +261,7 @@ export default function CTAManagementModal({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden flex">
+                <div className="flex-1 overflow-hidden flex min-h-0">
                     {/* 左: セクション一覧 */}
                     <div className="w-48 border-r border-gray-100 overflow-y-auto">
                         <div className="p-3">
@@ -371,8 +371,8 @@ export default function CTAManagementModal({
                     </div>
 
                     {/* 右: 編集パネル */}
-                    <div className="w-72 border-l border-gray-100 overflow-y-auto">
-                        <div className="p-4">
+                    <div className="w-72 border-l border-gray-100 overflow-y-auto min-h-0">
+                        <div className="p-4 pb-8">
                             {/* グローバル設定 */}
                             <div className="mb-6">
                                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">デフォルト設定</h3>
