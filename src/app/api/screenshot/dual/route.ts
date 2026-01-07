@@ -409,12 +409,14 @@ export async function POST(request: NextRequest) {
             log.info(`========== Dual Screenshot Complete ==========`);
             log.success(`Desktop segments: ${desktopMedia.length}, Mobile segments: ${mobileMedia.length}`);
 
-            send({
+            const completePayload = {
                 type: 'complete',
                 success: true,
                 desktop: desktopMedia,
                 mobile: mobileMedia,
-            });
+            };
+            log.success(`Sending complete event with ${desktopMedia.length} desktop and ${mobileMedia.length} mobile segments`);
+            send(completePayload);
 
         } finally {
             await browser.close();

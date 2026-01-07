@@ -5,6 +5,8 @@ import Link from 'next/link';
 import type { ClickableArea } from '@/types';
 import { ContactForm } from '@/components/public/ContactForm';
 import { InteractiveAreaOverlay } from '@/components/public/InteractiveAreaOverlay';
+import { VideoPlayer } from '@/components/public/VideoPlayer';
+import { OverlayElements } from '@/components/public/OverlayElements';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
     const page = await prisma.page.findUnique({ where: { slug: params.slug }, select: { title: true } });
@@ -111,6 +113,31 @@ export default async function PublicPage({ params }: { params: { slug: string } 
                                     clickableAreas?: ClickableArea[];
                                     [key: string]: unknown;
                                 };
+                                video?: {
+                                    url: string;
+                                    type?: 'youtube' | 'upload' | 'generated';
+                                    displayMode?: 'full' | 'partial';
+                                    x?: number;
+                                    y?: number;
+                                    width?: number;
+                                    autoplay?: boolean;
+                                    loop?: boolean;
+                                    muted?: boolean;
+                                };
+                                overlays?: Array<{
+                                    id: string;
+                                    type: 'image' | 'lottie' | 'text';
+                                    url?: string;
+                                    text?: string;
+                                    x: number;
+                                    y: number;
+                                    width: number;
+                                    height?: number;
+                                    fontSize?: number;
+                                    fontColor?: string;
+                                    fontWeight?: string;
+                                    link?: string;
+                                }>;
                             } = {
                                 text: '',
                                 textColor: 'white',
@@ -119,7 +146,8 @@ export default async function PublicPage({ params }: { params: { slug: string } 
                                 grayscale: 0,
                                 overlayColor: 'transparent',
                                 overlayOpacity: 0,
-                                clickableAreas: []
+                                clickableAreas: [],
+                                overlays: []
                             };
                             try {
                                 if (section.config) {
@@ -159,6 +187,20 @@ export default async function PublicPage({ params }: { params: { slug: string } 
                                         <div className="flex h-48 items-center justify-center bg-gray-100 text-gray-400">
                                             セクション: {section.role} (画像なし)
                                         </div>
+                                    )}
+
+                                    {/* 動画オーバーレイ */}
+                                    {config.video && (
+                                        <VideoPlayer
+                                            video={config.video}
+                                        />
+                                    )}
+
+                                    {/* オーバーレイ要素（画像、Lottie、テキスト） */}
+                                    {config.overlays && config.overlays.length > 0 && (
+                                        <OverlayElements
+                                            overlays={config.overlays}
+                                        />
                                     )}
 
                                     {/* Clickable Areas Overlay (with form support) - 画像の後にレンダリング */}

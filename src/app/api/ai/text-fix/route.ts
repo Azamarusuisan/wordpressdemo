@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         const textWords = correctedText.trim().split(/\s+/);
         const isShortText = textWords.length <= 3 && correctedText.length <= 25;
 
-        // 文字化け修正専用プロンプト - 日本語LP最適化版
+        // 文字化け修正専用プロンプト - 日本語LP最適化版（大きめ生成で小さい文字の崩れ防止）
         textFixPrompt = `You are an expert image editor specializing in JAPANESE text correction. Edit the provided image to fix the text.
 
 【TEXT CORRECTION TASK - JAPANESE PRIORITY】
@@ -121,6 +121,13 @@ ${areasDescription}
 5. HIGH CONTRAST: 背景に対して十分なコントラストを確保
 6. SANS-SERIF GOTHIC: ゴシック体（サンセリフ）で太めの線を使用
 7. SHARP EDGES: アンチエイリアスは最小限、エッジは鮮明に
+
+【⚠️ CRITICAL: TEXT SIZE RULE - 文字サイズの重要ルール】
+- Render text at 110-120% of the original text size (やや大きめに生成)
+- NEVER render text smaller than the original - small text becomes illegible/corrupted
+- If the original text appears small, make it LARGER and BOLDER for clarity
+- Minimum readable font size: ensure each character is at least 20 pixels tall
+- For very small text areas: scale UP the text slightly to prevent character corruption
 
 【DESIGN PRESERVATION RULES】
 1. ONLY modify text in the specified area

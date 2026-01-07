@@ -183,31 +183,69 @@ export function PagesHeader() {
 
             const decoder = new TextDecoder();
             let dualResult: { desktop: any[]; mobile: any[] } | null = null;
+            let buffer = ''; // バッファを使って不完全なデータを蓄積
 
+            let fullResponse = ''; // デバッグ用：全レスポンスを記録
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done) {
+                    console.log('[DualImport] Stream ended. Full response length:', fullResponse.length);
+                    break;
+                }
 
-                const text = decoder.decode(value, { stream: true });
-                const lines = text.split('\n').filter(line => line.startsWith('data: '));
+                const chunk = decoder.decode(value, { stream: true });
+                fullResponse += chunk;
+                buffer += chunk;
 
+                // 完全なイベントを処理（data: で始まり \n\n で終わる）
+                const events = buffer.split('\n\n');
+                buffer = events.pop() || ''; // 最後の不完全な部分をバッファに残す
+
+                for (const event of events) {
+                    const lines = event.split('\n').filter(line => line.startsWith('data: '));
+
+                    for (const line of lines) {
+                        try {
+                            const jsonStr = line.substring(6); // 'data: ' を削除
+                            const data = JSON.parse(jsonStr);
+                            console.log('[DualImport] Stream event:', data.type);
+
+                            if (data.type === 'progress') {
+                                setProgress({ message: data.message });
+                            } else if (data.type === 'complete' && data.success) {
+                                dualResult = {
+                                    desktop: data.desktop,
+                                    mobile: data.mobile,
+                                };
+                                console.log('[DualImport] Complete received! Desktop:', data.desktop?.length, 'Mobile:', data.mobile?.length);
+                            } else if (data.type === 'error') {
+                                throw new Error(data.error);
+                            }
+                        } catch (parseError) {
+                            // Log invalid JSON for debugging
+                            console.warn('[DualImport] Parse error:', parseError, 'Line length:', line.length);
+                        }
+                    }
+                }
+            }
+
+            // 残りのバッファもチェック
+            if (buffer.trim()) {
+                const lines = buffer.split('\n').filter(line => line.startsWith('data: '));
                 for (const line of lines) {
                     try {
-                        const data = JSON.parse(line.replace('data: ', ''));
-                        console.log('[DualImport] Stream event:', data);
+                        const jsonStr = line.substring(6);
+                        const data = JSON.parse(jsonStr);
+                        console.log('[DualImport] Final buffer event:', data);
 
-                        if (data.type === 'progress') {
-                            setProgress({ message: data.message });
-                        } else if (data.type === 'complete' && data.success) {
+                        if (data.type === 'complete' && data.success) {
                             dualResult = {
                                 desktop: data.desktop,
                                 mobile: data.mobile,
                             };
-                        } else if (data.type === 'error') {
-                            throw new Error(data.error);
                         }
                     } catch (parseError) {
-                        // Skip invalid JSON
+                        console.warn('[DualImport] Final buffer parse error:', parseError);
                     }
                 }
             }

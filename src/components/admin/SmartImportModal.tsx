@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Loader2, Sparkles, Settings2, ChevronRight, Monitor, Smartphone } from 'lucide-react';
+import { X, Loader2, Sparkles, Settings2, ChevronRight, ChevronDown, Monitor, Smartphone } from 'lucide-react';
 import { SectionBoundaryEditor } from './SectionBoundaryEditor';
 
 interface Section {
@@ -282,17 +282,26 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             デザインスタイル
                                         </label>
-                                        <select
-                                            value={style}
-                                            onChange={(e) => setStyle(e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        >
+                                        <div className="grid grid-cols-2 gap-2">
                                             {STYLE_OPTIONS.map(opt => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label} - {opt.desc}
-                                                </option>
+                                                <button
+                                                    key={opt.value}
+                                                    onClick={() => setStyle(opt.value)}
+                                                    className={`px-3 py-2.5 rounded-lg text-left transition-all border ${
+                                                        style === opt.value
+                                                            ? 'bg-purple-50 border-purple-500 ring-1 ring-purple-500'
+                                                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'
+                                                    }`}
+                                                >
+                                                    <div className={`font-medium text-sm ${
+                                                        style === opt.value ? 'text-purple-700' : 'text-gray-800'
+                                                    }`}>
+                                                        {opt.label}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{opt.desc}</div>
+                                                </button>
                                             ))}
-                                        </select>
+                                        </div>
                                     </div>
 
                                     <div>
