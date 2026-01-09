@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     const session = await encrypt({ user, expires });
 
     // Set session cookie
-    cookies().set('session', session, {
+    const cookieStore = await cookies();
+    cookieStore.set('session', session, {
       expires,
       httpOnly: true,
       path: '/',
