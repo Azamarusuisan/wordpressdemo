@@ -3,7 +3,7 @@ import puppeteer, { Page } from 'puppeteer';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 
 // Color logging
 const log = {
@@ -298,10 +298,9 @@ async function segmentAndUpload(
 }
 
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -399,8 +398,8 @@ export async function POST(request: NextRequest) {
             log.info('Segmenting and uploading in parallel...');
 
             const [desktopMedia, mobileMedia] = await Promise.all([
-                segmentAndUpload(desktopScreenshot, 'desktop', url, user.id),
-                segmentAndUpload(mobileScreenshot, 'mobile', url, user.id)
+                segmentAndUpload(desktopScreenshot, 'desktop', url, (session.user?.username || 'anonymous')),
+                segmentAndUpload(mobileScreenshot, 'mobile', url, (session.user?.username || 'anonymous'))
             ]);
 
             log.success(`Desktop: ${desktopMedia.length} segments created`);

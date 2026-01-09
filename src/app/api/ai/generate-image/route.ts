@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 
@@ -50,10 +50,9 @@ export async function POST(request: NextRequest) {
     let modelUsed = 'gemini-3-pro-image-preview';
 
     // ユーザー認証を確認してAPIキーを取得
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         const arConfig = ASPECT_RATIOS[aspectRatio] || ASPECT_RATIOS['9:16'];
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
         }
@@ -167,11 +166,11 @@ Generate the image to EXACTLY match this visual style and color palette.
 
             const fallbackData = await fallbackResponse.json();
             modelUsed = 'gemini-2.5-flash-preview-image-generation';
-            const fallbackResult = await processImageResponse(fallbackData, arConfig, user.id);
+            const fallbackResult = await processImageResponse(fallbackData, arConfig, (session.user?.username || 'anonymous'));
 
             // ログ記録（フォールバック成功）
             await logGeneration({
-                userId: user.id,
+                userId: (session.user?.username || 'anonymous'),
                 type: 'image',
                 endpoint: '/api/ai/generate-image',
                 model: modelUsed,
@@ -185,11 +184,11 @@ Generate the image to EXACTLY match this visual style and color palette.
         }
 
         const data = await response.json();
-        const result = await processImageResponse(data, arConfig, user.id);
+        const result = await processImageResponse(data, arConfig, (session.user?.username || 'anonymous'));
 
         // ログ記録（プライマリ成功）
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'image',
             endpoint: '/api/ai/generate-image',
             model: modelUsed,
@@ -206,7 +205,7 @@ Generate the image to EXACTLY match this visual style and color palette.
 
         // ログ記録（エラー）
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'image',
             endpoint: '/api/ai/generate-image',
             model: modelUsed,

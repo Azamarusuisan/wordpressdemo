@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { z } from 'zod';
@@ -220,10 +220,9 @@ function createStreamResponse(processFunction: (send: (data: any) => void) => Pr
 }
 
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -246,7 +245,7 @@ export async function POST(request: NextRequest) {
             current: 0,
         });
 
-        const googleApiKey = await getGoogleApiKeyForUser(user.id);
+        const googleApiKey = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!googleApiKey) {
             throw new Error('Google API key is not configured');
         }
@@ -298,7 +297,7 @@ export async function POST(request: NextRequest) {
                     boundary.lowerCut,
                     referenceImageBase64,
                     googleApiKey,
-                    user.id
+                    (session.user?.username || 'anonymous')
                 );
 
                 if (!result) {
@@ -351,7 +350,7 @@ export async function POST(request: NextRequest) {
                     await prisma.sectionImageHistory.create({
                         data: {
                             sectionId: upperSection.id,
-                            userId: user.id,
+                            userId: (session.user?.username || 'anonymous'),
                             previousImageId: upperSection.imageId,
                             newImageId: newUpperMedia.id,
                             actionType: 'boundary-design',
@@ -378,7 +377,7 @@ export async function POST(request: NextRequest) {
                     await prisma.sectionImageHistory.create({
                         data: {
                             sectionId: lowerSection.id,
-                            userId: user.id,
+                            userId: (session.user?.username || 'anonymous'),
                             previousImageId: lowerSection.imageId,
                             newImageId: newLowerMedia.id,
                             actionType: 'boundary-design',

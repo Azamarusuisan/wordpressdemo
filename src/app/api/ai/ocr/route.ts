@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import sharp from 'sharp';
@@ -24,10 +24,9 @@ export async function POST(request: NextRequest) {
     const startTime = createTimer();
 
     // ユーザー認証
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
 
         console.log(`[OCR] Received ${areas.length} crop areas:`, JSON.stringify(areas));
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({
                 error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。'
@@ -186,7 +185,7 @@ export async function POST(request: NextRequest) {
 
         // ログ記録
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'ocr',
             endpoint: '/api/ai/ocr',
             model: 'gemini-2.0-flash',
@@ -206,7 +205,7 @@ export async function POST(request: NextRequest) {
 
         // ログ記録（エラー）
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'ocr',
             endpoint: '/api/ai/ocr',
             model: 'gemini-2.0-flash',

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { z } from 'zod';
@@ -40,10 +40,9 @@ export async function POST(
         return Response.json({ error: 'Invalid section ID' }, { status: 400 });
     }
 
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -90,7 +89,7 @@ export async function POST(
             return Response.json({ error: 'Failed to get image metadata' }, { status: 500 });
         }
 
-        const googleApiKey = await getGoogleApiKeyForUser(user.id);
+        const googleApiKey = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!googleApiKey) {
             return Response.json({ error: 'Google API key not configured' }, { status: 500 });
         }
@@ -194,7 +193,7 @@ export async function POST(
             await prisma.sectionImageHistory.create({
                 data: {
                     sectionId: sectionId,
-                    userId: user.id,
+                    userId: (session.user?.username || 'anonymous'),
                     previousImageId: section.imageId,
                     newImageId: newMedia.id,
                     actionType: 'restore-canvas',
@@ -210,7 +209,7 @@ export async function POST(
         });
 
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'boundary-design',
             endpoint: `/api/sections/${sectionId}/restore`,
             model: 'gemini-3-pro-image-preview',

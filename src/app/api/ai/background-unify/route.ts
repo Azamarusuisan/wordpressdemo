@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import sharp from 'sharp';
@@ -32,10 +32,9 @@ export async function POST(request: NextRequest) {
     const startTime = createTimer();
 
     // ユーザー認証
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -64,7 +63,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: '解像度は1K, 2K, 4Kのいずれかを指定してください' }, { status: 400 });
         }
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({
                 error: 'Google API key is not configured'
@@ -266,7 +265,7 @@ export async function POST(request: NextRequest) {
         const finalMeta = await sharp(finalBuffer).metadata();
         const newMedia = await prisma.mediaImage.create({
             data: {
-                userId: user.id,
+                userId: (session.user?.username || 'anonymous'),
                 filePath: newImageUrl,
                 mime: 'image/png',
                 width: finalMeta.width || 0,
@@ -293,7 +292,7 @@ export async function POST(request: NextRequest) {
                 await prisma.sectionImageHistory.create({
                     data: {
                         sectionId: targetSectionId,
-                        userId: user.id,
+                        userId: (session.user?.username || 'anonymous'),
                         previousImageId: currentSection.mobileImageId,
                         newImageId: newMedia.id,
                         actionType: 'background-unify-mobile',
@@ -312,7 +311,7 @@ export async function POST(request: NextRequest) {
                 await prisma.sectionImageHistory.create({
                     data: {
                         sectionId: targetSectionId,
-                        userId: user.id,
+                        userId: (session.user?.username || 'anonymous'),
                         previousImageId: currentSection.imageId,
                         newImageId: newMedia.id,
                         actionType: 'background-unify',
@@ -324,7 +323,7 @@ export async function POST(request: NextRequest) {
 
         // ログ記録
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'background-unify',
             endpoint: '/api/ai/background-unify',
             model: 'gemini-3-pro-image-preview',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 
@@ -11,10 +11,9 @@ export async function POST(request: NextRequest) {
     let modelUsed = 'gemini-3-pro-image-preview';
 
     // ユーザー認証を確認してAPIキーを取得
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -25,7 +24,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Prompt or productInfo is required' }, { status: 400 });
         }
 
-        const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
+        const GOOGLE_API_KEY = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!GOOGLE_API_KEY) {
             return NextResponse.json({ error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。' }, { status: 500 });
         }
@@ -129,11 +128,11 @@ ${prompt ? `追加指示: ${prompt}` : ''}`
 
             const fallbackData = await fallbackResponse.json();
             modelUsed = 'gemini-2.5-flash-preview-image-generation';
-            const fallbackResult = await processImageResponse(fallbackData, user.id);
+            const fallbackResult = await processImageResponse(fallbackData, (session.user?.username || 'anonymous'));
 
             // ログ記録（フォールバック成功）
             await logGeneration({
-                userId: user.id,
+                userId: (session.user?.username || 'anonymous'),
                 type: 'edit-image',
                 endpoint: '/api/ai/edit-image',
                 model: modelUsed,
@@ -147,11 +146,11 @@ ${prompt ? `追加指示: ${prompt}` : ''}`
         }
 
         const data = await response.json();
-        const result = await processImageResponse(data, user.id);
+        const result = await processImageResponse(data, (session.user?.username || 'anonymous'));
 
         // ログ記録（プライマリ成功）
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'edit-image',
             endpoint: '/api/ai/edit-image',
             model: modelUsed,
@@ -168,7 +167,7 @@ ${prompt ? `追加指示: ${prompt}` : ''}`
 
         // ログ記録（エラー）
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'edit-image',
             endpoint: '/api/ai/edit-image',
             model: modelUsed,

@@ -1,27 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 
 export async function GET() {
     try {
         // ユーザー認証
-        const supabaseAuth = await createClient();
-        const { data: { user } } = await supabaseAuth.auth.getUser();
+        const session = await getSession();
 
         // 未認証の場合は空配列を返す
-        if (!user) {
+        if (!session) {
             return NextResponse.json([]);
         }
 
         // userIdがnullのメディアを現在のユーザーに紐づける（自動マイグレーション）
         await prisma.mediaImage.updateMany({
             where: { userId: null },
-            data: { userId: user.id }
+            data: { userId: (session.user?.username || 'anonymous') }
         });
 
         // ログインユーザーの画像を取得
         const media = await prisma.mediaImage.findMany({
-            where: { userId: user.id },
+            where: { userId: (session.user?.username || 'anonymous') },
             orderBy: { createdAt: 'desc' }
         });
         return NextResponse.json(media);

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { z } from 'zod';
@@ -23,10 +23,9 @@ const generateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
     try {
         const startTime = createTimer();
 
-        const googleApiKey = await getGoogleApiKeyForUser(user.id);
+        const googleApiKey = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!googleApiKey) {
             return Response.json({ error: 'Google API key not configured' }, { status: 500 });
         }
@@ -213,7 +212,7 @@ ${width}x${height}pxの画像を1枚だけ生成してください。`;
         });
 
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'section-generate',
             endpoint: '/api/sections/generate',
             model: 'gemini-3-pro-image-preview',

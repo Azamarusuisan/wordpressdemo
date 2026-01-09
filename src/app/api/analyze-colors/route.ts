@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 
 /**
@@ -7,10 +7,9 @@ import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
  * 一括再生成時の色の一貫性を担保するために使用
  */
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const googleApiKey = await getGoogleApiKeyForUser(user.id);
+        const googleApiKey = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
         if (!googleApiKey) {
             return Response.json({ error: 'Google API key is not configured' }, { status: 400 });
         }

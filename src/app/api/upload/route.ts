@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     // ユーザー認証
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Create DB Record
     const media = await prisma.mediaImage.create({
         data: {
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             filePath: publicUrl,
             mime: file.type,
             width: 0,

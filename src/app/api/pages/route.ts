@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 
 // GET /api/pages (List)
 export async function GET() {
     try {
         // ユーザー認証
-        const supabaseAuth = await createClient();
-        const { data: { user } } = await supabaseAuth.auth.getUser();
+        const session = await getSession();
 
         // 未認証の場合は空配列を返す
-        if (!user) {
+        if (!session) {
             return NextResponse.json([]);
         }
 
         // ログインユーザーのページのみ取得
         const pages = await prisma.page.findMany({
-            where: { userId: user.id },
+            where: { userId: (session.user?.username || 'anonymous') },
             orderBy: { updatedAt: 'desc' }
         });
 
@@ -38,10 +37,9 @@ const log = {
 // POST /api/pages (Create)
 export async function POST(request: NextRequest) {
     // ユーザー認証
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -65,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     const page = await prisma.page.create({
         data: {
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             title: rest.title || 'New Page ' + new Date().toLocaleDateString(),
             slug: rest.slug || 'page-' + Date.now(),
             status: 'draft',

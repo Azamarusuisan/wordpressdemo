@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
 import { getGoogleApiKey } from '@/lib/apiKeys';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 
 export async function POST(request: NextRequest) {
@@ -11,10 +11,9 @@ export async function POST(request: NextRequest) {
     let prompt = '';
 
     // ユーザー認証
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -167,7 +166,7 @@ export async function POST(request: NextRequest) {
         if (!jsonMatch) {
             // 失敗ログの記録
             await logGeneration({
-                userId: user.id,
+                userId: (session.user?.username || 'anonymous'),
                 type: 'copy',
                 endpoint: '/api/ai/generate-copy',
                 model: 'gemini-2.0-flash',
@@ -184,7 +183,7 @@ export async function POST(request: NextRequest) {
 
         // 成功ログの記録
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'copy',
             endpoint: '/api/ai/generate-copy',
             model: 'gemini-2.0-flash',
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('Gemini Copy Generation Final Error:', error);
         await logGeneration({
-            userId: user.id,
+            userId: (session.user?.username || 'anonymous'),
             type: 'copy',
             endpoint: '/api/ai/generate-copy',
             model: 'gemini-2.0-flash',

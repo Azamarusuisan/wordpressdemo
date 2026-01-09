@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { importUrlSchema, validateRequest } from '@/lib/validations';
@@ -324,10 +324,9 @@ function createStreamResponse(processFunction: (send: (data: any) => void) => Pr
 }
 
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -737,7 +736,7 @@ export async function POST(request: NextRequest) {
         // Get API key if needed
         let googleApiKey: string | null = null;
         if (importMode !== 'faithful') {
-            googleApiKey = await getGoogleApiKeyForUser(user.id);
+            googleApiKey = await getGoogleApiKeyForUser((session.user?.username || 'anonymous'));
             if (!googleApiKey) {
                 throw new Error('Google API key is not configured. アレンジモードを使用するには設定画面でAPIキーを設定してください。');
             }
@@ -852,7 +851,7 @@ export async function POST(request: NextRequest) {
                     i,
                     numSegments,
                     googleApiKey,
-                    user.id,
+                    (session.user?.username || 'anonymous'),
                     styleReference  // 参照画像を渡す
                 );
 

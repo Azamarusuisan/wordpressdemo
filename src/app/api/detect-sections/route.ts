@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import puppeteer from 'puppeteer';
 import sharp from 'sharp';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 // カラーログ
@@ -225,10 +225,9 @@ async function detectSectionsWithAI(
 }
 
 export async function POST(request: NextRequest) {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const session = await getSession();
 
-    if (!user) {
+    if (!session) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -356,7 +355,7 @@ export async function POST(request: NextRequest) {
 
         // ユーザーのGoogle APIキーを取得
         const userSettings = await prisma.userSettings.findUnique({
-            where: { userId: user.id }
+            where: { userId: (session.user?.username || 'anonymous') }
         });
 
         const apiKey = userSettings?.googleApiKey || process.env.GOOGLE_API_KEY;
