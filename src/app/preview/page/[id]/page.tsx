@@ -94,43 +94,47 @@ export default function PagePreviewPage() {
                 }
             `}</style>
 
-            {/* Floating Controls */}
+            {/* Floating Controls - Always visible */}
             <div
-                className={`fixed top-4 right-4 z-50 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
-                onMouseEnter={() => setShowControls(true)}
+                className="fixed top-4 left-1/2 -translate-x-1/2 z-50"
             >
-                <div className="flex items-center gap-2 bg-black/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg">
+                <div className="flex items-center gap-1 bg-black/90 backdrop-blur-sm rounded-full px-2 py-1.5 shadow-lg">
                     <button
                         onClick={() => setViewMode('desktop')}
-                        className={`p-2 rounded-full transition-colors ${viewMode === 'desktop' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${viewMode === 'desktop' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
                         title="Desktop"
                     >
-                        <Monitor className="w-5 h-5" />
+                        <Monitor className="w-4 h-4" />
+                        <span className="text-sm font-medium">Desktop</span>
                     </button>
                     <button
                         onClick={() => setViewMode('mobile')}
-                        className={`p-2 rounded-full transition-colors ${viewMode === 'mobile' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${viewMode === 'mobile' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
                         title="Mobile"
                     >
-                        <Smartphone className="w-5 h-5" />
+                        <Smartphone className="w-4 h-4" />
+                        <span className="text-sm font-medium">Mobile</span>
                     </button>
                 </div>
             </div>
 
             {/* Preview Content */}
             <div
-                className={`min-h-screen ${viewMode === 'mobile' ? 'flex justify-center py-8 bg-gray-100' : ''}`}
-                onClick={() => setShowControls(true)}
+                className={`min-h-screen pt-16 ${viewMode === 'mobile' ? 'flex justify-center py-20 bg-gray-100' : ''}`}
             >
                 <div
-                    className={viewMode === 'mobile' ? 'w-[390px] bg-white shadow-2xl rounded-3xl overflow-hidden' : 'w-full'}
-                    style={viewMode === 'mobile' ? { maxHeight: '844px' } : {}}
+                    className={viewMode === 'mobile' ? 'w-[390px] bg-white shadow-2xl rounded-3xl overflow-hidden overflow-y-auto' : 'w-full'}
+                    style={viewMode === 'mobile' ? { maxHeight: 'calc(100vh - 100px)' } : {}}
                 >
                     {pageData.sections.map((section) => {
                         // Get the appropriate image based on view mode
-                        const imagePath = viewMode === 'mobile' && section.mobileImage
+                        // モバイルビューでモバイル画像がある場合はそれを使用、なければデスクトップ画像
+                        const imagePath = viewMode === 'mobile' && section.mobileImage?.filePath
                             ? section.mobileImage.filePath
                             : section.image?.filePath;
+
+                        // モバイルビューでモバイル画像がない場合の警告表示用
+                        const isMobileViewWithoutMobileImage = viewMode === 'mobile' && !section.mobileImage?.filePath && section.image?.filePath;
 
                         // Parse clickable areas from config (handle both string and object)
                         let clickableAreas: ClickableArea[] = [];
@@ -158,6 +162,12 @@ export default function PagePreviewPage() {
 
                         return (
                             <div key={section.id} className="relative" style={{ margin: 0, padding: 0, lineHeight: 0 }}>
+                                {/* モバイルビューでモバイル画像がない場合の警告バッジ */}
+                                {isMobileViewWithoutMobileImage && (
+                                    <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white text-xs px-2 py-1 rounded-full shadow-lg">
+                                        デスクトップ画像で表示中
+                                    </div>
+                                )}
                                 <img
                                     src={imagePath}
                                     alt={section.role}

@@ -77,20 +77,41 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             const shadowClasses = config.textColor === 'black' ? '' : 'drop-shadow-text';
 
             let imagePath = '';
+            let mobileImagePath = '';
+
+            // デスクトップ画像
             if (section.image && section.image.filePath) {
                 const extension = section.image.filePath.split('.').pop()?.split('?')[0] || 'jpg';
-                const localName = `section-${index}.${extension}`;
-                imagePath = `./images/${localName}`;
+                const localName = `section-${index}-desktop.${extension}`;
+                imagePath = `./images/desktop/${localName}`;
 
                 // 画像を取得してZIPに追加
                 try {
                     const response = await fetch(section.image.filePath);
                     if (response.ok) {
                         const buffer = Buffer.from(await response.arrayBuffer());
-                        zip.addFile(`images/${localName}`, buffer);
+                        zip.addFile(`images/desktop/${localName}`, buffer);
                     }
                 } catch (e) {
-                    console.error(`Failed to fetch image ${section.image.filePath}:`, e);
+                    console.error(`Failed to fetch desktop image ${section.image.filePath}:`, e);
+                }
+            }
+
+            // モバイル画像
+            if (section.mobileImage && section.mobileImage.filePath) {
+                const extension = section.mobileImage.filePath.split('.').pop()?.split('?')[0] || 'jpg';
+                const localName = `section-${index}-mobile.${extension}`;
+                mobileImagePath = `./images/mobile/${localName}`;
+
+                // モバイル画像を取得してZIPに追加
+                try {
+                    const response = await fetch(section.mobileImage.filePath);
+                    if (response.ok) {
+                        const buffer = Buffer.from(await response.arrayBuffer());
+                        zip.addFile(`images/mobile/${localName}`, buffer);
+                    }
+                } catch (e) {
+                    console.error(`Failed to fetch mobile image ${section.mobileImage.filePath}:`, e);
                 }
             }
 
@@ -187,6 +208,113 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         zip.addFile('style.css', Buffer.from(cssContent));
 
         zip.addFile('index.html', Buffer.from(htmlContent));
+
+        // セクション情報をJSONとしてエクスポート（Claude Code用）
+        const sectionsData = page.sections.map((section, index) => {
+            let config: any = {};
+            try {
+                if (section.config) {
+                    config = JSON.parse(section.config);
+                }
+            } catch (e) {
+                console.error('Failed to parse section config for JSON export:', e);
+            }
+
+            const desktopExtension = section.image?.filePath?.split('.').pop()?.split('?')[0] || 'jpg';
+            const mobileExtension = section.mobileImage?.filePath?.split('.').pop()?.split('?')[0] || 'jpg';
+
+            return {
+                index,
+                role: section.role,
+                order: section.order,
+                images: {
+                    desktop: section.image ? `images/desktop/section-${index}-desktop.${desktopExtension}` : null,
+                    mobile: section.mobileImage ? `images/mobile/section-${index}-mobile.${mobileExtension}` : null,
+                },
+                // クリック可能エリア（ボタン）
+                clickableAreas: config.clickableAreas || [],
+                mobileClickableAreas: config.mobileClickableAreas || [],
+                // テキスト設定
+                text: config.text || null,
+                textColor: config.textColor || 'white',
+                textPosition: config.position || 'middle',
+                // その他の設定
+                brightness: config.brightness || 100,
+                grayscale: config.grayscale || 0,
+                overlayColor: config.overlayColor || 'transparent',
+                overlayOpacity: config.overlayOpacity || 0,
+            };
+        });
+
+        const sectionsJson = {
+            pageTitle: page.title,
+            pageSlug: page.slug,
+            exportedAt: new Date().toISOString(),
+            totalSections: sectionsData.length,
+            sections: sectionsData,
+            // ヘッダー設定
+            header: headerConfig,
+            // 使い方の説明
+            _readme: {
+                description: 'このファイルはClaude Codeでの編集用にエクスポートされたセクション情報です。',
+                images: {
+                    desktop: 'images/desktop/ フォルダにデスクトップ用画像が格納されています',
+                    mobile: 'images/mobile/ フォルダにモバイル用画像が格納されています',
+                },
+                clickableAreas: 'クリック可能エリアは相対座標 (0-1) で定義されています。x, y, width, height は画像サイズに対する比率です。',
+                actionTypes: ['url', 'email', 'phone', 'scroll', 'form-input'],
+            }
+        };
+
+        zip.addFile('sections.json', Buffer.from(JSON.stringify(sectionsJson, null, 2)));
+
+        // READMEファイルを追加
+        const readmeContent = `# ${page.title}
+
+## フォルダ構成
+
+\`\`\`
+├── index.html          # メインHTMLファイル
+├── style.css           # スタイルシート
+├── sections.json       # セクション情報（Claude Code編集用）
+├── README.md           # このファイル
+└── images/
+    ├── desktop/        # デスクトップ用画像
+    │   └── section-{n}-desktop.{ext}
+    └── mobile/         # モバイル用画像
+        └── section-{n}-mobile.{ext}
+\`\`\`
+
+## Claude Codeでの編集
+
+\`sections.json\` にはクリック可能エリア（ボタン）の情報が含まれています。
+
+### クリック可能エリアの形式
+
+\`\`\`json
+{
+  "x": 0.1,           // 左端からの相対位置 (0-1)
+  "y": 0.2,           // 上端からの相対位置 (0-1)
+  "width": 0.3,       // 幅の相対サイズ (0-1)
+  "height": 0.1,      // 高さの相対サイズ (0-1)
+  "actionType": "url", // アクションタイプ: url, email, phone, scroll, form-input
+  "actionValue": "https://example.com", // アクション値
+  "label": "今すぐ申し込む" // ボタンラベル
+}
+\`\`\`
+
+### アクションタイプ
+
+- \`url\`: 外部リンク
+- \`email\`: メール送信 (mailto:)
+- \`phone\`: 電話発信 (tel:)
+- \`scroll\`: ページ内スクロール (#anchor)
+- \`form-input\`: フォーム入力モーダル表示
+
+エクスポート日時: ${new Date().toISOString()}
+`;
+
+        zip.addFile('README.md', Buffer.from(readmeContent));
 
         const zipBuffer = zip.toBuffer();
 

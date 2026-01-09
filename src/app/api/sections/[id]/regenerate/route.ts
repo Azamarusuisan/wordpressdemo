@@ -219,9 +219,12 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
         const firstSection = allSections[0];
 
         // ユーザー指定の参照URLがある場合はそれを使用、なければ自動で最初のセクションを使用
+        // samplingモードでも参照画像を使用して色の一貫性を確保
         const useUserReference = !!styleReferenceUrl;
-        const useAutoReference = !isSamplingMode && !useUserReference && segmentIndex > 0 && firstSection?.image?.filePath;
+        const useAutoReference = !useUserReference && segmentIndex > 0 && firstSection?.image?.filePath;
         const useStyleReference = useUserReference || useAutoReference;
+
+        log.info(`Style reference: userRef=${useUserReference}, autoRef=${useAutoReference}, useRef=${useStyleReference}, samplingMode=${isSamplingMode}`);
 
         let styleReferenceBuffer: Buffer | null = null;
         if (useStyleReference) {
@@ -240,6 +243,25 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
         }
 
         // 参照画像がある場合は一貫性指示を追加
+        // モバイル用の場合は、デスクトップとの一致を最優先にする
+        const mobileMatchInstruction = isMobile && styleReferenceBuffer
+            ? `【モバイル版作成 - デスクトップ画像との完全一致が必須】
+これはモバイル版の画像を作成するタスクです。
+添付した1枚目の参照画像は「デスクトップ版」です。モバイル版はこのデスクトップ版と完全に一致する色・スタイルを使用してください。
+
+【絶対厳守：デスクトップとの色一致】
+- 見出しの文字色: デスクトップ版と100%同じ色を使用（例：青なら青、オレンジならオレンジ）
+- ボタンの色: デスクトップ版と100%同じ色を使用
+- 背景色: デスクトップ版と同じトーンの色を使用
+- アイコン・装飾の色: デスクトップ版と100%同じ色を使用
+
+【禁止事項】
+- デスクトップ版と異なる色を使用すること
+- 色味を勝手に変更すること（青→赤など絶対NG）
+
+`
+            : '';
+
         const styleReferenceInstruction = styleReferenceBuffer
             ? useUserReference
                 ? `【最重要：ユーザー指定の参照スタイルに完全一致させる】
@@ -257,15 +279,24 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
 【重要】参照画像のスタイルを忠実に再現することが最優先です。
 
 `
-                : `【最重要：スタイル統一】
+                : `【最重要：色とスタイルの完全統一 - これが最優先事項です】
 添付した「スタイル参照画像」は、このページの最初のセクションです。
-以下を参照画像と完全に統一してください：
-- 背景色・グラデーション
-- ボタンの色・形状・角丸
-- フォントスタイル
-- アイコンのスタイル
-- シャドウの強さ
-- 装飾要素のスタイル
+このセクションの色とスタイルを完全にコピーしてください：
+
+【色の統一 - 絶対厳守】
+- 見出しの文字色: 参照画像と全く同じ青色/色を使用
+- ボタンの色: 参照画像と全く同じ色・グラデーションを使用
+- アイコンの色: 参照画像と全く同じ色を使用
+- 背景色: 参照画像と調和する色を使用
+- アクセントカラー: 参照画像から抽出した色のみを使用
+
+【スタイルの統一】
+- フォントの太さ・スタイル
+- ボタンの角丸・影
+- 装飾要素のデザイン
+
+【重要】参照画像の色を目視で確認し、HEXコードレベルで同じ色を使用してください。
+色がバラバラだとページ全体の統一感が損なわれます。
 
 `
             : '';
@@ -299,7 +330,7 @@ ${designDefinition.style?.buttonStyle ? `【ボタン】\n${designDefinition.sty
         const prompt = mode === 'light'
             ? `あなたはプロのWebデザイナーです。Webページの一部分（セグメント画像）を新しいスタイルに変換してください。
 
-${extractedColorsInstruction}${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
+${mobileMatchInstruction}${extractedColorsInstruction}${styleReferenceInstruction}【重要】この画像はページ全体の一部分です。他のセグメントと結合されるため、以下を厳守してください。
 
 【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
@@ -329,7 +360,7 @@ ${contextStyle ? `【コンテキストスタイル】${contextStyle}` : ''}
 【出力】入力と同じサイズの高品質なWebデザイン画像を出力。`
             : `あなたはクリエイティブなWebデザイナーです。Webページの一部分（セグメント画像）を参考に新しいデザインを作成してください。
 
-${extractedColorsInstruction}${styleReferenceInstruction}【セグメント情報】
+${mobileMatchInstruction}${extractedColorsInstruction}${styleReferenceInstruction}【セグメント情報】
 - 位置：${segmentInfo.position}（全${totalSegments}セグメント中）
 - 役割：${segmentInfo.role}
 ${boundaryInfo ? `\n${boundaryInfo}` : ''}

@@ -25,6 +25,7 @@ interface BackgroundUnifyRequest {
     masks: MaskArea[];              // マスク領域（背景部分）
     targetColor: string;            // 目標の背景色（#RRGGBB形式）
     resolution: '1K' | '2K' | '4K'; // 出力解像度
+    targetType?: 'desktop' | 'mobile'; // 対象画像タイプ（デフォルト: desktop）
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +41,8 @@ export async function POST(request: NextRequest) {
 
     try {
         const body: BackgroundUnifyRequest = await request.json();
-        const { targetImageUrl, targetSectionId, masks, targetColor, resolution } = body;
+        const { targetImageUrl, targetSectionId, masks, targetColor, resolution, targetType = 'desktop' } = body;
+        const isMobile = targetType === 'mobile';
 
         if (!targetSectionId) {
             return NextResponse.json({ error: 'セクションIDが必要です' }, { status: 400 });
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        log.info(`Background unify: section ${targetSectionId}, color ${targetColor}, resolution ${resolution}, ${masks.length} mask(s)`);
+        log.info(`Background unify: section ${targetSectionId} (${targetType}), color ${targetColor}, resolution ${resolution}, ${masks.length} mask(s)`);
 
         // 画像を取得
         const targetResponse = await fetch(targetImageUrl);
@@ -276,27 +278,48 @@ export async function POST(request: NextRequest) {
         // 現在のセクション情報を取得（履歴保存用）
         const currentSection = await prisma.pageSection.findUnique({
             where: { id: targetSectionId },
-            select: { imageId: true }
+            select: { imageId: true, mobileImageId: true }
         });
 
-        // セクション更新
-        await prisma.pageSection.update({
-            where: { id: targetSectionId },
-            data: { imageId: newMedia.id },
-        });
-
-        // 履歴を保存（復元用）
-        if (currentSection?.imageId) {
-            await prisma.sectionImageHistory.create({
-                data: {
-                    sectionId: targetSectionId,
-                    userId: user.id,
-                    previousImageId: currentSection.imageId,
-                    newImageId: newMedia.id,
-                    actionType: 'background-unify',
-                    prompt: `背景色を${targetColor}に変更（${resolution}）`,
-                }
+        // セクション更新（モバイルかデスクトップかで分岐）
+        if (isMobile) {
+            await prisma.pageSection.update({
+                where: { id: targetSectionId },
+                data: { mobileImageId: newMedia.id },
             });
+
+            // モバイル用履歴を保存
+            if (currentSection?.mobileImageId) {
+                await prisma.sectionImageHistory.create({
+                    data: {
+                        sectionId: targetSectionId,
+                        userId: user.id,
+                        previousImageId: currentSection.mobileImageId,
+                        newImageId: newMedia.id,
+                        actionType: 'background-unify-mobile',
+                        prompt: `モバイル背景色を${targetColor}に変更（${resolution}）`,
+                    }
+                });
+            }
+        } else {
+            await prisma.pageSection.update({
+                where: { id: targetSectionId },
+                data: { imageId: newMedia.id },
+            });
+
+            // デスクトップ用履歴を保存
+            if (currentSection?.imageId) {
+                await prisma.sectionImageHistory.create({
+                    data: {
+                        sectionId: targetSectionId,
+                        userId: user.id,
+                        previousImageId: currentSection.imageId,
+                        newImageId: newMedia.id,
+                        actionType: 'background-unify',
+                        prompt: `背景色を${targetColor}に変更（${resolution}）`,
+                    }
+                });
+            }
         }
 
         // ログ記録
@@ -311,7 +334,7 @@ export async function POST(request: NextRequest) {
             startTime,
         });
 
-        log.success(`Background unified for section ${targetSectionId}: ${targetColor} at ${resolution}`);
+        log.success(`Background unified for section ${targetSectionId} (${targetType}): ${targetColor} at ${resolution}`);
 
         return NextResponse.json({
             success: true,

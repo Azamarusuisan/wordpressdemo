@@ -11,13 +11,16 @@ interface Section {
     image?: {
         filePath: string;
     } | null;
+    mobileImage?: {
+        filePath: string;
+    } | null;
 }
 
 interface Props {
     sections: Section[];
     selectedSectionIds: string[];
     onClose: () => void;
-    onSuccess: (results: { sectionId: string; newImageUrl: string; newImageId: number }[]) => void;
+    onSuccess: (results: { sectionId: string; newImageUrl: string; newImageId: number; mobileImageUrl?: string; mobileImageId?: number }[]) => void;
 }
 
 type Resolution = '1K' | '2K' | '4K';
@@ -43,6 +46,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
         description: string;
     } | null>(null);
     const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+    const [includeMobile, setIncludeMobile] = useState(true); // モバイル画像も同時に処理
 
     const selectedSections = sections.filter(s => selectedSectionIds.includes(s.id));
     const referenceSection = referenceSectionId ? sections.find(s => s.id === referenceSectionId) : null;
@@ -107,14 +111,23 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
         }
 
         setIsProcessing(true);
-        setProgress({ current: 0, total: targetSections.length });
+        // モバイル画像も含める場合は、モバイル画像があるセクション数も加算
+        const mobileTargetCount = includeMobile ? targetSections.filter(s => s.mobileImage?.filePath).length : 0;
+        const totalOperations = targetSections.length + mobileTargetCount;
+        setProgress({ current: 0, total: totalOperations });
 
-        const results: { sectionId: string; newImageUrl: string; newImageId: number }[] = [];
+        const results: { sectionId: string; newImageUrl: string; newImageId: number; mobileImageUrl?: string; mobileImageId?: number }[] = [];
+        let operationCount = 0;
 
         for (let i = 0; i < targetSections.length; i++) {
             const section = targetSections[i];
-            setProgress({ current: i + 1, total: targetSections.length });
+            operationCount++;
+            setProgress({ current: operationCount, total: totalOperations });
 
+            let desktopResult: { newImageUrl: string; newImageId: number } | null = null;
+            let mobileResult: { newImageUrl: string; newImageId: number } | null = null;
+
+            // デスクトップ画像の処理
             try {
                 const response = await fetch('/api/ai/background-unify', {
                     method: 'POST',
@@ -125,26 +138,71 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                         masks: [{ x: 0, y: 0, width: 1, height: 1 }],
                         targetColor,
                         resolution,
+                        targetType: 'desktop',
                     }),
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
-                    console.error(`Section ${section.id} failed:`, error);
-                    toast.error(`セクション${section.order + 1}の処理に失敗しました`);
-                    continue;
+                    console.error(`Section ${section.id} desktop failed:`, error);
+                    toast.error(`セクション${section.order + 1}(デスクトップ)の処理に失敗しました`);
+                } else {
+                    const result = await response.json();
+                    desktopResult = {
+                        newImageUrl: result.newImageUrl,
+                        newImageId: result.newImageId,
+                    };
                 }
+            } catch (error: any) {
+                console.error(`Section ${section.id} desktop error:`, error);
+                toast.error(`セクション${section.order + 1}(デスクトップ)でエラーが発生しました`);
+            }
 
-                const result = await response.json();
+            // モバイル画像の処理（オプションがONで、モバイル画像がある場合）
+            if (includeMobile && section.mobileImage?.filePath) {
+                operationCount++;
+                setProgress({ current: operationCount, total: totalOperations });
+
+                try {
+                    const response = await fetch('/api/ai/background-unify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            targetImageUrl: section.mobileImage.filePath,
+                            targetSectionId: parseInt(section.id, 10),
+                            masks: [{ x: 0, y: 0, width: 1, height: 1 }],
+                            targetColor,
+                            resolution,
+                            targetType: 'mobile',
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        console.error(`Section ${section.id} mobile failed:`, error);
+                        toast.error(`セクション${section.order + 1}(モバイル)の処理に失敗しました`);
+                    } else {
+                        const result = await response.json();
+                        mobileResult = {
+                            newImageUrl: result.newImageUrl,
+                            newImageId: result.newImageId,
+                        };
+                    }
+                } catch (error: any) {
+                    console.error(`Section ${section.id} mobile error:`, error);
+                    toast.error(`セクション${section.order + 1}(モバイル)でエラーが発生しました`);
+                }
+            }
+
+            // 結果を追加（少なくともデスクトップが成功した場合）
+            if (desktopResult) {
                 results.push({
                     sectionId: section.id,
-                    newImageUrl: result.newImageUrl,
-                    newImageId: result.newImageId,
+                    newImageUrl: desktopResult.newImageUrl,
+                    newImageId: desktopResult.newImageId,
+                    mobileImageUrl: mobileResult?.newImageUrl,
+                    mobileImageId: mobileResult?.newImageId,
                 });
-
-            } catch (error: any) {
-                console.error(`Section ${section.id} error:`, error);
-                toast.error(`セクション${section.order + 1}でエラーが発生しました`);
             }
         }
 
@@ -365,7 +423,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                     </div>
 
                                     {/* 解像度選択 */}
-                                    <div>
+                                    <div className="mb-4">
                                         <label className="block text-sm font-bold text-gray-700 mb-2">
                                             出力解像度
                                         </label>
@@ -385,6 +443,26 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                 </button>
                                             ))}
                                         </div>
+                                    </div>
+
+                                    {/* モバイル画像オプション */}
+                                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={includeMobile}
+                                                onChange={(e) => setIncludeMobile(e.target.checked)}
+                                                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                            />
+                                            <div>
+                                                <span className="text-sm font-bold text-purple-800">
+                                                    モバイル画像も同時に処理
+                                                </span>
+                                                <p className="text-xs text-purple-600 mt-0.5">
+                                                    モバイル用画像がある場合、同じ背景色で変更します
+                                                </p>
+                                            </div>
+                                        </label>
                                     </div>
                                 </>
                             )}

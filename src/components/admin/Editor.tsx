@@ -16,6 +16,7 @@ import CTAManagementModal from '@/components/admin/CTAManagementModal';
 import ColorPaletteModal from '@/components/admin/ColorPaletteModal';
 import MobileOptimizeModal from '@/components/admin/MobileOptimizeModal';
 import VideoInsertModal from '@/components/admin/VideoInsertModal';
+import SectionInsertModal from '@/components/admin/SectionInsertModal';
 import SectionCropModal from '@/components/admin/SectionCropModal';
 import OverlayEditorModal from '@/components/admin/OverlayEditorModal';
 import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square } from 'lucide-react';
@@ -162,6 +163,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // 動画挿入モーダル
     const [showVideoModal, setShowVideoModal] = useState(false);
 
+    // セクション挿入モーダル
+    const [showInsertModal, setShowInsertModal] = useState(false);
+    const [insertIndex, setInsertIndex] = useState<number>(0);
+    const [insertFromLibraryIndex, setInsertFromLibraryIndex] = useState<number | null>(null);
+
     // セクションクロップモーダル
     const [showCropModal, setShowCropModal] = useState(false);
     const [cropSectionId, setCropSectionId] = useState<string | null>(null);
@@ -206,6 +212,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     const [serverHistory, setServerHistory] = useState<any[]>([]);
     const [originalImages, setOriginalImages] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false); // 復元中フラグ（重複防止）
 
     // デスクトップレイアウトプレビューモード
     const [showDesktopPreview, setShowDesktopPreview] = useState(false);
@@ -865,6 +872,65 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         }
     };
 
+    // セクション挿入ハンドラー
+    const handleOpenInsertModal = (index: number) => {
+        setInsertIndex(index);
+        setShowInsertModal(true);
+    };
+
+    const handleInsertSection = async (file: File, index: number) => {
+        // 画像をアップロード
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!uploadRes.ok) {
+            throw new Error('画像のアップロードに失敗しました');
+        }
+
+        const uploadData = await uploadRes.json();
+        const newMedia = uploadData.media;
+
+        // 新しいセクションを作成
+        const newSection = {
+            id: `temp-${Date.now()}`,
+            role: 'content',
+            imageId: newMedia.id,
+            image: newMedia,
+            mobileImageId: null,
+            mobileImage: null,
+            order: index,
+            config: {}
+        };
+
+        // セクションを挿入（指定位置に挿入し、以降のorderを更新）
+        setSections(prev => {
+            const newSections = [...prev];
+            // 挿入位置以降のセクションのorderを1つずつ増やす
+            for (let i = 0; i < newSections.length; i++) {
+                if (newSections[i].order >= index) {
+                    newSections[i] = { ...newSections[i], order: newSections[i].order + 1 };
+                }
+            }
+            // 新しいセクションを追加
+            newSections.push(newSection);
+            // orderでソート
+            return newSections.sort((a, b) => a.order - b.order);
+        });
+
+        toast.success('セクションを挿入しました');
+    };
+
+    // アセットライブラリからセクション挿入
+    const handleInsertFromLibrary = (index: number) => {
+        setInsertFromLibraryIndex(index);
+        setSidebarTab('assets'); // アセットタブに切り替え
+    };
+
     // 画像編集モーダルを開く
     const handleOpenEditImage = (sectionId: string) => {
         const section = sections.find(s => s.id === sectionId);
@@ -931,6 +997,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // インペインティング（部分編集）モーダルを開く
     const handleOpenInpaint = (sectionId: string, imageUrl: string, mobileImageUrl?: string) => {
+        console.log('[handleOpenInpaint] Opening with:', { sectionId, imageUrl, mobileImageUrl });
         setInpaintSectionId(sectionId);
         setInpaintImageUrl(imageUrl);
         setInpaintMobileImageUrl(mobileImageUrl || null);
@@ -1069,6 +1136,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         setServerHistory([]);
         setOriginalImages([]);
 
+        // temp-で始まる一時的なセクションは履歴取得をスキップ
+        if (typeof sectionId === 'string' && sectionId.startsWith('temp-')) {
+            console.log('[History] Skipping API call for temporary section');
+            setIsLoadingHistory(false);
+            return;
+        }
+
         try {
             const response = await fetch(`/api/sections/${sectionId}/history`);
             const data = await response.json();
@@ -1095,11 +1169,28 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     };
 
     // サーバー履歴から復元
-    const handleRestoreFromServer = async (sectionId: string, imageId: number, imageUrl: string) => {
-        try {
-            console.log('[Restore] Starting restore:', { sectionId, imageId, imageUrl });
+    const handleRestoreFromServer = async (sectionId: string | number, imageId: number, imageUrl: string) => {
+        // 復元中の場合は無視（重複防止）
+        if (isRestoring) {
+            console.log('[Restore] Already restoring, ignoring duplicate call');
+            return;
+        }
 
-            const response = await fetch(`/api/sections/${sectionId}/history`, {
+        // temp-で始まる一時的なセクションは復元できない
+        if (typeof sectionId === 'string' && sectionId.startsWith('temp-')) {
+            console.log('[Restore] Cannot restore temporary section');
+            toast.error('保存されていないセクションは復元できません');
+            return;
+        }
+
+        setIsRestoring(true);
+        try {
+            // セクションIDを数値に変換（API用）
+            const numericSectionId = typeof sectionId === 'string' ? parseInt(sectionId, 10) : sectionId;
+
+            console.log('[Restore] Starting restore:', { sectionId, numericSectionId, imageId, imageUrl });
+
+            const response = await fetch(`/api/sections/${numericSectionId}/history`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageId }),
@@ -1114,9 +1205,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
             console.log('[Restore] API success:', result);
 
-            // セクションを更新（新しいimageオブジェクトを作成）
+            // セクションを更新（型を揃えて比較）
             const updatedSections = sections.map(s =>
-                s.id === sectionId
+                String(s.id) === String(sectionId)
                     ? {
                         ...s,
                         imageId: imageId,
@@ -1142,6 +1233,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         } catch (error: any) {
             console.error('[Restore] Error:', error);
             toast.error(error.message || '復元に失敗しました');
+        } finally {
+            setIsRestoring(false);
         }
     };
 
@@ -1430,17 +1523,23 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
         for (let i = 0; i < sectionIds.length; i++) {
             const sectionId = sectionIds[i];
-            const section = sections.find(s => s.id === sectionId);
+            // 型を揃えて比較（文字列と数値の両方に対応）
+            const section = sections.find(s => String(s.id) === String(sectionId));
 
-            console.log(`Processing section ${i + 1}:`, { sectionId, found: !!section, sectionData: section });
+            console.log(`Processing section ${i + 1}:`, { sectionId, sectionIdType: typeof sectionId, found: !!section });
 
-            if (!section) continue;
+            if (!section) {
+                console.warn(`Section not found for ID: ${sectionId}`);
+                continue;
+            }
+
+            console.log(`Section found:`, { id: section.id, idType: typeof section.id });
 
             const dbSectionId = typeof section.id === 'string' && section.id.startsWith('temp-')
                 ? null
-                : parseInt(String(section.id));
+                : Number(section.id);
 
-            console.log(`DB Section ID: ${dbSectionId} (from ${section.id})`);
+            console.log(`DB Section ID: ${dbSectionId} (from ${section.id}, type: ${typeof section.id})`);
 
             if (!dbSectionId || isNaN(dbSectionId)) {
                 console.warn(`Section ${section.id} skipped - not saved yet`);
@@ -1482,8 +1581,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 });
 
                 const data = await response.json();
+                console.log(`API Response for section ${sectionId}:`, { ok: response.ok, data });
 
                 if (response.ok) {
+                    console.log(`✅ Section ${sectionId} regenerated successfully`);
                     // 現在の画像を履歴に追加（元に戻す機能用）
                     if (section.imageId && section.image) {
                         setEditHistory(prev => ({
@@ -1526,6 +1627,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     // モバイル画像も同時に再生成（オプションがONで、モバイル画像がある場合）
                     if (includeMobileInBatch && section.mobileImage?.filePath) {
                         console.log(`Also regenerating mobile image for section ${sectionId}...`);
+
+                        // 生成したばかりのデスクトップ画像をモバイルの参照として使用
+                        // これによりデスクトップとモバイルの色・スタイルが一致する
+                        const desktopImageForMobileRef = generatedImageUrl;
+                        console.log(`Using desktop image as reference for mobile:`, desktopImageForMobileRef);
+
                         try {
                             const mobileResponse = await fetch(`/api/sections/${dbSectionId}/regenerate`, {
                                 method: 'POST',
@@ -1536,10 +1643,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     customPrompt: batchRegeneratePrompt || undefined,
                                     mode: batchRegenerateGenerationMode,
                                     designDefinition: !batchReferenceSection && batchRegenerateStyle === 'design-definition' ? designDefinition : undefined,
-                                    styleReferenceUrl: styleReferenceUrl || undefined,
+                                    // モバイル用の参照画像として、同じセクションのデスクトップ画像を優先使用
+                                    styleReferenceUrl: desktopImageForMobileRef || styleReferenceUrl || undefined,
                                     extractedColors: extractedColors || undefined,
                                     targetImage: 'mobile',
-                                    unifyDesign: !!batchReferenceSection,
+                                    unifyDesign: true, // モバイルは常にデスクトップに合わせる
                                     // 境界オフセット情報
                                     boundaryOffsetTop: section.boundaryOffsetTop || undefined,
                                     boundaryOffsetBottom: section.boundaryOffsetBottom || undefined,
@@ -1818,6 +1926,20 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         </div>
                     ) : (
                         <>
+                            {/* 先頭への挿入ボタン */}
+                            {!isDraggingAsset && !batchRegenerateMode && !backgroundUnifyMode && sections.length > 0 && (
+                                <div className="relative h-8 group/insert-top mb-2">
+                                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/insert-top:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => handleOpenInsertModal(0)}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:shadow-xl transition-all"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            先頭に挿入
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             {sections.map((section, sectionIndex) => (
                                 <React.Fragment key={section.id}>
                                     {/* ドロップゾーンインジケーター（セクション上部） */}
@@ -2497,6 +2619,41 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     <Undo2 className="h-3.5 w-3.5" />
                                                     <span>履歴</span>
                                                 </button>
+                                                {/* 画像ダウンロードボタン */}
+                                                {(viewMode === 'desktop' ? section.image?.filePath : section.mobileImage?.filePath || section.image?.filePath) && (
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
+                                                                ? section.mobileImage.filePath
+                                                                : section.image?.filePath;
+                                                            if (!imageUrl) return;
+
+                                                            try {
+                                                                const response = await fetch(imageUrl);
+                                                                const blob = await response.blob();
+                                                                const url = URL.createObjectURL(blob);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                const extension = imageUrl.split('.').pop()?.split('?')[0] || 'jpg';
+                                                                a.download = `section-${sectionIndex + 1}-${viewMode}.${extension}`;
+                                                                document.body.appendChild(a);
+                                                                a.click();
+                                                                document.body.removeChild(a);
+                                                                URL.revokeObjectURL(url);
+                                                                toast.success('画像をダウンロードしました');
+                                                            } catch (error) {
+                                                                console.error('Download error:', error);
+                                                                toast.error('ダウンロードに失敗しました');
+                                                            }
+                                                        }}
+                                                        className="absolute top-3 right-[4.5rem] z-10 flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all hover:scale-105"
+                                                        title="画像をダウンロード"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                        <span>保存</span>
+                                                    </button>
+                                                )}
                                                 {/* ローディングオーバーレイ */}
                                                 {(generatingImageSectionIds.has(section.id) || editingSectionIds.has(section.id) || regeneratingSectionIds.has(section.id)) && (
                                                     <div className="absolute inset-0 bg-gradient-to-br from-purple-600/90 to-indigo-700/90 flex flex-col items-center justify-center gap-4 backdrop-blur-sm">
@@ -2600,6 +2757,23 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             <span className="text-xs text-gray-500">
                                                 {`ここにドロップ → ${section.role || `セクション${sectionIndex + 1}`}の後に追加`}
                                             </span>
+                                        </div>
+                                    )}
+
+                                    {/* セクション間の挿入ボタン（通常時のみ表示） */}
+                                    {!isDraggingAsset && !batchRegenerateMode && !backgroundUnifyMode && (
+                                        <div className="relative h-0 group/insert">
+                                            <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/insert:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleOpenInsertModal(sectionIndex + 1)}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:shadow-xl transition-all"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                    挿入
+                                                </button>
+                                            </div>
+                                            {/* ホバー検出用の透明な帯 */}
+                                            <div className="absolute left-0 right-0 -top-4 h-8 cursor-pointer" />
                                         </div>
                                     )}
                                 </React.Fragment>
@@ -3265,25 +3439,57 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                 {/* 素材ライブラリタブ */}
                 {sidebarTab === 'assets' && (
-                    <AssetLibrary
-                        onAssetSelect={(asset, downloadedUrl) => {
-                            // 新しいセクションとして追加
-                            const newSection = {
-                                id: `temp-${Date.now()}`,
-                                role: 'asset',
-                                order: sections.length,
-                                imageId: null,
-                                image: { filePath: downloadedUrl },
-                                config: { assetType: asset.type, assetTitle: asset.title }
-                            };
-                            setSections(prev => [...prev, newSection]);
-                        }}
-                        onDragStart={() => setIsDraggingAsset(true)}
-                        onDragEnd={() => {
-                            setIsDraggingAsset(false);
-                            setDragOverSectionId(null);
-                        }}
-                    />
+                    <>
+                        {insertFromLibraryIndex !== null && (
+                            <div className="mx-3 mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-blue-700">挿入モード</p>
+                                        <p className="text-xs text-blue-600">セクション {insertFromLibraryIndex + 1} の位置に挿入します</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setInsertFromLibraryIndex(null)}
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        キャンセル
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        <AssetLibrary
+                            onAssetSelect={(asset, downloadedUrl) => {
+                                // 挿入位置が指定されている場合はその位置に、そうでなければ末尾に追加
+                                const targetIndex = insertFromLibraryIndex !== null ? insertFromLibraryIndex : sections.length;
+                                const newSection = {
+                                    id: `temp-${Date.now()}`,
+                                    role: 'asset',
+                                    order: targetIndex,
+                                    imageId: null,
+                                    image: { filePath: downloadedUrl },
+                                    config: { assetType: asset.type, assetTitle: asset.title }
+                                };
+
+                                if (insertFromLibraryIndex !== null) {
+                                    // 指定位置に挿入
+                                    setSections(prev => {
+                                        const newSections = [...prev];
+                                        newSections.splice(targetIndex, 0, newSection);
+                                        // orderを再計算
+                                        return newSections.map((s, i) => ({ ...s, order: i }));
+                                    });
+                                    setInsertFromLibraryIndex(null); // リセット
+                                } else {
+                                    // 末尾に追加
+                                    setSections(prev => [...prev, newSection]);
+                                }
+                            }}
+                            onDragStart={() => setIsDraggingAsset(true)}
+                            onDragEnd={() => {
+                                setIsDraggingAsset(false);
+                                setDragOverSectionId(null);
+                            }}
+                        />
+                    </>
                 )}
 
                 {/* ツールメニュー */}
@@ -3823,6 +4029,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         let updatedSections = [...sections];
                         for (const result of results) {
                             const currentSection = sections.find(s => s.id === result.sectionId);
+                            // デスクトップ画像の履歴保存
                             if (currentSection?.imageId && currentSection?.image) {
                                 setEditHistory(prev => ({
                                     ...prev,
@@ -3832,9 +4039,19 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     ].slice(0, 10)
                                 }));
                             }
+                            // セクション更新（デスクトップ + モバイル）
                             updatedSections = updatedSections.map(s =>
                                 s.id === result.sectionId
-                                    ? { ...s, imageId: result.newImageId, image: { ...s.image, id: result.newImageId, filePath: result.newImageUrl } }
+                                    ? {
+                                        ...s,
+                                        imageId: result.newImageId,
+                                        image: { ...s.image, id: result.newImageId, filePath: result.newImageUrl },
+                                        // モバイル画像も更新（結果がある場合）
+                                        ...(result.mobileImageId && result.mobileImageUrl ? {
+                                            mobileImageId: result.mobileImageId,
+                                            mobileImage: { ...s.mobileImage, id: result.mobileImageId, filePath: result.mobileImageUrl }
+                                        } : {})
+                                    }
                                     : s
                             );
                         }
@@ -5161,6 +5378,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         }
                     }
                 }}
+            />
+
+            {/* セクション挿入モーダル */}
+            <SectionInsertModal
+                isOpen={showInsertModal}
+                insertIndex={insertIndex}
+                onClose={() => setShowInsertModal(false)}
+                onInsert={handleInsertSection}
+                onSelectFromLibrary={handleInsertFromLibrary}
             />
 
             {/* 動画挿入モーダル */}

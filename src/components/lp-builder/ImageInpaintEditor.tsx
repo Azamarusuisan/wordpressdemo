@@ -72,6 +72,7 @@ export function ImageInpaintEditor({
 }: ImageInpaintEditorProps) {
     // デュアルモード判定
     const isDualMode = !!mobileImageUrl;
+    console.log('[ImageInpaintEditor] Props received:', { imageUrl, mobileImageUrl, isDualMode });
     const [activeViewport, setActiveViewport] = useState<ViewportType>('desktop');
 
     // Desktop canvas refs and state
@@ -199,6 +200,31 @@ export function ImageInpaintEditor({
         isMobileSelectingRef.current = isMobileSelecting;
     }, [isMobileSelecting]);
 
+    // モバイルビューポートに切り替えた時にスケールを再計算
+    useEffect(() => {
+        if (activeViewport === 'mobile' && mobileImage && mobileContainerRef.current) {
+            // 少し遅延させてDOMが更新されるのを待つ
+            const timer = setTimeout(() => {
+                if (mobileContainerRef.current && mobileImage) {
+                    const containerWidth = mobileContainerRef.current.clientWidth - 40;
+                    const containerHeight = mobileContainerRef.current.clientHeight - 40;
+                    if (containerWidth > 0 && containerHeight > 0) {
+                        const scaleX = containerWidth / mobileImage.width;
+                        const scaleY = containerHeight / mobileImage.height;
+                        const newScale = Math.min(scaleX, scaleY, 1);
+                        setMobileScale(newScale);
+                        setMobileOffset({
+                            x: (containerWidth - mobileImage.width * newScale) / 2,
+                            y: (containerHeight - mobileImage.height * newScale) / 2
+                        });
+                        console.log('[ImageInpaintEditor] Mobile viewport activated, recalculated scale:', newScale);
+                    }
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [activeViewport, mobileImage]);
+
     // 参考デザイン画像機能
     const [referenceImage, setReferenceImage] = useState<string | null>(null);
     const [referenceDesign, setReferenceDesign] = useState<DesignDefinition | null>(null);
@@ -260,11 +286,16 @@ export function ImageInpaintEditor({
 
     // モバイル画像を読み込み（デュアルモード時のみ）
     useEffect(() => {
-        if (!mobileImageUrl) return;
+        console.log('[ImageInpaintEditor] Mobile image useEffect triggered, mobileImageUrl:', mobileImageUrl);
+        if (!mobileImageUrl) {
+            console.log('[ImageInpaintEditor] No mobileImageUrl, skipping mobile image load');
+            return;
+        }
 
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
+            console.log('[ImageInpaintEditor] Mobile image loaded successfully:', img.width, 'x', img.height);
             setMobileImage(img);
             if (mobileContainerRef.current) {
                 const containerWidth = mobileContainerRef.current.clientWidth - 40;
@@ -279,8 +310,8 @@ export function ImageInpaintEditor({
                 });
             }
         };
-        img.onerror = () => {
-            console.error('モバイル画像の読み込みに失敗しました');
+        img.onerror = (e) => {
+            console.error('[ImageInpaintEditor] モバイル画像の読み込みに失敗しました:', mobileImageUrl, e);
         };
         img.src = mobileImageUrl;
     }, [mobileImageUrl]);
@@ -524,7 +555,7 @@ export function ImageInpaintEditor({
             ctx.textAlign = 'center';
             ctx.fillText(`${index + 1}`, labelX + labelWidth / 2, labelY + 14);
         });
-    }, [isDualMode, mobileImage, mobileSelections, mobileScale, mobileOffset, mobileCurrentSelection]);
+    }, [isDualMode, mobileImage, mobileSelections, mobileScale, mobileOffset, mobileCurrentSelection, activeViewport]);
 
     const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
@@ -2285,7 +2316,8 @@ export function ImageInpaintEditor({
                                 )}
 
                                 {/* TextFixModule Integration */}
-                                {image && (
+                                {/* デスクトップまたはモバイルの選択範囲に応じて表示 */}
+                                {activeViewport === 'desktop' && image && (
                                     <TextFixModule
                                         imageUrl={imageUrl}
                                         selections={selections}
@@ -2295,6 +2327,22 @@ export function ImageInpaintEditor({
                                             setShowSuccess(true);
                                             setTimeout(() => {
                                                 onSave(newImageUrl);
+                                            }, 1500);
+                                        }}
+                                        onError={(err) => setError(err)}
+                                        disabled={isLoading}
+                                    />
+                                )}
+                                {activeViewport === 'mobile' && mobileImage && mobileImageUrl && (
+                                    <TextFixModule
+                                        imageUrl={mobileImageUrl}
+                                        selections={mobileSelections}
+                                        imageWidth={mobileImage.width}
+                                        imageHeight={mobileImage.height}
+                                        onTextFixed={(newMobileImageUrl) => {
+                                            setShowSuccess(true);
+                                            setTimeout(() => {
+                                                onSave(imageUrl, newMobileImageUrl); // デスクトップはそのまま、モバイルを更新
                                             }, 1500);
                                         }}
                                         onError={(err) => setError(err)}
