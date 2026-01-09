@@ -112,7 +112,7 @@ export default function SectionCropModal({
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
                     <div className="flex items-center gap-3">
@@ -132,12 +132,12 @@ export default function SectionCropModal({
                 {/* Content */}
                 <div className="flex-1 overflow-hidden flex">
                     {/* 左: 画像プレビュー */}
-                    <div className="flex-1 p-6 bg-gray-900 flex items-center justify-center overflow-hidden">
+                    <div className="flex-1 p-6 bg-gray-900 flex items-start justify-center overflow-auto">
                         {imageLoaded ? (
                             <div
                                 ref={containerRef}
-                                className="relative w-full max-h-full"
-                                style={{ maxWidth: '600px' }}
+                                className="relative w-full"
+                                style={{ maxWidth: '800px' }}
                             >
                                 {/* 元画像 */}
                                 <img
