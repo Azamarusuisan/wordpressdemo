@@ -137,27 +137,32 @@ export default function SettingsPage() {
 
             <div className="space-y-8">
                 {/* Google AI API Key */}
-                <div className="rounded-lg border border-border bg-background p-8">
+                <div className="rounded-lg border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 to-background p-8">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-purple-50 rounded-md text-purple-600 border border-purple-100">
+                        <div className="p-2 bg-purple-100 rounded-md text-purple-600 border border-purple-200">
                             <Sparkles className="h-5 w-5" />
                         </div>
                         <div>
                             <h2 className="text-base font-bold text-foreground">Google AI APIキー</h2>
-                            <p className="text-xs text-muted-foreground">AI生成機能に必要です (個人キー)</p>
+                            <p className="text-xs text-muted-foreground">AI画像生成・編集に必要な有料APIキー</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        {hasApiKey && (
-                            <div className="flex items-center gap-2 text-green-600 text-xs font-bold">
+                        {hasApiKey ? (
+                            <div className="flex items-center gap-2 text-green-600 text-xs font-bold bg-green-50 px-3 py-2 rounded-md border border-green-100">
                                 <CheckCircle className="h-4 w-4" />
-                                APIキーは有効です
+                                APIキーは設定済みです（AI機能が使えます）
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-amber-600 text-xs font-bold bg-amber-50 px-3 py-2 rounded-md border border-amber-100">
+                                <Sparkles className="h-4 w-4" />
+                                APIキーを設定するとAI機能が使えます
                             </div>
                         )}
                         <div>
                             <label className="block text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2">
-                                {hasApiKey ? 'APIキーを更新' : 'APIキー'}
+                                {hasApiKey ? 'APIキーを更新（入力で上書き）' : 'APIキーを入力'}
                             </label>
                             <input
                                 type="password"
@@ -167,11 +172,23 @@ export default function SettingsPage() {
                                 className="w-full rounded-md border border-input bg-background px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono"
                             />
                         </div>
-                        <div className="rounded-md bg-surface-50 p-4 border border-border">
-                            <p className="text-xs text-muted-foreground font-medium">
-                                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold text-foreground hover:text-primary">Google AI Studio</a>でキーを取得してください。
-                                <br />レート制限を緩和するには請求設定を有効にしてください。
-                            </p>
+                        <div className="rounded-md bg-white p-4 border border-border space-y-3">
+                            <p className="text-sm font-bold text-foreground">APIキーの取得方法:</p>
+                            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
+                                <li>
+                                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold text-primary hover:text-primary/80">Google AI Studio</a> にアクセス
+                                </li>
+                                <li>Googleアカウントでログイン</li>
+                                <li>「Get API Key」→「Create API key」をクリック</li>
+                                <li>生成されたキー（AIzaSy...）をコピーして上に貼り付け</li>
+                            </ol>
+                            <div className="pt-2 border-t border-border">
+                                <p className="text-[10px] text-muted-foreground">
+                                    <span className="font-bold text-amber-600">注意:</span> 無料枠には制限があります。安定して使うには
+                                    <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer" className="underline font-bold text-foreground hover:text-primary ml-1">請求設定</a>
+                                    を有効にしてください。
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
