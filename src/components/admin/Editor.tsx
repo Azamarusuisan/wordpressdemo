@@ -3580,7 +3580,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <Scissors className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900">セクションクロップ</h4>
+                                    <h4 className="text-sm font-bold text-gray-900">部分カット</h4>
                                     <p className="text-[10px] text-gray-500">画像の一部を切り取り</p>
                                 </div>
                             </div>
@@ -3641,7 +3641,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <Layers className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900">オーバーレイ追加</h4>
+                                    <h4 className="text-sm font-bold text-gray-900">ボタン追加</h4>
                                     <p className="text-[10px] text-gray-500">テキスト・ボタンを重ねる</p>
                                 </div>
                             </div>
@@ -3819,7 +3819,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         <button onClick={() => toggleTool('color-palette')} className="w-full flex items-center justify-between p-3 hover:bg-cyan-100/50 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md"><Droplet className="h-4 w-4 text-white" /></div>
-                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">カラーパレット</h4><p className="text-[10px] text-gray-500">LP全体の配色を管理</p></div>
+                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">色変更</h4><p className="text-[10px] text-gray-500">LP全体の配色を管理</p></div>
                             </div>
                             {expandedTools.has('color-palette') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                         </button>

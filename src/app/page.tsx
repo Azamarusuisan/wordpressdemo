@@ -195,7 +195,7 @@ export default function LoginPage() {
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-bold text-foreground">
-                メールアドレス
+                ID または メールアドレス
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -205,7 +205,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  placeholder="email@example.com"
+                  placeholder="ZettAI または email@example.com"
                   required
                   autoFocus
                 />
