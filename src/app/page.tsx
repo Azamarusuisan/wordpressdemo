@@ -2,15 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, Mail, Lock, UserPlus, User } from 'lucide-react';
+import { ArrowRight, Loader2, Mail, Lock, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-
-// IDの場合に使用するドメイン
-const ID_DOMAIN = '@lpbuilder.app';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [identifier, setIdentifier] = useState(''); // メールまたはID
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,22 +16,11 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // メールかIDかを判定してメール形式に変換
-  const getEmail = (input: string): string => {
-    const trimmed = input.trim();
-    if (trimmed.includes('@')) {
-      return trimmed; // 既にメール形式
-    }
-    return `${trimmed}${ID_DOMAIN}`; // ID形式 → メール形式に変換
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
-
-    const email = getEmail(identifier);
 
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -44,7 +30,7 @@ export default function LoginPage() {
 
       if (authError) {
         if (authError.message.includes('Invalid login credentials')) {
-          setError('ユーザーIDまたはパスワードが正しくありません');
+          setError('メールアドレスまたはパスワードが正しくありません');
         } else if (authError.message.includes('Email not confirmed')) {
           setError('メールアドレスが確認されていません。メールを確認してください。');
         } else {
@@ -79,9 +65,6 @@ export default function LoginPage() {
       return;
     }
 
-    const email = getEmail(identifier);
-    const isIdFormat = !identifier.includes('@');
-
     setLoading(true);
 
     try {
@@ -89,17 +72,13 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          // ID形式の場合はメール確認不要（実際のメールが届かないため）
-          emailRedirectTo: isIdFormat ? undefined : `${window.location.origin}/auth/callback`,
-          data: {
-            username: isIdFormat ? identifier.trim() : identifier.split('@')[0],
-          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (authError) {
         if (authError.message.includes('already registered')) {
-          setError('このID/メールアドレスは既に登録されています');
+          setError('このメールアドレスは既に登録されています');
         } else {
           setError(authError.message);
         }
@@ -109,14 +88,14 @@ export default function LoginPage() {
       if (data.user) {
         // Check if email confirmation is required
         if (data.user.identities?.length === 0) {
-          setError('このID/メールアドレスは既に登録されています');
-        } else if (!data.session && !isIdFormat) {
+          setError('このメールアドレスは既に登録されています');
+        } else if (!data.session) {
           setSuccess('確認メールを送信しました。メールのリンクをクリックして登録を完了してください。');
-          setIdentifier('');
+          setEmail('');
           setPassword('');
           setConfirmPassword('');
         } else {
-          // Auto-confirmed (ID format or development mode)
+          // Auto-confirmed (development mode or specific settings)
           router.push('/admin');
           router.refresh();
         }
@@ -127,8 +106,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const isEmail = identifier.includes('@');
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -176,8 +153,8 @@ export default function LoginPage() {
             </h2>
             <p className="text-muted-foreground">
               {mode === 'login'
-                ? 'ユーザーIDまたはメールアドレスでログイン'
-                : 'ユーザーIDまたはメールアドレスで登録'}
+                ? 'メールアドレスとパスワードでログイン'
+                : 'メールアドレスで新規アカウントを作成'}
             </p>
           </div>
 
@@ -217,29 +194,22 @@ export default function LoginPage() {
 
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="identifier" className="text-sm font-bold text-foreground">
-                ユーザーID / メールアドレス
+              <label htmlFor="email" className="text-sm font-bold text-foreground">
+                メールアドレス
               </label>
               <div className="relative">
-                {isEmail ? (
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                )}
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
-                  id="identifier"
-                  type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  placeholder="ZettAI または email@example.com"
+                  placeholder="email@example.com"
                   required
                   autoFocus
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                IDのみ入力した場合は自動でログイン用アカウントが作成されます
-              </p>
             </div>
 
             <div className="space-y-2">
