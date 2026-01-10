@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
+import { checkGenerationLimit, checkFeatureAccess } from '@/lib/usage';
 // design-tokens.ts のインポートは不要になりました（editOptions方式に移行）
 import { z } from 'zod';
 
@@ -407,6 +408,24 @@ export async function POST(
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 機能アクセスチェック（リスタイルは有料プラン専用）
+    const featureCheck = await checkFeatureAccess(user.id, 'restyle');
+    if (!featureCheck.allowed) {
+        return Response.json({
+            error: 'Feature not available',
+            message: featureCheck.reason,
+        }, { status: 403 });
+    }
+
+    // 使用量制限チェック
+    const limitCheck = await checkGenerationLimit(user.id);
+    if (!limitCheck.allowed) {
+        return Response.json({
+            error: 'Usage limit exceeded',
+            message: limitCheck.reason,
+        }, { status: 429 });
+    }
+
     const body = await request.json();
     const validation = restyleSchema.safeParse(body);
 
@@ -461,6 +480,11 @@ export async function POST(
 
         if (!page) {
             throw new Error('Page not found');
+        }
+
+        // 所有者確認
+        if (page.userId !== user.id) {
+            throw new Error('Forbidden');
         }
 
         const sections = page.sections.filter(s => s.image?.filePath);

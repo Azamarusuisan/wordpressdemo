@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import AdmZip from 'adm-zip';
 import { generateExportCSS } from '@/lib/export-styles';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
+        // 認証チェック
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const id = parseInt(params.id);
         if (isNaN(id)) {
             return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
@@ -22,6 +31,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
         if (!page) {
             return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+        }
+
+        // 所有者確認
+        if (page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const zip = new AdmZip();

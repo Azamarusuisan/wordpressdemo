@@ -1,17 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Save, Globe, Github, Loader2, CheckCircle, Sparkles, LogOut, Crown } from 'lucide-react';
+import { Save, Globe, Github, Loader2, CheckCircle, Sparkles, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { UsageDisplay } from '@/components/UsageDisplay';
 
 export default function SettingsPage() {
     const router = useRouter();
     const supabase = createClient();
 
     const [user, setUser] = useState<any>(null);
-    const [plan, setPlan] = useState<'normal' | 'premium'>('normal');
     const [googleApiKey, setGoogleApiKey] = useState('');
     const [hasApiKey, setHasApiKey] = useState(false);
     const [config, setConfig] = useState<any>({
@@ -35,7 +35,6 @@ export default function SettingsPage() {
                 const res = await fetch('/api/user/settings');
                 const data = await res.json();
                 setHasApiKey(data.hasApiKey || false);
-                setPlan(data.plan || 'normal');
             } catch (e) {
                 console.error('Failed to fetch user settings', e);
             }
@@ -110,30 +109,20 @@ export default function SettingsPage() {
                 </button>
             </div>
 
-            {/* User Info & Plan */}
+            {/* User Info */}
             {user && (
-                <div className="mb-8 rounded-lg bg-surface-50 p-6 border border-border">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-bold text-foreground">
-                                Logged in as: <span className="text-primary">{user.email}</span>
-                            </p>
-                        </div>
-                        <div className={`flex items-center gap-2 rounded-sm px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${plan === 'premium'
-                            ? 'bg-primary/10 text-primary border border-primary/20'
-                            : 'bg-surface-200 text-muted-foreground'
-                            }`}>
-                            {plan === 'premium' && <Crown className="h-3 w-3" />}
-                            <span>{plan === 'premium' ? 'Premium' : 'Normal'}</span>
-                        </div>
-                    </div>
-                    {plan === 'normal' && (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                            高度な機能にアクセスするにはプレミアムプランにアップグレードしてください。
-                        </p>
-                    )}
+                <div className="mb-8 rounded-lg bg-surface-50 p-4 border border-border">
+                    <p className="text-sm font-bold text-foreground">
+                        ログイン中: <span className="text-primary">{user.email}</span>
+                    </p>
                 </div>
             )}
+
+            {/* プランと使用量 */}
+            <div className="mb-8">
+                <h2 className="text-lg font-bold text-foreground mb-4">プランと使用状況</h2>
+                <UsageDisplay />
+            </div>
 
             <div className="space-y-8">
                 {/* Google AI API Key */}

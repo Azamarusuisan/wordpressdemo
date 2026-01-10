@@ -119,6 +119,11 @@ export async function POST(
             return Response.json({ error: 'Section not found' }, { status: 404 });
         }
 
+        // 所有者確認
+        if (section.page.userId !== user.id) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         // 対象画像を決定（desktop or mobile）
         const isMobile = targetImage === 'mobile';
         const targetImageData = isMobile ? section.mobileImage : section.image;

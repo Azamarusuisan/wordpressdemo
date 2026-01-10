@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const configs = await prisma.globalConfig.findMany();
         const configMap = configs.reduce((acc: any, curr) => {
@@ -15,6 +24,14 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const data = await request.json();
 

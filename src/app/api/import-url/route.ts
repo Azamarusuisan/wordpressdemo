@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { importUrlSchema, validateRequest } from '@/lib/validations';
+import { checkGenerationLimit } from '@/lib/usage';
 import {
     generateDesignTokens,
     extractDesignTokensFromImage,
@@ -329,6 +330,19 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 使用量制限チェック
+    const limitCheck = await checkGenerationLimit(user.id);
+    if (!limitCheck.allowed) {
+        return Response.json({
+            error: 'Usage limit exceeded',
+            message: limitCheck.reason,
+            usage: {
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+            }
+        }, { status: 429 });
     }
 
     const body = await request.json();

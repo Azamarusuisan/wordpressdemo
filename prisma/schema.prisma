@@ -1,11 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model Admin {
@@ -17,7 +17,7 @@ model Admin {
 
 model Page {
   id               Int           @id @default(autoincrement())
-  userId           String?       // Supabase Auth user ID
+  userId           String?
   title            String
   slug             String        @unique
   status           String        @default("draft")
@@ -25,7 +25,7 @@ model Page {
   headerConfig     String
   formConfig       String
   isFavorite       Boolean       @default(false)
-  designDefinition String?       // JSON string of extracted design style (colors, vibe, typography)
+  designDefinition String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   sections         PageSection[]
@@ -36,29 +36,29 @@ model Page {
 model PageSection {
   id                   Int         @id @default(autoincrement())
   pageId               Int
-  page                 Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
   order                Int
   role                 String
   imageId              Int?
-  image                MediaImage? @relation("DesktopImage", fields: [imageId], references: [id])
-  mobileImageId        Int?
-  mobileImage          MediaImage? @relation("MobileImage", fields: [mobileImageId], references: [id])
   config               String?
-  boundaryOffsetTop    Int         @default(0) // AI認識範囲の上方向拡張（ピクセル）
-  boundaryOffsetBottom Int         @default(0) // AI認識範囲の下方向拡張（ピクセル）
+  mobileImageId        Int?
+  boundaryOffsetBottom Int         @default(0)
+  boundaryOffsetTop    Int         @default(0)
+  image                MediaImage? @relation("DesktopImage", fields: [imageId], references: [id])
+  mobileImage          MediaImage? @relation("MobileImage", fields: [mobileImageId], references: [id])
+  page                 Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
 }
 
 model MediaImage {
   id              Int           @id @default(autoincrement())
-  userId          String?       // Supabase Auth user ID
+  userId          String?
   filePath        String
   width           Int?
   height          Int?
   mime            String
-  prompt          String?       // 生成に使用されたプロンプト
-  hash            String?       @unique // プロンプトのハッシュ（キャッシュ用）
-  sourceUrl       String?       // URLインポートの元URL
-  sourceType      String?       // "import" | "ai-generate" | "upload" など
+  prompt          String?
+  hash            String?       @unique
+  sourceUrl       String?
+  sourceType      String?
   createdAt       DateTime      @default(now())
   desktopSections PageSection[] @relation("DesktopImage")
   mobileSections  PageSection[] @relation("MobileImage")
@@ -70,19 +70,19 @@ model MediaImage {
 model GenerationRun {
   id            Int      @id @default(autoincrement())
   createdAt     DateTime @default(now())
-  userId        String?  // Supabase Auth user ID
-  type          String   // 'copy' | 'image' | 'inpaint' | 'edit-image' | 'prompt-copilot' | 'review' | 'image-to-prompt' | 'generate-nav' | 'chat-edit' | 'lp-generate'
-  endpoint      String?  // API endpoint path (e.g., '/api/ai/generate-image')
+  userId        String?
+  type          String
+  endpoint      String?
   model         String
   inputPrompt   String
   outputResult  String?
-  inputTokens   Int?     // Input token count
-  outputTokens  Int?     // Output token count
-  imageCount    Int?     // Number of images generated
-  estimatedCost Float?   // Estimated cost in USD
+  inputTokens   Int?
+  outputTokens  Int?
+  imageCount    Int?
+  estimatedCost Float?
   status        String   @default("succeeded")
   errorMessage  String?
-  durationMs    Int?     // Request duration in milliseconds
+  durationMs    Int?
 
   @@index([userId])
   @@index([createdAt])
@@ -92,29 +92,36 @@ model GenerationRun {
 model GlobalConfig {
   id    Int    @id @default(autoincrement())
   key   String @unique
-  value String // JSON string
+  value String
 }
 
 model UserSettings {
-  id            Int      @id @default(autoincrement())
-  userId        String   @unique // Supabase Auth user ID
-  email         String?  // ユーザーのメールアドレス
-  plan          String   @default("normal") // normal or premium
-  googleApiKey  String?  // ユーザー固有のGoogle API Key
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int       @id @default(autoincrement())
+  userId       String    @unique
+  email        String?
+  plan         String    @default("free")
+  googleApiKey String?
+  isApproved   Boolean   @default(false)
+  approvedAt   DateTime?
+  approvedBy   String?
+  isBanned     Boolean   @default(false)
+  bannedAt     DateTime?
+  bannedBy     String?
+  banReason    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model InpaintHistory {
   id            Int      @id @default(autoincrement())
-  userId        String?  // Supabase Auth user ID
-  originalImage String   // 変更前の画像URL
-  resultImage   String   // 変更後の画像URL
-  prompt        String   // 編集指示
-  masks         String   // JSON: 選択範囲の座標 [{x, y, width, height}, ...]
-  model         String   // 使用モデル名
-  estimatedCost Float?   // 推定費用 (USD)
-  durationMs    Int?     // 処理時間 (ms)
+  userId        String?
+  originalImage String
+  resultImage   String
+  prompt        String
+  masks         String
+  model         String
+  estimatedCost Float?
+  durationMs    Int?
   createdAt     DateTime @default(now())
 
   @@index([userId])
@@ -122,14 +129,14 @@ model InpaintHistory {
 }
 
 model SectionImageHistory {
-  id            Int      @id @default(autoincrement())
-  sectionId     Int      // PageSection ID
-  userId        String?  // Supabase Auth user ID
-  previousImageId Int    // 変更前のMediaImage ID
-  newImageId    Int      // 変更後のMediaImage ID
-  actionType    String   // 'regenerate' | 'inpaint' | 'upload' など
-  prompt        String?  // 使用されたプロンプト（あれば）
-  createdAt     DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  sectionId       Int
+  userId          String?
+  previousImageId Int
+  newImageId      Int
+  actionType      String
+  prompt          String?
+  createdAt       DateTime @default(now())
 
   @@index([sectionId])
   @@index([userId])
@@ -138,18 +145,53 @@ model SectionImageHistory {
 
 model MediaVideo {
   id            Int      @id @default(autoincrement())
-  userId        String?  // Supabase Auth user ID
-  filePath      String   // 動画ファイルのURL
-  thumbnailPath String?  // サムネイル画像のURL
-  duration      Int?     // 動画の長さ（秒）
+  userId        String?
+  filePath      String
+  thumbnailPath String?
+  duration      Int?
   width         Int?
   height        Int?
-  mime          String   // video/mp4, video/webm など
-  fileSize      Int?     // ファイルサイズ（バイト）
-  prompt        String?  // AI生成の場合のプロンプト
-  sourceType    String   @default("upload") // "upload" | "youtube" | "vimeo" | "ai-generate"
-  sourceUrl     String?  // YouTube/VimeoのURL
+  mime          String
+  fileSize      Int?
+  prompt        String?
+  sourceType    String   @default("upload")
+  sourceUrl     String?
   createdAt     DateTime @default(now())
 
   @@index([userId])
+}
+
+model FormSubmission {
+  id          Int       @id @default(autoincrement())
+  pageId      Int
+  pageSlug    String
+  formTitle   String?
+  fields      String
+  senderEmail String?
+  senderName  String?
+  isRead      Boolean   @default(false)
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([isRead])
+  @@index([pageId])
+  @@index([pageSlug])
+}
+
+model WaitingRoomEntry {
+  id          Int      @id @default(autoincrement())
+  accountType String   // 'individual' or 'corporate'
+  companyName String?
+  name        String
+  email       String
+  phone       String?
+  remarks     String?
+  status      String   @default("pending") // pending, invited, registered
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
 }

@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { pageUpdateSchema, pageSectionsUpdateSchema, validateRequest } from '@/lib/validations';
+import { createClient } from '@/lib/supabase/server';
+
+// 認証とページ所有者確認のヘルパー関数
+async function authenticateAndAuthorize(pageId: number) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: 'Unauthorized', status: 401, user: null, page: null };
+    }
+
+    const page = await prisma.page.findUnique({
+        where: { id: pageId },
+        include: {
+            sections: {
+                include: { image: true, mobileImage: true },
+                orderBy: { order: 'asc' },
+            },
+        },
+    });
+
+    if (!page) {
+        return { error: 'Page not found', status: 404, user, page: null };
+    }
+
+    // 所有者確認
+    if (page.userId !== user.id) {
+        return { error: 'Forbidden', status: 403, user, page: null };
+    }
+
+    return { error: null, status: 200, user, page };
+}
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     const id = parseInt(params.id);
@@ -10,19 +42,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     try {
-        const page = await prisma.page.findUnique({
-            where: { id },
-            include: {
-                sections: {
-                    include: { image: true, mobileImage: true },
-                    orderBy: { order: 'asc' },
-                },
-            },
-        });
-
-        if (!page) {
-            return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+        const auth = await authenticateAndAuthorize(id);
+        if (auth.error) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
+
+        const page = auth.page!;
 
         return NextResponse.json({
             id: page.id,
@@ -52,6 +77,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (isNaN(id)) {
         return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+    }
+
+    // 認証・所有者確認
+    const auth = await authenticateAndAuthorize(id);
+    if (auth.error) {
+        return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const body = await request.json();
@@ -127,6 +158,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
     }
 
+    // 認証・所有者確認
+    const auth = await authenticateAndAuthorize(id);
+    if (auth.error) {
+        return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     try {
         await prisma.page.delete({
             where: { id }
@@ -143,6 +180,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (isNaN(id)) {
         return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+    }
+
+    // 認証・所有者確認
+    const auth = await authenticateAndAuthorize(id);
+    if (auth.error) {
+        return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const body = await request.json();

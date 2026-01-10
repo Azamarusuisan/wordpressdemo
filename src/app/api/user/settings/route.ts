@@ -2,30 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 
-// プレミアムユーザーのユーザー名
-const PREMIUM_USERS = ['ZettAI'];
-
 // ユーザー設定を取得（なければ自動作成）
-async function getOrCreateUserSettings(userId: string) {
+async function getOrCreateUserSettings(userId: string, email: string | null) {
     let settings = await prisma.userSettings.findUnique({
         where: { userId }
     });
 
     if (!settings) {
-        // 新規ユーザー: プレミアムユーザーかどうかでプランを決定
-        const plan = PREMIUM_USERS.includes(userId) ? 'premium' : 'normal';
+        // 新規ユーザー: デフォルトプランで作成
         settings = await prisma.userSettings.create({
             data: {
                 userId,
-                email: null,
-                plan
+                email,
+                plan: 'free'
             }
-        });
-    } else if (PREMIUM_USERS.includes(userId) && settings.plan !== 'premium') {
-        // 既存ユーザーでもプレミアムならプレミアムに
-        settings = await prisma.userSettings.update({
-            where: { userId },
-            data: { plan: 'premium' }
         });
     }
 
@@ -41,13 +31,12 @@ export async function GET() {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = user.id;
-    const settings = await getOrCreateUserSettings(userId);
+    const settings = await getOrCreateUserSettings(user.id, user.email || null);
 
     return NextResponse.json({
         plan: settings.plan,
         hasApiKey: !!settings.googleApiKey,
-        username: userId
+        userId: user.id
     });
 }
 
@@ -60,18 +49,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = user.id;
     const { googleApiKey } = await request.json();
 
     await prisma.userSettings.upsert({
-        where: { userId },
+        where: { userId: user.id },
         update: {
             googleApiKey: googleApiKey || undefined
         },
         create: {
-            userId,
-            email: null,
-            plan: PREMIUM_USERS.includes(userId) ? 'premium' : 'normal',
+            userId: user.id,
+            email: user.email || null,
+            plan: 'free',
             googleApiKey: googleApiKey || null
         }
     });

@@ -2,12 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Images, Settings, LogOut, FileText, Navigation, Crown, History, BarChart3, Menu, X } from 'lucide-react';
+import { Images, Settings, LogOut, FileText, Navigation, Crown, History, BarChart3, Menu, X, Shield, Zap } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useUserSettings } from '@/lib/hooks/useAdminData';
 import { createClient } from '@/lib/supabase/client';
+
+// プラン定義（plans.tsと同期）
+const PLAN_INFO: Record<string, { name: string; color: string }> = {
+    free: { name: 'Free', color: 'text-gray-600' },
+    starter: { name: 'Starter', color: 'text-blue-600' },
+    pro: { name: 'Pro', color: 'text-purple-600' },
+    enterprise: { name: 'Enterprise', color: 'text-amber-600' },
+};
 
 // ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
 const navItems = [
@@ -17,6 +25,7 @@ const navItems = [
     { name: 'History', href: '/admin/import-history', icon: History, prefetchUrl: null },
     { name: 'Navigation', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation' },
     { name: 'Settings', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings' },
+    { name: 'Users', href: '/admin/users', icon: Shield, prefetchUrl: null },
 ] as const;
 
 // データプリフェッチ用のキャッシュ
@@ -162,10 +171,10 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             </div>
                             <div className={clsx(
                                 "truncate text-[10px] font-medium flex items-center gap-1",
-                                plan === 'premium' ? "text-primary" : "text-muted-foreground"
+                                PLAN_INFO[plan]?.color || "text-muted-foreground"
                             )}>
-                                {plan === 'premium' && <Crown className="h-3 w-3" />}
-                                {plan === 'premium' ? 'Premium' : 'Standard'}
+                                <Crown className="h-3 w-3" />
+                                {PLAN_INFO[plan]?.name || 'Free'}
                             </div>
                         </div>
                     </div>

@@ -79,6 +79,15 @@ export async function POST(
             return Response.json({ error: 'Section or image not found' }, { status: 404 });
         }
 
+        // 所有者確認（pageを取得して確認）
+        const page = await prisma.page.findUnique({
+            where: { id: section.pageId },
+        });
+
+        if (!page || page.userId !== user.id) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         log.info(`Restoring section ${sectionId}: ${direction} +${actualTopAmount}px top, +${actualBottomAmount}px bottom`);
 
         // 現在の画像を取得

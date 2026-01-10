@@ -78,11 +78,16 @@ export async function POST(request: NextRequest) {
         // データベースでセクションのimageIdを更新
         const section = await prisma.pageSection.findUnique({
             where: { id: numericSectionId },
-            include: { image: true }
+            include: { image: true, page: true }
         });
 
         if (!section) {
             return NextResponse.json({ error: 'Section not found' }, { status: 404 });
+        }
+
+        // 所有者確認
+        if (section.page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // 新しいメディアレコードを作成

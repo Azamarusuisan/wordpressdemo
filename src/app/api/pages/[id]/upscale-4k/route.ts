@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
+import { checkGenerationLimit, checkFeatureAccess } from '@/lib/usage';
 
 const log = {
     info: (msg: string) => console.log(`\x1b[35m[HD-UPSCALE]\x1b[0m ${msg}`),
@@ -65,6 +66,24 @@ export async function POST(
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 機能アクセスチェック（4Kアップスケールは有料プラン専用）
+    const featureCheck = await checkFeatureAccess(user.id, 'upscale4K');
+    if (!featureCheck.allowed) {
+        return Response.json({
+            error: 'Feature not available',
+            message: featureCheck.reason,
+        }, { status: 403 });
+    }
+
+    // 使用量制限チェック
+    const limitCheck = await checkGenerationLimit(user.id);
+    if (!limitCheck.allowed) {
+        return Response.json({
+            error: 'Usage limit exceeded',
+            message: limitCheck.reason,
+        }, { status: 429 });
+    }
+
     // リクエストボディからオプションを取得
     let textCorrection = true;
     let resolution = '2K'; // デフォルト
@@ -113,6 +132,11 @@ export async function POST(
 
         if (!page) {
             throw new Error('Page not found');
+        }
+
+        // 所有者確認
+        if (page.userId !== user.id) {
+            throw new Error('Forbidden');
         }
 
         // 画像があるセクションをフィルタ、個別指定がある場合はさらにフィルタ

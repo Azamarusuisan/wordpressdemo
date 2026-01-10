@@ -2,28 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, Mail, Lock, UserPlus, User } from 'lucide-react';
+import { ArrowRight, Loader2, Mail, Lock, UserPlus, Key } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-
-// 特別アカウント: ZettAI → team@zettai.co.jp
-const SPECIAL_ACCOUNTS: Record<string, string> = {
-  'ZettAI': 'team@zettai.co.jp',
-  'zettai': 'team@zettai.co.jp',
-};
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [invitePassword, setInvitePassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
-
-  // IDかメールアドレスかを判定
-  const isEmail = identifier.includes('@');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,18 +24,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 特別アカウントの場合はメールアドレスに変換
-      let loginEmail = identifier;
-      if (!isEmail && SPECIAL_ACCOUNTS[identifier]) {
-        loginEmail = SPECIAL_ACCOUNTS[identifier];
-      } else if (!isEmail) {
-        setError('このIDは登録されていません');
+      // メールアドレス形式チェック
+      if (!identifier.includes('@')) {
+        setError('メールアドレスを入力してください');
         setLoading(false);
         return;
       }
 
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
+        email: identifier,
         password,
       });
 
@@ -74,9 +63,9 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
 
-    // 登録はメールアドレスのみ
-    if (!isEmail) {
-      setError('登録にはメールアドレスを入力してください');
+    // メールアドレス形式チェック
+    if (!identifier.includes('@')) {
+      setError('メールアドレスを入力してください');
       return;
     }
 
@@ -90,7 +79,32 @@ export default function LoginPage() {
       return;
     }
 
+    if (!invitePassword) {
+      setError('招待パスワードを入力してください');
+      return;
+    }
+
     setLoading(true);
+
+    try {
+      // サーバーサイドで招待パスワードを検証
+      const verifyRes = await fetch('/api/auth/verify-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: invitePassword }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyData.valid) {
+        setError(verifyData.error || '招待パスワードが正しくありません');
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      setError('招待パスワードの検証に失敗しました');
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error: authError } = await supabase.auth.signUp({
@@ -119,6 +133,7 @@ export default function LoginPage() {
           setIdentifier('');
           setPassword('');
           setConfirmPassword('');
+          setInvitePassword('');
         } else {
           // Auto-confirmed (development mode or specific settings)
           router.push('/admin');
@@ -191,6 +206,7 @@ export default function LoginPage() {
                 setMode('login');
                 setError('');
                 setSuccess('');
+                setInvitePassword('');
               }}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 mode === 'login'
@@ -220,21 +236,17 @@ export default function LoginPage() {
           <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="identifier" className="text-sm font-bold text-foreground">
-                {mode === 'login' ? 'ID または メールアドレス' : 'メールアドレス'}
+                メールアドレス
               </label>
               <div className="relative">
-                {isEmail ? (
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                )}
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   id="identifier"
-                  type="text"
+                  type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  placeholder={mode === 'login' ? 'ZettAI または email@example.com' : 'email@example.com'}
+                  placeholder="email@example.com"
                   required
                   autoFocus
                 />
@@ -261,24 +273,47 @@ export default function LoginPage() {
             </div>
 
             {mode === 'register' && (
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-bold text-foreground">
-                  パスワード確認
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    placeholder="パスワードを再入力"
-                    required
-                    minLength={6}
-                  />
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-sm font-bold text-foreground">
+                    パスワード確認
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="パスワードを再入力"
+                      required
+                      minLength={6}
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="invitePassword" className="text-sm font-bold text-foreground">
+                    招待パスワード
+                  </label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <input
+                      id="invitePassword"
+                      type="password"
+                      value={invitePassword}
+                      onChange={(e) => setInvitePassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="招待パスワードを入力"
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ※ 新規登録には招待パスワードが必要です
+                  </p>
+                </div>
+              </>
             )}
 
             {error && (

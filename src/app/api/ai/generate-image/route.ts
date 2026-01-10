@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
+import { checkGenerationLimit } from '@/lib/usage';
 
 // LPデザイナーとしてのシステムプロンプト
 const LP_DESIGNER_SYSTEM_PROMPT = `あなたはプロフェッショナルなLPデザイナーです。
@@ -55,6 +56,19 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 使用量制限チェック
+    const limitCheck = await checkGenerationLimit(user.id);
+    if (!limitCheck.allowed) {
+        return NextResponse.json({
+            error: 'Usage limit exceeded',
+            message: limitCheck.reason,
+            usage: {
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+            }
+        }, { status: 429 });
     }
 
     try {

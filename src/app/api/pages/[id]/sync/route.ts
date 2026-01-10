@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
 
 async function getBase64Image(url: string, baseUrl: string) {
     const absoluteUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
@@ -10,6 +11,14 @@ async function getBase64Image(url: string, baseUrl: string) {
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const baseUrl = new URL(request.url).origin;
     try {
         const id = parseInt(params.id);
@@ -26,6 +35,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         });
 
         if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+
+        // 所有者確認
+        if (page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // 設定の取得
         const configs = await prisma.globalConfig.findMany();

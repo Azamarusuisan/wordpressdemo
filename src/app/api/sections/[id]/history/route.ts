@@ -42,6 +42,11 @@ export async function GET(
             return Response.json({ error: 'Section not found' }, { status: 404 });
         }
 
+        // 所有者確認
+        if (section.page.userId !== user.id) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         // 履歴を取得（新しい順）
         // セクションIDで検索 + 現在の画像IDに関連する履歴も検索
         const currentImageId = section.imageId;
@@ -188,11 +193,16 @@ export async function POST(
         // セクションを取得
         const section = await prisma.pageSection.findUnique({
             where: { id: sectionId },
-            include: { image: true },
+            include: { image: true, page: true },
         });
 
         if (!section) {
             return Response.json({ error: 'Section not found' }, { status: 404 });
+        }
+
+        // 所有者確認
+        if (section.page.userId !== user.id) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // 復元先の画像が存在するか確認
@@ -267,6 +277,20 @@ export async function PUT(
     }
 
     try {
+        // セクションを取得して所有者確認
+        const section = await prisma.pageSection.findUnique({
+            where: { id: sectionId },
+            include: { page: true },
+        });
+
+        if (!section) {
+            return Response.json({ error: 'Section not found' }, { status: 404 });
+        }
+
+        if (section.page.userId !== user.id) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         // 履歴を保存
         await prisma.sectionImageHistory.create({
             data: {
