@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && npx puppeteer browsers install chrome",
     "fix:red-border": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/remove-red-border.ts"
   },
   "dependencies": {
