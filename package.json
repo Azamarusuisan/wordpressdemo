@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "fix:red-border": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/remove-red-border.ts"
   },
   "dependencies": {
@@ -40,7 +41,6 @@
     "react-hook-form": "^7.53.0",
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.6.0",
-    "resend": "^6.7.0",
     "sharp": "^0.34.5",
     "swr": "^2.3.8",
     "tailwind-merge": "^2.5.4",
