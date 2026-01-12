@@ -2668,7 +2668,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                         <div className="text-center">
                                                             <p className="text-white text-lg font-bold">
                                                                 {regeneratingSectionIds.has(section.id) ? 'AI再生成中...' :
-                                                                 editingSectionIds.has(section.id) ? '編集処理中...' : '生成中...'}
+                                                                    editingSectionIds.has(section.id) ? '編集処理中...' : '生成中...'}
                                                             </p>
                                                             <p className="text-white/70 text-sm mt-1">
                                                                 しばらくお待ちください
@@ -3408,32 +3408,32 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             )}
 
             {/* 右サイドバー - 補助ツール / 素材ライブラリ */}
-            <div className="fixed right-0 top-0 h-full w-[360px] bg-white border-l border-gray-200 shadow-xl z-40 flex flex-col">
+            <div className="fixed right-0 top-0 h-full w-[320px] bg-white border-l border-gray-200 z-40 flex flex-col font-sans">
                 {/* タブ切り替えヘッダー */}
-                <div className="flex border-b border-gray-200">
+                <div className="flex border-b border-gray-100 p-2 gap-1">
                     <button
                         onClick={() => setSidebarTab('tools')}
                         className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all",
+                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-all",
                             sidebarTab === 'tools'
-                                ? "bg-white text-gray-900 border-b-2 border-violet-500"
-                                : "bg-gray-50 text-gray-500 hover:text-gray-700"
+                                ? "bg-gray-100 text-gray-900"
+                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                         )}
                     >
-                        <Wand2 className="h-4 w-4" />
-                        補助ツール
+                        <Wand2 className="h-3.5 w-3.5" />
+                        ツール
                     </button>
                     <button
                         onClick={() => setSidebarTab('assets')}
                         className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all",
+                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-all",
                             sidebarTab === 'assets'
-                                ? "bg-white text-gray-900 border-b-2 border-violet-500"
-                                : "bg-gray-50 text-gray-500 hover:text-gray-700"
+                                ? "bg-gray-100 text-gray-900"
+                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                         )}
                     >
-                        <ImageIcon className="h-4 w-4" />
-                        素材
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        ライブラリ
                     </button>
                 </div>
 
@@ -3441,15 +3441,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 {sidebarTab === 'assets' && (
                     <>
                         {insertFromLibraryIndex !== null && (
-                            <div className="mx-3 mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="mx-3 mb-2 p-3 bg-blue-50 border border-blue-100 rounded-md">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-blue-700">挿入モード</p>
-                                        <p className="text-xs text-blue-600">セクション {insertFromLibraryIndex + 1} の位置に挿入します</p>
+                                        <p className="text-xs font-medium text-blue-900">挿入モード</p>
+                                        <p className="text-[10px] text-blue-700">セクション {insertFromLibraryIndex + 1} の位置に挿入します</p>
                                     </div>
                                     <button
                                         onClick={() => setInsertFromLibraryIndex(null)}
-                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                        className="text-[10px] text-blue-700 hover:text-blue-900 underline"
                                     >
                                         キャンセル
                                     </button>
@@ -3494,415 +3494,398 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                 {/* ツールメニュー */}
                 {sidebarTab === 'tools' && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {/* 基本操作 */}
-                    <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">基本操作</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {/* 公開設定 */}
-                            <button
-                                onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
-                                className={clsx(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
-                                    status === 'published'
-                                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                        : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"
-                                )}
-                            >
-                                <span className={clsx(
-                                    "w-2 h-2 rounded-full",
-                                    status === 'published' ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
-                                )} />
-                                {status === 'published' ? '公開中' : '下書き'}
-                            </button>
-                            {/* 画像追加 */}
-                            <button
-                                onClick={() => document.getElementById('file-upload-input')?.click()}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                画像追加
-                            </button>
-                            {/* プレビュー */}
-                            <Link
-                                href={`/p/${initialSlug || pageId}`}
-                                target="_blank"
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
-                            >
-                                <Eye className="h-3.5 w-3.5" />
-                                プレビュー
-                            </Link>
-                            {/* ダウンロード */}
-                            <button
-                                onClick={handleExport}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200 hover:bg-gray-200 transition-all"
-                            >
-                                <Download className="h-3.5 w-3.5" />
-                                ZIP出力
-                            </button>
-                        </div>
-                        {/* 表示切替 */}
-                        <div className="flex items-center justify-center gap-1 mt-2 pt-2 border-t border-gray-100">
-                            <span className="text-[10px] text-gray-400 mr-2">表示:</span>
-                            <button
-                                onClick={() => setViewMode('desktop')}
-                                className={clsx(
-                                    "p-1.5 rounded-md transition-all",
-                                    viewMode === 'desktop'
-                                        ? "bg-blue-100 text-blue-600"
-                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                                )}
-                            >
-                                <Monitor className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('mobile')}
-                                className={clsx(
-                                    "p-1.5 rounded-md transition-all",
-                                    viewMode === 'mobile'
-                                        ? "bg-blue-100 text-blue-600"
-                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                                )}
-                            >
-                                <Smartphone className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* セクションクロップ */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100 overflow-hidden">
-                        <button
-                            onClick={() => toggleTool('crop')}
-                            className="w-full flex items-center justify-between p-3 hover:bg-emerald-100/50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-md">
-                                    <Scissors className="h-4 w-4 text-white" />
-                                </div>
-                                <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900">部分カット</h4>
-                                    <p className="text-[10px] text-gray-500">画像の一部を切り取り</p>
-                                </div>
-                            </div>
-                            {expandedTools.has('crop') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('crop') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">
-                                    セクションの不要な部分を切り取り、必要な部分だけを残せます。
-                                </p>
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                    {sections.filter(s => s.image?.filePath).map((section, idx) => (
-                                        <button
-                                            key={section.id}
-                                            onClick={() => {
-                                                if (section?.image?.filePath) {
-                                                    setCropSectionId(String(section.id));
-                                                    setCropImageUrl(section.image.filePath);
-                                                    setShowCropModal(true);
-                                                }
-                                            }}
-                                            className="w-full flex items-center gap-3 p-2 bg-white border border-emerald-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 transition-all text-left group"
-                                        >
-                                            <div className="w-10 h-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
-                                                <img
-                                                    src={section.image.filePath}
-                                                    alt=""
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-gray-900 truncate">
-                                                    {section.role || `セクション ${idx + 1}`}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400">クリックでクロップ</p>
-                                            </div>
-                                            <Scissors className="h-3.5 w-3.5 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </button>
-                                    ))}
-                                    {sections.filter(s => s.image?.filePath).length === 0 && (
-                                        <p className="text-xs text-gray-400 text-center py-3">
-                                            画像のあるセクションがありません
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* オーバーレイ追加（重ねる） */}
-                    <div className="bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl border border-cyan-100 overflow-hidden">
-                        <button
-                            onClick={() => toggleTool('overlay')}
-                            className="w-full flex items-center justify-between p-3 hover:bg-cyan-100/50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500 flex items-center justify-center shadow-md">
-                                    <Layers className="h-4 w-4 text-white" />
-                                </div>
-                                <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900">ボタン追加</h4>
-                                    <p className="text-[10px] text-gray-500">テキスト・ボタンを重ねる</p>
-                                </div>
-                            </div>
-                            {expandedTools.has('overlay') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('overlay') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">
-                                    画像の上にテキストやボタンを配置できます。
-                                </p>
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                    {sections.filter(s => s.image?.filePath).map((section, idx) => (
-                                        <button
-                                            key={section.id}
-                                            onClick={() => {
-                                                const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
-                                                    ? section.mobileImage.filePath
-                                                    : section.image?.filePath;
-                                                if (imageUrl) {
-                                                    setOverlayEditSectionId(String(section.id));
-                                                    setOverlayEditImageUrl(imageUrl);
-                                                    setShowOverlayEditor(true);
-                                                }
-                                            }}
-                                            className="w-full flex items-center gap-3 p-2 bg-white border border-cyan-200 rounded-lg hover:bg-cyan-50 hover:border-cyan-300 transition-all text-left group"
-                                        >
-                                            <div className="w-10 h-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
-                                                <img
-                                                    src={section.image?.filePath}
-                                                    alt=""
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-gray-900 truncate">
-                                                    {section.role || `セクション ${idx + 1}`}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400">
-                                                    {section.config?.overlays?.length || 0}個のオーバーレイ
-                                                </p>
-                                            </div>
-                                            <Layers className="h-3.5 w-3.5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </button>
-                                    ))}
-                                    {sections.filter(s => s.image?.filePath).length === 0 && (
-                                        <p className="text-xs text-gray-400 text-center py-3">
-                                            画像のあるセクションがありません
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* セクション削除 */}
-                    <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-100 overflow-hidden">
-                        <button
-                            onClick={() => toggleTool('delete')}
-                            className="w-full flex items-center justify-between p-3 hover:bg-red-100/50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shadow-md">
-                                    <Trash2 className="h-4 w-4 text-white" />
-                                </div>
-                                <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900">セクション削除</h4>
-                                    <p className="text-[10px] text-gray-500">不要なセクションを削除</p>
-                                </div>
-                            </div>
-                            {expandedTools.has('delete') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('delete') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">
-                                    複数のセクションを選択して一括削除できます。
-                                </p>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        {/* 基本操作 */}
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Basic Actions</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {/* 公開設定 */}
                                 <button
-                                    onClick={() => {
-                                        setSectionDeleteMode(true);
-                                        setBatchRegenerateMode(false);
-                                        setBackgroundUnifyMode(false);
-                                        setBoundaryFixMode(false);
-                                    }}
-                                    disabled={sections.length === 0}
-                                    className="w-full py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-bold rounded-lg hover:from-red-600 hover:to-rose-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
+                                    className={clsx(
+                                        "flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-xs font-medium transition-all border",
+                                        status === 'published'
+                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                                    )}
                                 >
-                                    <Trash2 className="h-4 w-4" />
-                                    セクション選択
+                                    <span className={clsx(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        status === 'published' ? "bg-emerald-500" : "bg-gray-300"
+                                    )} />
+                                    {status === 'published' ? 'Published' : 'Draft'}
+                                </button>
+                                {/* 画像追加 */}
+                                <button
+                                    onClick={() => document.getElementById('file-upload-input')?.click()}
+                                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-white text-gray-600 text-xs font-medium border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
+                                >
+                                    <Plus className="h-3.5 w-3.5 text-gray-400" />
+                                    Add Image
+                                </button>
+                                {/* プレビュー */}
+                                <Link
+                                    href={`/p/${initialSlug || pageId}`}
+                                    target="_blank"
+                                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-white text-gray-600 text-xs font-medium border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
+                                >
+                                    <Eye className="h-3.5 w-3.5 text-gray-400" />
+                                    Preview
+                                </Link>
+                                {/* ダウンロード */}
+                                <button
+                                    onClick={handleExport}
+                                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-white text-gray-600 text-xs font-medium border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
+                                >
+                                    <Download className="h-3.5 w-3.5 text-gray-400" />
+                                    ZIP Export
                                 </button>
                             </div>
-                        )}
-                    </div>
-
-                    {/* 履歴機能 */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md">
-                                <Undo2 className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-900">編集履歴</h4>
-                                <p className="text-[10px] text-gray-500">過去の状態に戻す</p>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-3">
-                            各セクションの編集履歴を確認し、元に戻せます。
-                        </p>
-                        <div className="text-xs text-gray-500 bg-white/50 rounded-lg p-2 text-center">
-                            セクションの「履歴」ボタンから確認
-                        </div>
-                    </div>
-
-                    {/* 一括再生成 */}
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
-                                <RefreshCw className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-900">一括再生成</h4>
-                                <p className="text-[10px] text-gray-500">複数セクションをまとめて</p>
+                            {/* 表示切替 */}
+                            <div className="flex items-center justify-center gap-1 pt-2 border-t border-gray-100">
+                                <button
+                                    onClick={() => setViewMode('desktop')}
+                                    className={clsx(
+                                        "p-1.5 rounded transition-all",
+                                        viewMode === 'desktop'
+                                            ? "text-gray-900 bg-gray-100"
+                                            : "text-gray-400 hover:text-gray-600"
+                                    )}
+                                >
+                                    <Monitor className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('mobile')}
+                                    className={clsx(
+                                        "p-1.5 rounded transition-all",
+                                        viewMode === 'mobile'
+                                            ? "text-gray-900 bg-gray-100"
+                                            : "text-gray-400 hover:text-gray-600"
+                                    )}
+                                >
+                                    <Smartphone className="h-3.5 w-3.5" />
+                                </button>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-600 mb-3">
-                            選択したセクションのデザインを一括で再生成します。
-                        </p>
-                        <button
-                            onClick={() => {
-                                setBatchRegenerateMode(true);
-                                setBoundaryFixMode(false);
-                                setBackgroundUnifyMode(false);
-                            }}
-                            disabled={sections.filter(s => s.image?.filePath).length === 0}
-                            className="w-full py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                            セクション選択
-                        </button>
-                    </div>
 
-                    {/* 背景色統一 */}
-                    <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-100">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-md">
-                                <Palette className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-900">背景色統一</h4>
-                                <p className="text-[10px] text-gray-500">全体の色味を揃える</p>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-3">
-                            選択したセクションの背景色を統一します。
-                        </p>
-                        <button
-                            onClick={() => {
-                                setBackgroundUnifyMode(true);
-                                setBatchRegenerateMode(false);
-                                setBoundaryFixMode(false);
-                            }}
-                            disabled={sections.filter(s => s.image?.filePath).length === 0}
-                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-sm font-bold rounded-lg hover:from-amber-600 hover:to-yellow-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            <Palette className="h-4 w-4" />
-                            セクション選択
-                        </button>
-                    </div>
+                        {/* セクション操作 */}
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Edit Sections</p>
 
-                    {/* 区切り線 */}
-                    <div className="border-t border-gray-200 my-2" />
-                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider px-1">高度な機能</p>
+                            {/* セクションクロップ */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button
+                                    onClick={() => toggleTool('crop')}
+                                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <Scissors className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">Crop Image</h4>
+                                            <p className="text-[10px] text-gray-500">Trim unnecessary parts</p>
+                                        </div>
+                                    </div>
+                                    {expandedTools.has('crop') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('crop') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                                            {sections.filter(s => s.image?.filePath).map((section, idx) => (
+                                                <button
+                                                    key={section.id}
+                                                    onClick={() => {
+                                                        if (section?.image?.filePath) {
+                                                            setCropSectionId(String(section.id));
+                                                            setCropImageUrl(section.image.filePath);
+                                                            setShowCropModal(true);
+                                                        }
+                                                    }}
+                                                    className="w-full flex items-center gap-2 p-1.5 rounded hover:bg-gray-50 transition-all text-left"
+                                                >
+                                                    <div className="w-6 h-6 rounded bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                                                        <img
+                                                            src={section.image.filePath}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs text-gray-600 truncate flex-1">
+                                                        {section.role || `Section ${idx + 1}`}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                            {sections.filter(s => s.image?.filePath).length === 0 && (
+                                                <p className="text-xs text-gray-400 text-center py-2">No images found</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                    {/* カラーパレット */}
-                    <div className="bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-cyan-100 overflow-hidden">
-                        <button onClick={() => toggleTool('color-palette')} className="w-full flex items-center justify-between p-3 hover:bg-cyan-100/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md"><Droplet className="h-4 w-4 text-white" /></div>
-                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">色変更</h4><p className="text-[10px] text-gray-500">LP全体の配色を管理</p></div>
+                            {/* オーバーレイ追加 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button
+                                    onClick={() => toggleTool('overlay')}
+                                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <Layers className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">Add Overlay</h4>
+                                            <p className="text-[10px] text-gray-500">Buttons & Text</p>
+                                        </div>
+                                    </div>
+                                    {expandedTools.has('overlay') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('overlay') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                                            {sections.filter(s => s.image?.filePath).map((section, idx) => (
+                                                <button
+                                                    key={section.id}
+                                                    onClick={() => {
+                                                        const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
+                                                            ? section.mobileImage.filePath
+                                                            : section.image?.filePath;
+                                                        if (imageUrl) {
+                                                            setOverlayEditSectionId(String(section.id));
+                                                            setOverlayEditImageUrl(imageUrl);
+                                                            setShowOverlayEditor(true);
+                                                        }
+                                                    }}
+                                                    className="w-full flex items-center gap-2 p-1.5 rounded hover:bg-gray-50 transition-all text-left"
+                                                >
+                                                    <div className="w-6 h-6 rounded bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                                                        <img
+                                                            src={section.image?.filePath}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-xs text-gray-600 truncate block">
+                                                            {section.role || `Section ${idx + 1}`}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-400 block -mt-0.5">
+                                                            {section.config?.overlays?.length || 0} overlays
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            {sections.filter(s => s.image?.filePath).length === 0 && (
+                                                <p className="text-xs text-gray-400 text-center py-2">No images found</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            {expandedTools.has('color-palette') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('color-palette') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">メインカラー、アクセントカラーを設定し、全セクションに適用します。</p>
-                                <button onClick={() => setShowColorPaletteModal(true)} className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-sm font-bold rounded-lg hover:from-cyan-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"><Droplet className="h-4 w-4" />配色を設定</button>
-                            </div>
-                        )}
-                    </div>
 
-                    {/* コピー編集 */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-100 overflow-hidden">
-                        <button onClick={() => toggleTool('copy-edit')} className="w-full flex items-center justify-between p-3 hover:bg-emerald-100/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-md"><Type className="h-4 w-4 text-white" /></div>
-                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">コピー編集</h4><p className="text-[10px] text-gray-500">AIでキャッチコピー生成</p></div>
+                            {/* セクション削除 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button
+                                    onClick={() => toggleTool('delete')}
+                                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">Delete Sections</h4>
+                                            <p className="text-[10px] text-gray-500">Remove unwanted parts</p>
+                                        </div>
+                                    </div>
+                                    {expandedTools.has('delete') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('delete') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button
+                                            onClick={() => {
+                                                setSectionDeleteMode(true);
+                                                setBatchRegenerateMode(false);
+                                                setBackgroundUnifyMode(false);
+                                                setBoundaryFixMode(false);
+                                            }}
+                                            disabled={sections.length === 0}
+                                            className="w-full py-2 bg-red-50 text-red-600 text-xs font-medium rounded hover:bg-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-100"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            Select to Delete
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {expandedTools.has('copy-edit') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('copy-edit') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">セクションごとのテキストをAIで生成・編集します。</p>
-                                <button onClick={() => setShowCopyEditModal(true)} className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-bold rounded-lg hover:from-emerald-600 hover:to-green-600 transition-all flex items-center justify-center gap-2"><Type className="h-4 w-4" />コピーを編集</button>
-                            </div>
-                        )}
-                    </div>
 
-                    {/* CTA配置 */}
-                    <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl border border-rose-100 overflow-hidden">
-                        <button onClick={() => toggleTool('cta')} className="w-full flex items-center justify-between p-3 hover:bg-rose-100/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-md"><MousePointer className="h-4 w-4 text-white" /></div>
-                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">CTA配置</h4><p className="text-[10px] text-gray-500">ボタン・リンク領域を設定</p></div>
-                            </div>
-                            {expandedTools.has('cta') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('cta') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">クリック領域やボタンのリンク先URLを管理します。</p>
-                                <button onClick={() => setShowCTAModal(true)} className="w-full py-2.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-bold rounded-lg hover:from-rose-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"><MousePointer className="h-4 w-4" />CTAを設定</button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* モバイル最適化 */}
-                    <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl border border-sky-100 overflow-hidden">
-                        <button onClick={() => toggleTool('mobile')} className="w-full flex items-center justify-between p-3 hover:bg-sky-100/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-md"><Smartphone className="h-4 w-4 text-white" /></div>
-                                <div className="text-left"><h4 className="text-sm font-bold text-gray-900">モバイル最適化</h4><p className="text-[10px] text-gray-500">スマホ向け画像を自動生成</p></div>
-                            </div>
-                            {expandedTools.has('mobile') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('mobile') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">モバイル専用画像を自動生成し、レスポンシブ対応します。</p>
-                                <button onClick={() => setShowMobileOptimizeModal(true)} className="w-full py-2.5 bg-gradient-to-r from-sky-500 to-blue-500 text-white text-sm font-bold rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all flex items-center justify-center gap-2"><Smartphone className="h-4 w-4" />モバイル版を生成</button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 動画挿入 - Max Plan限定 */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl border border-indigo-200 overflow-hidden">
-                        <button onClick={() => toggleTool('video')} className="w-full flex items-center justify-between p-3 hover:bg-indigo-100/50 transition-colors relative">
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md"><Video className="h-4 w-4 text-white" /></div>
-                                <div className="text-left">
-                                    <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">動画挿入<span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded font-bold"><Crown className="h-2.5 w-2.5" />Max</span></h4>
-                                    <p className="text-[10px] text-gray-500">LPに動画を追加</p>
+                            {/* 履歴機能 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <div className="p-3">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <Undo2 className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">History</h4>
+                                            <p className="text-[10px] text-gray-400">Section level history</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 bg-gray-50 rounded p-1.5 text-center">
+                                        Click "History" on each section
+                                    </div>
                                 </div>
                             </div>
-                            {expandedTools.has('video') ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        </button>
-                        {expandedTools.has('video') && (
-                            <div className="px-3 pb-3 pt-0">
-                                <p className="text-xs text-gray-600 mb-3">背景動画やプロモーション動画をセクションに挿入できます。</p>
-                                <button onClick={() => setShowVideoModal(true)} className="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-bold rounded-lg hover:from-indigo-600 hover:to-violet-700 transition-all flex items-center justify-center gap-2"><Video className="h-4 w-4" />動画を追加</button>
-                            </div>
-                        )}
-                    </div>
+                        </div>
 
-                </div>
+                        {/* バッチ処理 */}
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Batch Operations</p>
+
+                            {/* 一括再生成 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <div className="p-3">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <RefreshCw className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">Batch Regenerate</h4>
+                                            <p className="text-[10px] text-gray-400">Update multiple designs</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setBatchRegenerateMode(true);
+                                            setBoundaryFixMode(false);
+                                            setBackgroundUnifyMode(false);
+                                        }}
+                                        disabled={sections.filter(s => s.image?.filePath).length === 0}
+                                        className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200"
+                                    >
+                                        Select Sections
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 背景色統一 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <div className="p-3">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500">
+                                            <Palette className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900">Unify Background</h4>
+                                            <p className="text-[10px] text-gray-400">Match background colors</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setBackgroundUnifyMode(true);
+                                            setBatchRegenerateMode(false);
+                                            setBoundaryFixMode(false);
+                                        }}
+                                        disabled={sections.filter(s => s.image?.filePath).length === 0}
+                                        className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200"
+                                    >
+                                        Select Sections
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/* 高度な機能 */}
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Advanced</p>
+
+                            {/* カラーパレット */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button onClick={() => toggleTool('color-palette')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Droplet className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Color Palette</h4><p className="text-[10px] text-gray-500">Global colors</p></div>
+                                    </div>
+                                    {expandedTools.has('color-palette') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('color-palette') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button onClick={() => setShowColorPaletteModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Configure Palette</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* コピー編集 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button onClick={() => toggleTool('copy-edit')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Type className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Copy Editor</h4><p className="text-[10px] text-gray-500">AI Text Generation</p></div>
+                                    </div>
+                                    {expandedTools.has('copy-edit') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('copy-edit') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button onClick={() => setShowCopyEditModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Edit Copy</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* CTA配置 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button onClick={() => toggleTool('cta')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><MousePointer className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">CTA Config</h4><p className="text-[10px] text-gray-500">Button links</p></div>
+                                    </div>
+                                    {expandedTools.has('cta') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('cta') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button onClick={() => setShowCTAModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Configure CTA</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* モバイル最適化 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button onClick={() => toggleTool('mobile')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Smartphone className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Mobile Opt</h4><p className="text-[10px] text-gray-500">Auto-generate mobile</p></div>
+                                    </div>
+                                    {expandedTools.has('mobile') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('mobile') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button onClick={() => setShowMobileOptimizeModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Generate Mobile</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 動画挿入 - Max Plan限定 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                <button onClick={() => toggleTool('video')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors relative">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Video className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left">
+                                            <h4 className="text-xs font-semibold text-gray-900 flex items-center gap-2">Video<span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0 bg-gray-900 text-white rounded font-medium">Max</span></h4>
+                                            <p className="text-[10px] text-gray-500">Insert video</p>
+                                        </div>
+                                    </div>
+                                    {expandedTools.has('video') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                                {expandedTools.has('video') && (
+                                    <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
+                                        <button onClick={() => setShowVideoModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Add Video</button>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
                 )}
             </div>
 

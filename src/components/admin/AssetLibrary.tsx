@@ -171,7 +171,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         placeholder="素材を検索..."
-                        className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-transparent"
+                        className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 transition-all"
                     />
                 </div>
 
@@ -185,7 +185,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
                                     setQuery(term);
                                     handleSearch(term);
                                 }}
-                                className="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded-full hover:bg-violet-100 hover:text-violet-700 transition-colors"
+                                className="px-2 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 hover:text-gray-900 transition-colors"
                             >
                                 {term}
                             </button>
@@ -206,7 +206,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
                         className={clsx(
                             "flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-lg whitespace-nowrap transition-colors",
                             category === cat.id
-                                ? "bg-violet-100 text-violet-700"
+                                ? "bg-black text-white"
                                 : "text-gray-500 hover:bg-gray-100"
                         )}
                     >
@@ -220,7 +220,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
             <div className="flex-1 overflow-y-auto p-2">
                 {isSearching ? (
                     <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-6 w-6 text-violet-500 animate-spin" />
+                        <Loader2 className="h-6 w-6 text-gray-400 animate-spin" />
                     </div>
                 ) : assets.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
@@ -232,7 +232,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
                                 onDragEnd={handleDragEnd}
                                 onClick={() => handleAssetClick(asset)}
                                 className={clsx(
-                                    "relative group cursor-grab active:cursor-grabbing rounded-lg overflow-hidden border border-gray-200 hover:border-violet-400 hover:shadow-md transition-all",
+                                    "relative group cursor-grab active:cursor-grabbing rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-sm transition-all",
                                     downloadingId === asset.id && "opacity-50 pointer-events-none",
                                     draggingAsset?.id === asset.id && "opacity-50 scale-95"
                                 )}
