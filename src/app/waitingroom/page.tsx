@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowRight,
@@ -36,6 +36,19 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from '@/components/ui/accordion';
+
+// Type declaration for Lottie web component
+declare global {
+    namespace JSX {
+        interface IntrinsicElements {
+            'dotlottie-wc': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+                src: string;
+                autoplay?: boolean;
+                loop?: boolean;
+            }, HTMLElement>;
+        }
+    }
+}
 
 // Feature data
 const FEATURES = [
@@ -214,6 +227,21 @@ export default function WaitingRoomPage() {
     });
     const [modalType, setModalType] = useState<'terms' | 'privacy' | null>(null);
 
+    // Load Lottie Script
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js";
+        script.type = "module";
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        };
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -288,6 +316,16 @@ export default function WaitingRoomPage() {
                             transition={{ duration: 0.6 }}
                             className="flex flex-col justify-center"
                         >
+                            {/* Lottie Animation */}
+                            <div className="w-20 h-20 mb-4">
+                                <dotlottie-wc
+                                    src="https://lottie.host/bef0c297-c293-4e57-a030-24ff0c5cb2f0/xZUAd4jXZg.lottie"
+                                    autoplay={true}
+                                    loop={true}
+                                    style={{ width: '100%', height: '100%' }}
+                                />
+                            </div>
+
                             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight mb-4">
                                 LP制作を、
                                 <span className="text-amber-500">もっと簡単に。</span>
