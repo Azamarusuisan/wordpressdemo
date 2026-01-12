@@ -19,9 +19,30 @@ import {
     Zap,
     CreditCard,
     Building2,
-    User
+    User,
+    Mail,
+    Phone,
+    MessageSquare,
+    Crown,
+    Rocket,
+    Shield,
+    Clock,
+    Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from '@/components/ui/accordion';
 
 // Type declaration for custom web component
 declare global {
@@ -36,51 +57,59 @@ declare global {
     }
 }
 
-// 機能一覧データ
+// Feature data
 const FEATURES = [
     {
         icon: Globe,
         title: 'URLからLP取り込み',
         description: '既存のウェブページURLを入力するだけで、デザインを自動解析してセクションごとに取り込みます。',
+        color: 'bg-blue-500',
     },
     {
         icon: Sparkles,
         title: 'AI画像生成',
         description: 'Google Geminiを使用して、プロンプトから高品質な画像を生成。ヒーロー画像やバナーを簡単に作成。',
+        color: 'bg-purple-500',
     },
     {
         icon: Wand2,
         title: 'AIインペイント編集',
         description: '画像の一部を選択して、AIで自然に編集・修正。テキスト変更や要素の追加・削除が可能。',
+        color: 'bg-pink-500',
     },
     {
         icon: Palette,
         title: 'リスタイル機能',
         description: 'ページ全体のデザインスタイルを一括で変更。色調やトーンを統一して洗練されたLPに。',
+        color: 'bg-amber-500',
     },
     {
         icon: Layers,
         title: 'セクション管理',
         description: 'ドラッグ&ドロップでセクションを並び替え。各セクションを個別に編集・再生成できます。',
+        color: 'bg-green-500',
     },
     {
         icon: Image,
         title: '4Kアップスケール',
         description: '低解像度の画像を高品質な4K画像にアップスケール。印刷にも対応できる高解像度出力。',
+        color: 'bg-cyan-500',
     },
     {
         icon: Video,
-        title: '動画生成（近日公開）',
+        title: '動画生成',
         description: '静止画からAIで動画を生成。LPにダイナミックな動きを追加できます。',
+        color: 'bg-red-500',
     },
     {
         icon: Download,
         title: 'HTMLエクスポート',
         description: '完成したLPをHTMLファイルとしてエクスポート。どこでもホスティング可能な形式で出力。',
+        color: 'bg-indigo-500',
     },
 ];
 
-// FAQデータ
+// FAQ data
 const FAQ_DATA = [
     {
         question: 'LP Builder とは何ですか？',
@@ -116,7 +145,7 @@ const FAQ_DATA = [
     },
 ];
 
-// プラン・クレジット情報
+// Plan data
 const PLAN_DATA = [
     {
         id: 'free',
@@ -138,6 +167,7 @@ const PLAN_DATA = [
             '動画生成不可',
         ],
         highlight: false,
+        gradient: 'from-gray-100 to-gray-50',
     },
     {
         id: 'pro',
@@ -158,6 +188,7 @@ const PLAN_DATA = [
         ],
         limitations: [],
         highlight: true,
+        gradient: 'from-amber-500 to-orange-500',
     },
     {
         id: 'expert',
@@ -177,16 +208,25 @@ const PLAN_DATA = [
         ],
         limitations: [],
         highlight: false,
+        gradient: 'from-violet-500 to-purple-500',
     },
 ];
 
-// クレジット消費目安
+// Credit usage data
 const CREDIT_USAGE = [
-    { action: 'AI画像生成', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1枚あたり' },
-    { action: 'インペイント編集', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1回あたり' },
-    { action: 'リスタイル', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1セクションあたり' },
-    { action: '動画生成', cost: '$0.35', costJpy: '約53円', note: '1秒あたり' },
-    { action: 'URL取り込み', cost: 'ほぼ無料', costJpy: '〜1円', note: 'テキスト処理のみ' },
+    { action: 'AI画像生成', cost: '約3〜6円', icon: Sparkles },
+    { action: 'インペイント', cost: '約3〜6円', icon: Wand2 },
+    { action: 'リスタイル', cost: '約3〜6円', icon: Palette },
+    { action: '動画生成', cost: '約53円/秒', icon: Video },
+    { action: 'URL取り込み', cost: '〜1円', icon: Globe },
+];
+
+// Stats data
+const STATS = [
+    { value: '15円〜', label: 'LP1つあたり', icon: CreditCard },
+    { value: '10秒', label: '画像生成時間', icon: Clock },
+    { value: '100+', label: '対応テンプレート', icon: Layers },
+    { value: '99.9%', label: '稼働率', icon: Shield },
 ];
 
 export default function WaitingRoomPage() {
@@ -201,7 +241,6 @@ export default function WaitingRoomPage() {
         remarks: '',
     });
     const [modalType, setModalType] = useState<'terms' | 'privacy' | null>(null);
-    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
     // Load Lottie Script
     useEffect(() => {
@@ -212,7 +251,9 @@ export default function WaitingRoomPage() {
         document.body.appendChild(script);
 
         return () => {
-            document.body.removeChild(script);
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
         };
     }, []);
 
@@ -223,9 +264,7 @@ export default function WaitingRoomPage() {
         try {
             const response = await fetch('/api/waitingroom', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     accountType: formData.accountType,
                     companyName: formData.companyName || undefined,
@@ -242,683 +281,646 @@ export default function WaitingRoomPage() {
                 throw new Error(result.error || '登録に失敗しました');
             }
 
-            toast.custom((t) => (
-                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white text-gray-800 px-6 py-4 shadow-xl rounded-xl flex items-center gap-4 border border-amber-200`}>
-                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                        <Check className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800">登録が完了しました</h3>
-                        <p className="text-sm text-gray-500">順番が来ましたらメールでお知らせします</p>
-                    </div>
-                </div>
-            ));
+            toast.success('登録が完了しました！', {
+                icon: <Check className="w-5 h-5 text-green-500" />,
+            });
 
             setStep(2);
         } catch (error: any) {
-            toast.custom((t) => (
-                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white text-gray-800 px-6 py-4 shadow-xl rounded-xl flex items-center gap-4 border border-red-200`}>
-                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-red-600 font-bold">!</span>
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800">登録に失敗しました</h3>
-                        <p className="text-sm text-gray-500">{error.message}</p>
-                    </div>
-                </div>
-            ));
+            toast.error(error.message || '登録に失敗しました');
         } finally {
             setIsLoading(false);
         }
     };
 
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
-        <main className="min-h-screen bg-white text-black overflow-x-hidden selection:bg-amber-500 selection:text-white">
+        <main className="min-h-screen bg-white text-gray-900 overflow-x-hidden selection:bg-amber-500 selection:text-white">
             {/* Hero Section */}
-            <div className="relative">
-                {/* Background Grid */}
-                <div className="absolute inset-0 pointer-events-none z-0">
-                    <div className="absolute left-[4rem] top-0 bottom-0 w-[1px] bg-gray-100 hidden md:block" />
-                    <div className="absolute right-[4rem] top-0 bottom-0 w-[1px] bg-gray-100 hidden md:block" />
-                    <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-gray-100 hidden md:block" />
-                </div>
+            <section className="relative min-h-screen">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px]" />
 
-                <div className="relative z-10 flex flex-col lg:flex-row min-h-screen lg:h-screen lg:max-h-screen">
-                    {/* Left Panel: Brand & Vision */}
-                    {/* Left Panel: Brand & Vision */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                        className="w-full lg:w-1/2 flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100 bg-white/50 backdrop-blur-sm relative overflow-hidden justify-center"
-                    >
-                        <header className="relative lg:absolute lg:top-0 lg:left-0 lg:w-full z-30 p-6 md:p-10 lg:p-10">
-                            <a href="/" className="inline-block group">
-                                <h1 className="text-lg font-black tracking-tighter transition-colors group-hover:text-amber-600">
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <header className="py-6">
+                        <nav className="flex items-center justify-between">
+                            <a href="/" className="flex items-center gap-2 group">
+                                <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg shadow-lg shadow-amber-500/25" />
+                                <span className="text-xl font-black tracking-tight group-hover:text-amber-600 transition-colors">
                                     LP Builder
-                                </h1>
-                            </a>
-                        </header>
-
-                        {/* Main Content - Centered */}
-                        <div className="relative z-20 flex flex-col justify-center px-6 md:px-10 lg:px-16 py-8 lg:py-0 h-full">
-                            <div className="flex items-center mb-6">
-                                <span className="text-amber-600 font-bold tracking-widest uppercase text-[10px] md:text-xs border border-amber-200 px-3 py-1 rounded-full bg-amber-50">
-                                    AI-Powered LP Creation
                                 </span>
-                            </div>
+                            </a>
+                            <Badge variant="amber" className="gap-1.5">
+                                <Sparkles className="w-3 h-3" />
+                                Beta
+                            </Badge>
+                        </nav>
+                    </header>
+
+                    {/* Hero Content */}
+                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 py-12 lg:py-20">
+                        {/* Left: Brand & Vision */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6 }}
+                            className="flex flex-col justify-center"
+                        >
+                            <Badge variant="amber" className="w-fit mb-6 gap-1.5">
+                                <Rocket className="w-3 h-3" />
+                                AI-Powered LP Creation
+                            </Badge>
 
                             {/* Lottie Animation */}
-                            <div className="w-20 h-20 md:w-28 md:h-28 mb-4">
+                            <div className="w-24 h-24 mb-6">
                                 <dotlottie-wc
                                     src="https://lottie.host/bef0c297-c293-4e57-a030-24ff0c5cb2f0/xZUAd4jXZg.lottie"
                                     autoplay={true}
                                     loop={true}
                                     style={{ width: '100%', height: '100%' }}
-                                ></dotlottie-wc>
+                                />
                             </div>
 
-                            {/* Typography */}
-                            <h2 className="text-3xl md:text-5xl lg:text-5xl xl:text-6xl font-black tracking-tighter leading-[1.1] md:leading-[1.05] mb-6">
-                                LP制作を、<br />
-                                <span className="text-amber-600">AIの力で</span>革新する。
-                            </h2>
-                            {/* Paragraph */}
-                            <p className="text-gray-600 font-medium text-sm md:text-base leading-relaxed max-w-lg mb-8">
-                                URLから取り込み、AI画像生成、インペイント編集...<br />
-                                <span className="text-black font-bold">すべてが一つのツールで完結します。</span>
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] mb-6">
+                                LP制作を、
+                                <br />
+                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                                    AIの力で
+                                </span>
+                                革新する。
+                            </h1>
+
+                            <p className="text-lg text-gray-600 mb-8 max-w-lg">
+                                URLから取り込み、AI画像生成、インペイント編集...
+                                <br />
+                                <span className="font-bold text-gray-900">
+                                    すべてが一つのツールで完結します。
+                                </span>
                             </p>
 
-                            {/* Feature Highlights */}
-                            <div className="grid grid-cols-2 gap-2 md:gap-3 max-w-lg">
-                                <div className="bg-white/60 backdrop-blur-sm border border-gray-100 rounded-xl p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                                    <div className="flex items-center gap-2 md:gap-3 mb-1">
-                                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                                            <Globe className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-bold text-gray-800">URL取り込み</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 font-medium pl-1 hidden md:block">既存LPを瞬時に解析</p>
-                                </div>
-                                <div className="bg-white/60 backdrop-blur-sm border border-gray-100 rounded-xl p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                                    <div className="flex items-center gap-2 md:gap-3 mb-1">
-                                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                                            <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-bold text-gray-800">AI画像生成</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 font-medium pl-1 hidden md:block">プロンプトから作成</p>
-                                </div>
-                                <div className="bg-white/60 backdrop-blur-sm border border-gray-100 rounded-xl p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                                    <div className="flex items-center gap-2 md:gap-3 mb-1">
-                                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                                            <Wand2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-bold text-gray-800">インペイント</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 font-medium pl-1 hidden md:block">部分編集で自然に修正</p>
-                                </div>
-                                <div className="bg-white/60 backdrop-blur-sm border border-gray-100 rounded-xl p-3 md:p-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                                    <div className="flex items-center gap-2 md:gap-3 mb-1">
-                                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                                            <Download className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                                        </div>
-                                        <span className="text-[10px] md:text-xs font-bold text-gray-800">HTML出力</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 font-medium pl-1 hidden md:block">どこでも公開可能</p>
-                                </div>
+                            {/* Feature Pills */}
+                            <div className="flex flex-wrap gap-2 mb-8">
+                                {['URL取り込み', 'AI画像生成', 'インペイント', 'HTML出力'].map((feature) => (
+                                    <Badge key={feature} variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-700 transition-colors cursor-default">
+                                        {feature}
+                                    </Badge>
+                                ))}
                             </div>
-                        </div>
 
-                        <div className="hidden lg:block absolute bottom-0 left-0 w-full z-20 p-6 lg:p-8">
-                            <p className="text-[10px] font-bold text-gray-300 tracking-[0.2em]">
-                                © 2026 ZETTAI INC.
-                            </p>
-                        </div>
-                    </motion.div>
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {STATS.map((stat, index) => (
+                                    <motion.div
+                                        key={stat.label}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+                                        className="text-center p-3 rounded-xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm"
+                                    >
+                                        <stat.icon className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+                                        <p className="text-xl font-black text-gray-900">{stat.value}</p>
+                                        <p className="text-xs text-gray-500">{stat.label}</p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
 
-                    {/* Right Panel: Form & Pricing */}
-                    <div className="w-full lg:w-1/2 p-6 md:p-8 lg:px-16 lg:py-4 flex flex-col justify-center min-h-0 lg:h-full bg-white/50 backdrop-blur-sm relative overflow-visible">
-                        <AnimatePresence mode='wait'>
-                            {step === 1 ? (
-                                <motion.div
-                                    key="form"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ duration: 0.6, delay: 0.2 }}
-                                    className="max-w-md w-full mx-auto"
-                                >
-                                    {/* Welcome Message */}
-                                    <div className="mb-4 text-center">
-                                        <p className="text-gray-600 text-xs leading-relaxed">
-                                            LP Builderにご興味をお持ちいただきありがとうございます。
-                                        </p>
-                                    </div>
-
-                                    {/* Pricing Card */}
-                                    <div className="mb-4 p-3 bg-gradient-to-br from-amber-50 to-white border border-amber-200 rounded-xl relative shadow-sm">
-                                        <div className="absolute -top-2.5 left-4 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                                            現在ご案内中のプラン
-                                        </div>
-                                        <div className="pt-1 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-xs font-bold text-amber-700">PoCプラン</h3>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-2xl font-black text-gray-900">¥20,000</span>
-                                                    <span className="text-gray-500 text-xs font-bold">/月（税別）</span>
+                        {/* Right: Form */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="flex items-center justify-center"
+                        >
+                            <Card className="w-full max-w-md shadow-2xl shadow-gray-200/50 border-0 bg-white/90 backdrop-blur-sm">
+                                <CardHeader className="text-center pb-4">
+                                    <AnimatePresence mode="wait">
+                                        {step === 1 ? (
+                                            <motion.div
+                                                key="form-header"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                            >
+                                                <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25">
+                                                    <Crown className="w-6 h-6 text-white" />
                                                 </div>
-                                            </div>
-                                            <ul className="space-y-1 text-[10px] text-gray-600 font-medium">
-                                                <li className="flex items-center gap-1.5">
-                                                    <Check className="w-3 h-3 text-amber-600" />
-                                                    <span>AI生成 月100回</span>
-                                                </li>
-                                                <li className="flex items-center gap-1.5">
-                                                    <Check className="w-3 h-3 text-amber-600" />
-                                                    <span>全機能利用可能</span>
-                                                </li>
-                                                <li className="flex items-center gap-1.5">
-                                                    <Check className="w-3 h-3 text-amber-600" />
-                                                    <span>初月無料トライアル</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
+                                                <CardTitle className="text-2xl font-black">
+                                                    順番待ちリストに登録
+                                                </CardTitle>
+                                                <CardDescription className="mt-2">
+                                                    お申し込み順にご案内いたします
+                                                </CardDescription>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="success-header"
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                            >
+                                                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
+                                                    <Check className="w-8 h-8 text-white" />
+                                                </div>
+                                                <CardTitle className="text-2xl font-black">
+                                                    登録完了!
+                                                </CardTitle>
+                                                <CardDescription className="mt-2">
+                                                    ご登録ありがとうございます
+                                                </CardDescription>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </CardHeader>
 
-                                    {/* Waiting Room Notice - Simplified */}
-                                    <div className="mb-4 p-3 bg-gray-50 border border-gray-100 rounded-lg">
-                                        <div className="flex gap-2 items-center">
-                                            <div className="w-1 bg-amber-500 rounded-full h-8 self-center"></div>
-                                            <p className="text-[10px] text-gray-600 leading-tight">
-                                                <span className="font-bold text-gray-800 block">Waiting Room形式でのご案内</span>
-                                                お申し込み順に、<span className="text-amber-600 font-bold">メールにて本登録のご案内</span>をお送りします。
-                                            </p>
-                                        </div>
-                                    </div>
+                                <CardContent>
+                                    <AnimatePresence mode="wait">
+                                        {step === 1 ? (
+                                            <motion.div
+                                                key="form"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                            >
+                                                {/* Current Plan Badge */}
+                                                <div className="mb-6 p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <Badge variant="amber" className="mb-2">現在ご案内中</Badge>
+                                                            <p className="font-bold text-gray-900">PoCプラン</p>
+                                                            <p className="text-2xl font-black text-amber-600">¥20,000<span className="text-sm font-medium text-gray-500">/月</span></p>
+                                                        </div>
+                                                        <div className="text-right text-sm">
+                                                            <p className="flex items-center gap-1 text-gray-600">
+                                                                <Check className="w-4 h-4 text-green-500" />
+                                                                初月無料
+                                                            </p>
+                                                            <p className="flex items-center gap-1 text-gray-600">
+                                                                <Check className="w-4 h-4 text-green-500" />
+                                                                全機能利用可
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                                    {/* Form */}
-                                    <form onSubmit={handleSubmit} className="space-y-3">
-                                        {/* Account Type Selection */}
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">
-                                                ご利用形態 <span className="text-red-500">*</span>
-                                            </label>
-                                            <div className="flex gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData({ ...formData, accountType: 'individual' })}
-                                                    className={`flex-1 py-2 px-3 rounded-lg border transition-all text-xs font-bold flex items-center justify-center gap-2 ${formData.accountType === 'individual'
-                                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                                        : 'border-gray-100 hover:border-gray-200 text-gray-500 bg-gray-50'
-                                                        }`}
-                                                >
-                                                    個人
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData({ ...formData, accountType: 'corporate' })}
-                                                    className={`flex-1 py-2 px-3 rounded-lg border transition-all text-xs font-bold flex items-center justify-center gap-2 ${formData.accountType === 'corporate'
-                                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                                        : 'border-gray-100 hover:border-gray-200 text-gray-500 bg-gray-50'
-                                                        }`}
-                                                >
-                                                    法人
-                                                </button>
-                                            </div>
-                                        </div>
+                                                <form onSubmit={handleSubmit} className="space-y-4">
+                                                    {/* Account Type */}
+                                                    <div className="space-y-2">
+                                                        <Label>ご利用形態 <span className="text-red-500">*</span></Label>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <Button
+                                                                type="button"
+                                                                variant={formData.accountType === 'individual' ? 'amber' : 'outline'}
+                                                                className="w-full"
+                                                                onClick={() => setFormData({ ...formData, accountType: 'individual' })}
+                                                            >
+                                                                <User className="w-4 h-4" />
+                                                                個人
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant={formData.accountType === 'corporate' ? 'amber' : 'outline'}
+                                                                className="w-full"
+                                                                onClick={() => setFormData({ ...formData, accountType: 'corporate' })}
+                                                            >
+                                                                <Building2 className="w-4 h-4" />
+                                                                法人
+                                                            </Button>
+                                                        </div>
+                                                    </div>
 
-                                        {/* Company Name - only show for corporate */}
-                                        <AnimatePresence>
-                                            {formData.accountType === 'corporate' && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: 'auto' }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="space-y-1 pt-1">
-                                                        <label className="text-xs font-bold text-gray-700">
-                                                            会社名・屋号 <span className="text-red-500">*</span>
-                                                        </label>
-                                                        <input
-                                                            required
-                                                            type="text"
-                                                            value={formData.companyName}
-                                                            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                                                            placeholder="株式会社〇〇"
-                                                            className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all font-medium"
+                                                    {/* Company Name (Corporate only) */}
+                                                    <AnimatePresence>
+                                                        {formData.accountType === 'corporate' && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="space-y-2 overflow-hidden"
+                                                            >
+                                                                <Label htmlFor="companyName">
+                                                                    会社名 <span className="text-red-500">*</span>
+                                                                </Label>
+                                                                <Input
+                                                                    id="companyName"
+                                                                    required
+                                                                    value={formData.companyName}
+                                                                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                                                                    placeholder="株式会社〇〇"
+                                                                />
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+
+                                                    {/* Name & Email */}
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="name">
+                                                                お名前 <span className="text-red-500">*</span>
+                                                            </Label>
+                                                            <div className="relative">
+                                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                                <Input
+                                                                    id="name"
+                                                                    required
+                                                                    className="pl-9"
+                                                                    value={formData.name}
+                                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                                    placeholder="山田 太郎"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="email">
+                                                                メール <span className="text-red-500">*</span>
+                                                            </Label>
+                                                            <div className="relative">
+                                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                                <Input
+                                                                    id="email"
+                                                                    type="email"
+                                                                    required
+                                                                    className="pl-9"
+                                                                    value={formData.email}
+                                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                                    placeholder="email@example.com"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Phone */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="phone">
+                                                            電話番号 <span className="text-gray-400 text-xs font-normal">(任意)</span>
+                                                        </Label>
+                                                        <div className="relative">
+                                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                            <Input
+                                                                id="phone"
+                                                                type="tel"
+                                                                className="pl-9"
+                                                                value={formData.phone}
+                                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                                placeholder="03-1234-5678"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Remarks */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="remarks">
+                                                            備考 <span className="text-gray-400 text-xs font-normal">(任意)</span>
+                                                        </Label>
+                                                        <Textarea
+                                                            id="remarks"
+                                                            rows={2}
+                                                            value={formData.remarks}
+                                                            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                                                            placeholder="ご質問やご要望など"
                                                         />
                                                     </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
 
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-gray-700">
-                                                    お名前 <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    value={formData.name}
-                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                    placeholder="山田 太郎"
-                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all font-medium"
-                                                />
-                                            </div>
+                                                    {/* Submit */}
+                                                    <Button
+                                                        type="submit"
+                                                        variant="dark"
+                                                        size="lg"
+                                                        className="w-full"
+                                                        disabled={isLoading || !formData.accountType}
+                                                    >
+                                                        {isLoading ? (
+                                                            <span className="flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                                <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                            </span>
+                                                        ) : (
+                                                            <>
+                                                                リストに登録する
+                                                                <ArrowRight className="w-4 h-4" />
+                                                            </>
+                                                        )}
+                                                    </Button>
 
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-gray-700">
-                                                    メール <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="email"
-                                                    value={formData.email}
-                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                    placeholder="example@co.jp"
-                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all font-medium"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">
-                                                電話番号 <span className="text-gray-400 text-[10px] font-normal">（任意）</span>
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                placeholder="03-1234-5678"
-                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all font-medium"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">
-                                                備考 <span className="text-gray-400 text-[10px] font-normal">（任意）</span>
-                                            </label>
-                                            <textarea
-                                                value={formData.remarks}
-                                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                                                placeholder="ご質問など"
-                                                rows={2}
-                                                className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-base md:text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all font-medium resize-none"
-                                            />
-                                        </div>
-
-                                        <div className="pt-2">
-                                            <button
-                                                type="submit"
-                                                disabled={isLoading || !formData.accountType}
-                                                className="w-full bg-gray-900 text-white hover:bg-amber-600 text-sm font-bold py-3 px-6 transition-colors duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-lg shadow-amber-900/10"
+                                                    <p className="text-xs text-gray-400 text-center">
+                                                        登録により
+                                                        <button type="button" onClick={() => setModalType('terms')} className="underline hover:text-amber-600 mx-1">利用規約</button>
+                                                        と
+                                                        <button type="button" onClick={() => setModalType('privacy')} className="underline hover:text-amber-600 mx-1">プライバシーポリシー</button>
+                                                        に同意
+                                                    </p>
+                                                </form>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="success"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="text-center py-4"
                                             >
-                                                {isLoading ? (
-                                                    <span className="flex items-center gap-2">
-                                                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                                    </span>
-                                                ) : (
-                                                    <>
-                                                        リストに登録する
-                                                        <ArrowRight className="w-4 h-4" />
-                                                    </>
-                                                )}
-                                            </button>
-                                            <p className="mt-2 text-[10px] text-gray-400 leading-tight text-center">
-                                                ご登録いただくことで、<button type="button" onClick={() => setModalType('terms')} className="underline hover:text-amber-600">利用規約</button>および<button type="button" onClick={() => setModalType('privacy')} className="underline hover:text-amber-600">プライバシーポリシー</button>に同意したものとみなされます。
-                                            </p>
-                                        </div>
-                                    </form>
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    key="success"
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                                    className="max-w-md w-full mx-auto text-center"
-                                >
-                                    <div className="w-20 h-20 bg-amber-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-500/30">
-                                        <Check className="w-10 h-10" />
-                                    </div>
-                                    <h3 className="text-2xl font-black mb-3 text-gray-900">
-                                        You're on the list.
-                                    </h3>
-                                    <p className="text-gray-600 leading-relaxed mb-8">
-                                        ご登録ありがとうございます。<br />
-                                        ご案内まで今しばらくお待ちください。
-                                    </p>
+                                                <p className="text-gray-600 mb-6">
+                                                    準備が整い次第、ご登録のメールアドレス宛に
+                                                    <br />
+                                                    <strong className="text-gray-900">本登録のご案内</strong>をお送りいたします。
+                                                </p>
 
-                                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 mb-8 text-left">
-                                        <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                                            <Sparkles className="w-4 h-4" /> Next Step
-                                        </h4>
-                                        <p className="text-sm text-amber-900/80 leading-relaxed">
-                                            準備が整い次第、ご登録のメールアドレス宛に<br />
-                                            <strong>本登録のご案内</strong>をお送りいたします。
-                                        </p>
-                                    </div>
+                                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <Star className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                                                        <p className="text-sm text-amber-800 text-left">
+                                                            順番が来ましたらメールでお知らせします。今しばらくお待ちください。
+                                                        </p>
+                                                    </div>
+                                                </div>
 
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        className="text-sm font-bold text-gray-400 hover:text-amber-600 transition-colors"
-                                    >
-                                        フォームに戻る
-                                    </button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => setStep(1)}
+                                                    className="text-gray-500"
+                                                >
+                                                    フォームに戻る
+                                                </Button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             {/* Features Section */}
-            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gray-50 border-t border-gray-100">
-                <div className="max-w-7xl mx-auto">
+            <section className="py-24 bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
                         className="text-center mb-16"
                     >
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                            <span className="inline-block w-8 h-[2px] bg-amber-500"></span>
-                            <span className="text-amber-600 font-bold tracking-widest uppercase text-xs">
-                                Features
-                            </span>
-                            <span className="inline-block w-8 h-[2px] bg-amber-500"></span>
-                        </div>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8">
-                            Lp Builderでできること
+                        <Badge variant="amber" className="mb-4">Features</Badge>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+                            LP Builderでできること
                         </h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
-                            最新のAI技術を活用して、高品質なランディングページを<br className="hidden md:block" />
-                            誰でも簡単に作成・編集できます。
+                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                            最新のAI技術を活用して、高品質なランディングページを誰でも簡単に作成・編集できます。
                         </p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {FEATURES.map((feature, index) => (
                             <motion.div
                                 key={feature.title}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: index * 0.1 }}
-                                className="group"
+                                transition={{ delay: index * 0.05 }}
                             >
-                                <div className="w-14 h-14 bg-white rounded-2xl border border-gray-100 flex items-center justify-center mb-6 group-hover:border-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-sm group-hover:shadow-amber-500/20 duration-300">
-                                    <feature.icon className="w-7 h-7" />
-                                </div>
-                                <h3 className="font-bold text-xl mb-3 text-gray-900 group-hover:text-amber-600 transition-colors">{feature.title}</h3>
-                                <p className="text-sm text-gray-600 leading-relaxed">
-                                    {feature.description}
-                                </p>
+                                <Card className="h-full hover:shadow-lg transition-all duration-300 group border-0 bg-white">
+                                    <CardHeader>
+                                        <div className={cn(
+                                            "w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white transition-transform group-hover:scale-110",
+                                            feature.color
+                                        )}>
+                                            <feature.icon className="w-6 h-6" />
+                                        </div>
+                                        <CardTitle className="text-lg group-hover:text-amber-600 transition-colors">
+                                            {feature.title}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-gray-600">{feature.description}</p>
+                                    </CardContent>
+                                </Card>
                             </motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* How It Works Section */}
-            <section className="py-24 px-6 md:px-12 lg:px-20 bg-white">
-                <div className="max-w-7xl mx-auto">
+            {/* How it works */}
+            <section className="py-24 bg-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
                         className="text-center mb-16"
                     >
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                            <span className="inline-block w-8 h-[2px] bg-amber-500"></span>
-                            <span className="text-amber-600 font-bold tracking-widest uppercase text-xs">
-                                How It Works
-                            </span>
-                            <span className="inline-block w-8 h-[2px] bg-amber-500"></span>
-                        </div>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-6">
+                        <Badge variant="amber" className="mb-4">How It Works</Badge>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight">
                             3ステップで完成
                         </h2>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-                        {/* Connecting Line (Desktop) */}
-                        <div className="hidden md:block absolute top-[2.5rem] left-[16.66%] right-[16.66%] h-[2px] bg-gray-100 -z-10"></div>
+                    <div className="grid md:grid-cols-3 gap-8 relative">
+                        {/* Connecting line */}
+                        <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200" />
 
                         {[
-                            {
-                                step: '01',
-                                title: 'URLを入力',
-                                description: '参考にしたいLPのURLを入力するか、新規作成を選択します。',
-                                icon: Globe,
-                            },
-                            {
-                                step: '02',
-                                title: 'AIで編集',
-                                description: 'テキストや画像をAIの力で自由に編集。プロンプトを入力するだけ。',
-                                icon: Wand2,
-                            },
-                            {
-                                step: '03',
-                                title: 'エクスポート',
-                                description: '完成したLPをHTMLでエクスポート。すぐに公開できます。',
-                                icon: Download,
-                            },
+                            { step: '01', title: 'URLを入力', description: '参考にしたいLPのURLを入力するか、新規作成を選択します。', icon: Globe },
+                            { step: '02', title: 'AIで編集', description: 'テキストや画像をAIの力で自由に編集。プロンプトを入力するだけ。', icon: Wand2 },
+                            { step: '03', title: 'エクスポート', description: '完成したLPをHTMLでエクスポート。すぐに公開できます。', icon: Download },
                         ].map((item, index) => (
                             <motion.div
                                 key={item.step}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: index * 0.2 }}
-                                className="text-center relative bg-white md:bg-transparent p-6 md:p-0 rounded-xl md:rounded-none border md:border-0 border-gray-100 md:shadow-none shadow-sm"
+                                transition={{ delay: index * 0.15 }}
+                                className="text-center relative"
                             >
-                                <div className="relative inline-block mb-8">
-                                    <div className="w-20 h-20 bg-white border-2 border-gray-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                                <div className="relative inline-block mb-6">
+                                    <div className="w-20 h-20 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center shadow-lg">
                                         <item.icon className="w-8 h-8 text-gray-700" />
                                     </div>
-                                    <span className="absolute -top-3 -right-3 w-8 h-8 bg-amber-500 text-white text-sm font-black rounded-full flex items-center justify-center shadow-md border-2 border-white">
+                                    <span className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 text-white text-sm font-black rounded-full flex items-center justify-center shadow-lg">
                                         {item.step}
                                     </span>
                                 </div>
-                                <h3 className="font-bold text-xl mb-3 text-gray-900">{item.title}</h3>
-                                <p className="text-gray-600 leading-relaxed font-medium text-sm">{item.description}</p>
+                                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                                <p className="text-gray-600">{item.description}</p>
                             </motion.div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Pricing & Credits Section */}
-            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gradient-to-b from-white via-amber-50/30 to-white relative overflow-hidden">
-                {/* Decorative background elements */}
-                <div className="absolute top-20 left-10 w-72 h-72 bg-amber-200/20 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-200/20 rounded-full blur-3xl pointer-events-none" />
+            {/* Pricing Section */}
+            <section className="py-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+                <div className="absolute top-20 left-10 w-72 h-72 bg-amber-200/20 rounded-full blur-3xl" />
+                <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-200/20 rounded-full blur-3xl" />
 
-                <div className="max-w-6xl mx-auto relative z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
-                        className="text-center mb-20"
+                        className="text-center mb-16"
                     >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            whileInView={{ scale: 1, opacity: 1 }}
-                            viewport={{ once: true }}
-                            className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-2 rounded-full text-sm font-bold mb-6"
-                        >
-                            <Sparkles className="w-4 h-4" />
+                        <Badge variant="amber" className="mb-4 gap-1.5">
+                            <Sparkles className="w-3 h-3" />
                             シンプルな料金体系
-                        </motion.div>
-                        <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6 text-gray-900">
+                        </Badge>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
                             LP1つ、<span className="text-amber-600">約15円</span>から。
                         </h2>
-                        <p className="text-gray-600 max-w-xl mx-auto text-lg leading-relaxed">
-                            使った分だけのクレジット制。<br />
-                            ムダな固定費はかかりません。
+                        <p className="text-lg text-gray-600">
+                            使った分だけのクレジット制。ムダな固定費はかかりません。
                         </p>
                     </motion.div>
 
-                    {/* Highlight: Cost per LP */}
+                    {/* Cost highlight */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.5 }}
-                        className="mb-16 bg-gradient-to-r from-amber-500 to-orange-500 rounded-3xl p-8 md:p-10 text-white shadow-xl shadow-amber-500/20"
+                        className="mb-16"
                     >
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                            <div>
-                                <p className="text-amber-100 font-medium mb-2">LP1つあたりの制作コスト</p>
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-5xl md:text-6xl font-black">¥15</span>
-                                    <span className="text-2xl font-bold text-amber-200">〜 ¥120</span>
+                        <Card className="bg-gradient-to-r from-amber-500 to-orange-500 border-0 text-white overflow-hidden">
+                            <CardContent className="p-8">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                                    <div>
+                                        <p className="text-amber-100 mb-2">LP1つあたりの制作コスト</p>
+                                        <div className="flex items-baseline gap-3">
+                                            <span className="text-5xl md:text-6xl font-black">¥15</span>
+                                            <span className="text-2xl font-bold text-amber-200">〜 ¥120</span>
+                                        </div>
+                                        <p className="text-amber-100 mt-2 text-sm">※画像生成5〜20回の場合</p>
+                                    </div>
+                                    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                                        <p className="text-amber-100 text-sm mb-3 font-medium">制作コスト内訳（目安）</p>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between gap-8">
+                                                <span className="text-white/80">画像生成 ×5枚</span>
+                                                <span className="font-bold">¥15〜30</span>
+                                            </div>
+                                            <div className="flex justify-between gap-8">
+                                                <span className="text-white/80">インペイント ×3回</span>
+                                                <span className="font-bold">¥9〜18</span>
+                                            </div>
+                                            <div className="border-t border-white/20 pt-2 mt-2 flex justify-between gap-8">
+                                                <span className="font-bold">合計</span>
+                                                <span className="font-black">約¥24〜48</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p className="text-amber-100 mt-2 text-sm">※画像生成5〜20回の場合</p>
-                            </div>
-                            <div className="flex-shrink-0 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                                <p className="text-amber-100 text-sm mb-3 font-medium">制作コスト内訳（目安）</p>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between gap-8 text-sm">
-                                        <span className="text-white/80">画像生成 ×5枚</span>
-                                        <span className="font-bold">¥15〜30</span>
-                                    </div>
-                                    <div className="flex justify-between gap-8 text-sm">
-                                        <span className="text-white/80">インペイント ×3回</span>
-                                        <span className="font-bold">¥9〜18</span>
-                                    </div>
-                                    <div className="flex justify-between gap-8 text-sm">
-                                        <span className="text-white/80">リスタイル ×2回</span>
-                                        <span className="font-bold">¥6〜12</span>
-                                    </div>
-                                    <div className="border-t border-white/20 pt-2 mt-2 flex justify-between gap-8">
-                                        <span className="text-white font-bold">合計</span>
-                                        <span className="font-black">約¥30〜60</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     </motion.div>
 
                     {/* Plan Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                    <div className="grid md:grid-cols-3 gap-6 mb-16">
                         {PLAN_DATA.map((plan, index) => (
                             <motion.div
                                 key={plan.id}
-                                initial={{ opacity: 0, y: 30 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: index * 0.15 }}
-                                whileHover={{ y: -8 }}
-                                className={`relative bg-white rounded-3xl p-8 transition-all duration-300 ${
-                                    plan.highlight
-                                        ? 'shadow-2xl shadow-amber-500/20 ring-2 ring-amber-500'
-                                        : 'shadow-lg shadow-gray-200/50 hover:shadow-xl'
-                                }`}
+                                transition={{ delay: index * 0.1 }}
                             >
-                                {plan.highlight && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-5 py-2 rounded-full shadow-lg shadow-amber-500/30 flex items-center gap-1.5">
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                            人気No.1
+                                <Card className={cn(
+                                    "h-full relative transition-all duration-300 hover:-translate-y-2",
+                                    plan.highlight
+                                        ? "shadow-2xl shadow-amber-500/20 ring-2 ring-amber-500 border-0"
+                                        : "border-gray-200 hover:shadow-xl"
+                                )}>
+                                    {plan.highlight && (
+                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                                            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg gap-1">
+                                                <Star className="w-3 h-3" />
+                                                人気No.1
+                                            </Badge>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {/* Plan header */}
-                                <div className="text-center mb-6 pt-2">
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
-                                        plan.highlight
-                                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                                            : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        <plan.icon className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="font-black text-2xl text-gray-900 mb-1">{plan.name}</h3>
-                                    <p className="text-sm text-gray-500">{plan.description}</p>
-                                </div>
+                                    <CardHeader className="text-center pt-8">
+                                        <div className={cn(
+                                            "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4",
+                                            plan.highlight
+                                                ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30"
+                                                : "bg-gray-100 text-gray-600"
+                                        )}>
+                                            <plan.icon className="w-8 h-8" />
+                                        </div>
+                                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                                        <CardDescription>{plan.description}</CardDescription>
+                                    </CardHeader>
 
-                                {/* Price */}
-                                <div className="text-center mb-6 pb-6 border-b border-gray-100">
-                                    <div className="flex items-baseline justify-center gap-1">
-                                        <span className="text-4xl font-black text-gray-900">{plan.price}</span>
-                                        <span className="text-gray-400 font-medium">{plan.period}</span>
-                                    </div>
-                                    <div className={`inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full text-sm font-bold ${
-                                        plan.highlight
-                                            ? 'bg-amber-100 text-amber-700'
-                                            : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        <CreditCard className="w-4 h-4" />
-                                        月間クレジット: {plan.credit}
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-2">{plan.creditNote}</p>
-                                </div>
-
-                                {/* Features */}
-                                <ul className="space-y-3">
-                                    {plan.features.map((feature, i) => (
-                                        <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
-                                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <Check className="w-3 h-3 text-green-600" />
+                                    <CardContent className="text-center">
+                                        <div className="mb-6 pb-6 border-b border-gray-100">
+                                            <div className="flex items-baseline justify-center gap-1">
+                                                <span className="text-4xl font-black">{plan.price}</span>
+                                                <span className="text-gray-400">{plan.period}</span>
                                             </div>
-                                            {feature}
-                                        </li>
-                                    ))}
-                                    {plan.limitations.map((limitation, i) => (
-                                        <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
-                                            <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <X className="w-3 h-3 text-gray-400" />
-                                            </div>
-                                            {limitation}
-                                        </li>
-                                    ))}
-                                </ul>
+                                            <Badge variant={plan.highlight ? "amber" : "secondary"} className="mt-3 gap-1">
+                                                <CreditCard className="w-3 h-3" />
+                                                月間: {plan.credit}
+                                            </Badge>
+                                            <p className="text-xs text-gray-400 mt-2">{plan.creditNote}</p>
+                                        </div>
+
+                                        <ul className="space-y-3 text-left">
+                                            {plan.features.map((feature, i) => (
+                                                <li key={i} className="flex items-start gap-3 text-sm">
+                                                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        <Check className="w-3 h-3 text-green-600" />
+                                                    </div>
+                                                    {feature}
+                                                </li>
+                                            ))}
+                                            {plan.limitations.map((limitation, i) => (
+                                                <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
+                                                    <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                        <X className="w-3 h-3" />
+                                                    </div>
+                                                    {limitation}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </CardContent>
+                                </Card>
                             </motion.div>
                         ))}
                     </div>
 
-                    {/* Credit Usage Cards */}
+                    {/* Credit Usage */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
                     >
-                        <div className="text-center mb-10">
-                            <h3 className="text-2xl font-black text-gray-900 mb-2">各機能のクレジット消費</h3>
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-black">各機能のクレジット消費</h3>
                             <p className="text-gray-500">AIを使うたびにクレジットが消費されます</p>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                             {CREDIT_USAGE.map((item, index) => (
                                 <motion.div
-                                    key={index}
+                                    key={item.action}
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     whileInView={{ opacity: 1, scale: 1 }}
                                     viewport={{ once: true }}
-                                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:border-amber-200 transition-all text-center group"
+                                    transition={{ delay: index * 0.05 }}
                                 >
-                                    <div className="w-10 h-10 rounded-xl bg-gray-100 group-hover:bg-amber-100 flex items-center justify-center mx-auto mb-3 transition-colors">
-                                        {item.action === 'AI画像生成' && <Sparkles className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
-                                        {item.action === 'インペイント編集' && <Wand2 className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
-                                        {item.action === 'リスタイル' && <Palette className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
-                                        {item.action === '動画生成' && <Video className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
-                                        {item.action === 'URL取り込み' && <Globe className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
-                                    </div>
-                                    <p className="text-xs font-bold text-gray-900 mb-2">{item.action}</p>
-                                    <p className="text-lg font-black text-amber-600">{item.costJpy}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">{item.note}</p>
+                                    <Card className="text-center hover:shadow-md transition-all group border-gray-100">
+                                        <CardContent className="p-4">
+                                            <div className="w-10 h-10 rounded-xl bg-gray-100 group-hover:bg-amber-100 flex items-center justify-center mx-auto mb-3 transition-colors">
+                                                <item.icon className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />
+                                            </div>
+                                            <p className="text-xs font-bold mb-1">{item.action}</p>
+                                            <p className="text-lg font-black text-amber-600">{item.cost}</p>
+                                        </CardContent>
+                                    </Card>
                                 </motion.div>
                             ))}
                         </div>
@@ -927,107 +929,56 @@ export default function WaitingRoomPage() {
             </section>
 
             {/* FAQ Section */}
-            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gray-50 relative overflow-hidden">
-                {/* Decorative elements */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-300 to-transparent opacity-50" />
-
-                <div className="max-w-3xl mx-auto relative z-10">
+            <section className="py-24 bg-gray-50">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
-                        className="text-center mb-16"
+                        className="text-center mb-12"
                     >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            whileInView={{ scale: 1, opacity: 1 }}
-                            viewport={{ once: true }}
-                            className="inline-flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-bold mb-6 shadow-sm border border-gray-200"
-                        >
-                            <HelpCircle className="w-4 h-4 text-amber-500" />
+                        <Badge variant="secondary" className="mb-4 gap-1.5">
+                            <HelpCircle className="w-3 h-3" />
                             よくある質問
-                        </motion.div>
-                        <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
-                            わからないことは<br className="md:hidden" />ありませんか？
+                        </Badge>
+                        <h2 className="text-4xl font-black tracking-tight">
+                            わからないことはありませんか？
                         </h2>
-                        <p className="text-gray-500">
-                            お客様からよくいただく質問をまとめました
-                        </p>
                     </motion.div>
 
-                    <div className="space-y-3">
+                    <Accordion type="single" collapsible className="space-y-3">
                         {FAQ_DATA.map((faq, index) => (
                             <motion.div
                                 key={index}
                                 initial={{ opacity: 0, x: -20 }}
                                 whileInView={{ opacity: 1, x: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: index * 0.05 }}
-                                className="group"
+                                transition={{ delay: index * 0.05 }}
                             >
-                                <button
-                                    onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
-                                    className={`w-full flex items-center justify-between p-5 md:p-6 bg-white rounded-2xl transition-all duration-300 border-2 ${
-                                        openFaqIndex === index
-                                            ? 'border-amber-400 shadow-lg shadow-amber-500/10'
-                                            : 'border-transparent shadow-sm hover:shadow-md hover:border-gray-200'
-                                    }`}
+                                <AccordionItem
+                                    value={`item-${index}`}
+                                    className="bg-white rounded-xl px-6 border-0 shadow-sm data-[state=open]:shadow-lg data-[state=open]:ring-2 data-[state=open]:ring-amber-400 transition-all"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                                            openFaqIndex === index
-                                                ? 'bg-amber-500 text-white rotate-0'
-                                                : 'bg-amber-100 text-amber-600'
-                                        }`}>
-                                            <span className="font-black text-sm">Q{index + 1}</span>
+                                    <AccordionTrigger className="text-left font-bold hover:no-underline py-5">
+                                        <div className="flex items-center gap-4">
+                                            <span className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-black flex-shrink-0">
+                                                Q{index + 1}
+                                            </span>
+                                            <span>{faq.question}</span>
                                         </div>
-                                        <span className="font-bold text-gray-900 text-left text-sm md:text-base">{faq.question}</span>
-                                    </div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                                        openFaqIndex === index
-                                            ? 'bg-amber-500 text-white'
-                                            : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'
-                                    }`}>
-                                        <ChevronDown
-                                            className={`w-4 h-4 transition-transform duration-300 ${
-                                                openFaqIndex === index ? 'rotate-180' : ''
-                                            }`}
-                                        />
-                                    </div>
-                                </button>
-                                <AnimatePresence>
-                                    {openFaqIndex === index && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                            className="overflow-hidden"
-                                        >
-                                            <div className="px-6 py-5 mx-4 bg-amber-50 rounded-b-2xl border-x-2 border-b-2 border-amber-200 -mt-2">
-                                                <div className="flex gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center flex-shrink-0">
-                                                        <span className="font-black text-sm text-amber-700">A</span>
-                                                    </div>
-                                                    <p className="text-gray-700 leading-relaxed text-sm md:text-base pt-2">
-                                                        {faq.answer}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="text-gray-600 pb-5 pl-12">
+                                        {faq.answer}
+                                    </AccordionContent>
+                                </AccordionItem>
                             </motion.div>
                         ))}
-                    </div>
+                    </Accordion>
 
-                    {/* Contact CTA */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.3 }}
                         className="mt-12 text-center"
                     >
                         <p className="text-gray-500 mb-4">その他のご質問は</p>
@@ -1035,6 +986,7 @@ export default function WaitingRoomPage() {
                             href="mailto:team@zettai.co.jp"
                             className="inline-flex items-center gap-2 text-amber-600 font-bold hover:text-amber-700 transition-colors"
                         >
+                            <Mail className="w-4 h-4" />
                             team@zettai.co.jp
                             <ArrowRight className="w-4 h-4" />
                         </a>
@@ -1043,51 +995,67 @@ export default function WaitingRoomPage() {
             </section>
 
             {/* CTA Section */}
-            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gray-900 text-white relative overflow-hidden">
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
+            <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
 
-                <div className="max-w-4xl mx-auto text-center relative z-10">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
                     >
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8">
-                            LP制作をもっとシンプルに。<br />
+                        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-8">
+                            LP制作をもっとシンプルに。
+                            <br />
                             もっとクリエイティブに。
                         </h2>
-                        <p className="text-gray-400 mb-10 max-w-xl mx-auto leading-relaxed text-lg">
-                            PoCプランは初月無料でお試しいただけます。<br />
+                        <p className="text-gray-400 mb-10 max-w-xl mx-auto text-lg">
+                            PoCプランは初月無料でお試しいただけます。
+                            <br />
                             まずは順番待ちリストにご登録ください。
                         </p>
-                        <a
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="inline-flex items-center gap-3 bg-amber-500 text-white hover:bg-amber-600 font-bold py-5 px-10 transition-colors duration-300 rounded-xl shadow-lg shadow-amber-500/25 text-lg"
+                        <Button
+                            variant="amber"
+                            size="xl"
+                            onClick={scrollToTop}
+                            className="gap-3"
                         >
                             順番待ちリストに登録する
-                            <ArrowRight className="w-6 h-6" />
-                        </a>
+                            <ArrowRight className="w-5 h-5" />
+                        </Button>
                     </motion.div>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="py-8 px-8 bg-gray-950 text-white border-t border-gray-800">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                    <p className="text-xs text-gray-500 tracking-wide font-medium">
-                        © 2026 ZETTAI INC. ALL RIGHTS RESERVED.
-                    </p>
-                    <div className="flex items-center gap-6 text-sm">
-                        <a href="mailto:team@zettai.co.jp" className="text-gray-500 hover:text-amber-500 transition-colors font-medium">
-                            team@zettai.co.jp
-                        </a>
+            <footer className="py-8 bg-gray-950 text-white border-t border-gray-800">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-md" />
+                            <span className="font-bold">LP Builder</span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            © 2026 ZETTAI INC. ALL RIGHTS RESERVED.
+                        </p>
+                        <div className="flex items-center gap-6 text-sm">
+                            <button
+                                onClick={() => setModalType('terms')}
+                                className="text-gray-500 hover:text-amber-500 transition-colors"
+                            >
+                                利用規約
+                            </button>
+                            <button
+                                onClick={() => setModalType('privacy')}
+                                className="text-gray-500 hover:text-amber-500 transition-colors"
+                            >
+                                プライバシー
+                            </button>
+                            <a href="mailto:team@zettai.co.jp" className="text-gray-500 hover:text-amber-500 transition-colors">
+                                team@zettai.co.jp
+                            </a>
+                        </div>
                     </div>
                 </div>
             </footer>
@@ -1106,420 +1074,42 @@ export default function WaitingRoomPage() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            transition={{ duration: 0.2 }}
                             className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Modal Header */}
                             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                                <h2 className="text-xl font-bold text-gray-900">
+                                <h2 className="text-xl font-bold">
                                     {modalType === 'terms' ? '利用規約' : 'プライバシーポリシー'}
                                 </h2>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setModalType(null)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </button>
+                                    <X className="w-5 h-5" />
+                                </Button>
                             </div>
-
-                            {/* Modal Content */}
                             <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
-                                {modalType === 'terms' ? (
-                                    <TermsContent />
-                                ) : (
-                                    <PrivacyContent />
-                                )}
+                                <div className="prose prose-sm prose-gray max-w-none">
+                                    <p className="text-sm text-gray-500">
+                                        {modalType === 'terms'
+                                            ? '利用規約の詳細は /terms ページをご確認ください。'
+                                            : 'プライバシーポリシーの詳細は /privacy ページをご確認ください。'}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4"
+                                        onClick={() => window.open(modalType === 'terms' ? '/terms' : '/privacy', '_blank')}
+                                    >
+                                        詳細を見る
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
         </main>
-    );
-}
-
-// 利用規約コンテンツ（フルバージョン）
-function TermsContent() {
-    return (
-        <div className="prose prose-sm prose-gray max-w-none">
-            <p className="text-xs text-gray-500 mb-6">最終更新日: 2026年1月10日</p>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第1条（総則）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本利用規約（以下「本規約」といいます）は、株式会社ZETTAI（以下「当社」といいます）が提供するLP Builder（以下「本サービス」といいます）の利用条件を定めるものです。</li>
-                    <li>本サービスを利用するすべての方（以下「利用者」といいます）は、本規約に同意したものとみなされます。</li>
-                    <li>当社は、利用者に事前に通知することなく、本規約を変更することができるものとします。変更後の規約は、本サービス上に掲載した時点から効力を生じます。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第2条（サービスの内容）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本サービスは、AI技術を活用したランディングページ（LP）の作成・編集支援ツールです。</li>
-                    <li>本サービスには、URL取り込み、AI画像生成、インペイント編集、リスタイル、4Kアップスケール、HTMLエクスポート等の機能が含まれます。</li>
-                    <li>当社は、本サービスの内容を予告なく変更、追加、または廃止することができます。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第3条（利用登録）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本サービスの利用を希望する者は、当社が定める方法により利用登録を申請するものとします。</li>
-                    <li>当社は、利用登録の申請者に以下の事由があると判断した場合、利用登録を拒否することがあります。<ul className="list-disc list-inside ml-4 mt-1"><li>虚偽の情報を提供した場合</li><li>過去に本規約に違反したことがある場合</li><li>その他、当社が利用登録を適当でないと判断した場合</li></ul></li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第4条（アカウント管理）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>利用者は、自己の責任においてアカウント情報を管理するものとします。</li>
-                    <li>利用者は、アカウント情報を第三者に貸与、譲渡、または共有することはできません。</li>
-                    <li>アカウント情報の管理不十分、第三者の使用等による損害の責任は、利用者が負うものとします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第5条（料金および支払い）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>利用者は、本サービスの利用にあたり、当社が定める料金を支払うものとします。</li>
-                    <li>料金の支払方法は、当社が指定する方法によるものとします。</li>
-                    <li>支払われた料金は、法令に定める場合を除き、返金されません。</li>
-                    <li>当社は、料金を変更する場合、事前に利用者に通知するものとします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第6条（知的財産権・著作権）</h3>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
-                    <p className="text-amber-800 font-bold text-xs">重要：生成コンテンツの権利帰属について</p>
-                </div>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li><strong>本サービスを利用して利用者が生成したコンテンツ（以下「生成コンテンツ」といいます）の著作権は、利用者に帰属します。</strong>当社は、生成コンテンツに関するいかなる権利も主張しません。</li>
-                    <li>利用者は、生成コンテンツを自由に使用、複製、改変、頒布、公衆送信その他の方法で利用することができます。</li>
-                    <li>本サービス自体（ソフトウェア、ユーザーインターフェース、ロゴ、商標等）に関する知的財産権は、当社または正当な権利者に帰属します。</li>
-                    <li>利用者は、本サービス自体を複製、改変、リバースエンジニアリング、逆コンパイル、逆アセンブルすることはできません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第7条（利用者の責任）</h3>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-2 mb-2">
-                    <p className="text-red-800 font-bold text-xs">重要：利用者は以下の責任を負います</p>
-                </div>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li><strong>利用者は、入力データおよび生成コンテンツが第三者の著作権、商標権、肖像権、プライバシー権その他一切の権利を侵害しないことを保証し、その責任を負います。</strong></li>
-                    <li>利用者は、本サービスを利用して作成したコンテンツの内容について、全責任を負います。</li>
-                    <li>利用者は、他のウェブサイトのURLを入力する場合、当該ウェブサイトの利用規約および著作権法その他の法令を遵守する責任を負います。</li>
-                    <li>第三者から当社に対して、利用者の生成コンテンツに関する権利侵害等の申立てがなされた場合、<strong>利用者は自己の費用と責任においてこれを解決し、当社に一切の迷惑をかけないものとします。</strong></li>
-                    <li>前項の場合において、当社が損害（弁護士費用を含む）を被ったときは、利用者は当該損害を賠償するものとします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第8条（禁止事項）</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-1">利用者は、本サービスの利用にあたり、以下の行為を行ってはなりません。</p>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>法令または公序良俗に違反する行為</li>
-                    <li>犯罪行為に関連する行為</li>
-                    <li>第三者の著作権、商標権、特許権等の知的財産権を侵害する行為</li>
-                    <li>第三者の肖像権、プライバシー権、名誉権を侵害する行為</li>
-                    <li>わいせつ、児童ポルノ、または児童虐待に相当する画像等を生成する行為</li>
-                    <li>差別、誹謗中傷、ヘイトスピーチに該当するコンテンツを生成する行為</li>
-                    <li>当社のサーバーまたはネットワークの機能を破壊または妨害する行為</li>
-                    <li>本サービスの運営を妨害する行為</li>
-                    <li>不正アクセスまたはこれを試みる行為</li>
-                    <li>他の利用者に成りすます行為</li>
-                    <li>当社のサービスに関連して、反社会的勢力に対して直接または間接に利益を供与する行為</li>
-                    <li>その他、当社が不適切と判断する行為</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第9条（免責事項）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li><strong>当社は、本サービスを「現状有姿」で提供し、明示または黙示を問わず、商品性、特定目的への適合性、権利非侵害その他いかなる保証も行いません。</strong></li>
-                    <li><strong>当社は、生成コンテンツの正確性、完全性、有用性、適法性、第三者の権利非侵害について、一切保証しません。</strong></li>
-                    <li><strong>当社は、利用者が本サービスを利用して作成したコンテンツに起因または関連する著作権侵害、商標権侵害、肖像権侵害その他一切の権利侵害について、一切の責任を負いません。</strong></li>
-                    <li>当社は、本サービスの中断、停止、終了、利用不能または変更について、責任を負いません。</li>
-                    <li>当社は、本サービスの利用によって利用者に生じた損害について、当社の故意または重過失による場合を除き、責任を負いません。</li>
-                    <li>当社は、利用者と第三者との間で生じた紛争について、一切関与せず、責任を負いません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第10条（損害賠償の制限）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li><strong>当社は、本サービスに関して利用者に生じた損害について、当社の故意または重大な過失による場合を除き、一切の損害賠償責任を負いません。</strong></li>
-                    <li>前項にかかわらず、当社が損害賠償責任を負う場合であっても、当社の責任は、損害発生時の直近1ヶ月間に当該利用者が当社に支払った利用料金相当額を上限とします。</li>
-                    <li>当社は、いかなる場合においても、間接損害、特別損害、偶発的損害、派生的損害、逸失利益、データの喪失について、予見可能性の有無にかかわらず、責任を負いません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第11条（サービスの停止・中断）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、以下のいずれかに該当する場合、利用者に事前に通知することなく、本サービスの全部または一部を停止または中断することができます。<ul className="list-disc list-inside ml-4 mt-1"><li>本サービスのシステムの保守点検または更新を行う場合</li><li>地震、落雷、火災、停電等の不可抗力により本サービスの提供が困難となった場合</li><li>コンピュータまたは通信回線等が事故により停止した場合</li><li>その他、当社が本サービスの提供が困難と判断した場合</li></ul></li>
-                    <li>当社は、本サービスの停止または中断により利用者に生じた損害について、責任を負いません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第12条（利用制限・登録抹消）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、利用者が以下のいずれかに該当する場合、事前の通知なく、利用者に対して本サービスの全部または一部の利用を制限し、または利用者としての登録を抹消することができます。<ul className="list-disc list-inside ml-4 mt-1"><li>本規約のいずれかの条項に違反した場合</li><li>登録事項に虚偽の事実があることが判明した場合</li><li>料金の支払債務の履行を遅滞した場合</li><li>当社からの連絡に対し、一定期間返答がない場合</li><li>その他、当社が本サービスの利用を適当でないと判断した場合</li></ul></li>
-                    <li>当社は、本条に基づき当社が行った行為により利用者に生じた損害について、責任を負いません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第13条（退会）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>利用者は、当社が定める手続により、本サービスを退会することができます。</li>
-                    <li>退会した場合、利用者のアカウントおよび関連するデータは、当社の定める期間経過後に削除されます。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第14条（個人情報の取扱い）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、本サービスの利用によって取得した個人情報を、当社のプライバシーポリシーに従い適切に取り扱うものとします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第15条（通知）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社から利用者への通知は、本サービス上での掲示、電子メールの送信、その他当社が適当と判断する方法により行うものとします。</li>
-                    <li>前項の通知は、当社が当該通知を発信した時点から効力を生じるものとします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第16条（権利義務の譲渡禁止）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>利用者は、当社の書面による事前の承諾なく、利用契約上の地位または本規約に基づく権利もしくは義務を第三者に譲渡し、または担保に供することはできません。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第17条（準拠法および管轄裁判所）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本規約は、日本法に準拠し、日本法に従って解釈されるものとします。</li>
-                    <li>本規約に関する一切の紛争については、東京地方裁判所を第一審の専属的合意管轄裁判所とします。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">第18条（分離可能性）</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本規約のいずれかの条項が無効または執行不能と判断された場合でも、残りの条項は引き続き有効に存続するものとします。</li>
-                </ol>
-            </section>
-
-            <div className="mt-6 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                    制定日: 2026年1月10日<br />
-                    株式会社ZETTAI
-                </p>
-            </div>
-        </div>
-    );
-}
-
-// プライバシーポリシーコンテンツ（フルバージョン）
-function PrivacyContent() {
-    return (
-        <div className="prose prose-sm prose-gray max-w-none">
-            <p className="text-xs text-gray-500 mb-6">最終更新日: 2026年1月10日</p>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">1. はじめに</h3>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                    株式会社ZETTAI（以下「当社」といいます）は、LP Builder（以下「本サービス」といいます）を通じて取得する個人情報の重要性を認識し、その保護を徹底するため、以下のとおりプライバシーポリシー（以下「本ポリシー」といいます）を定めます。
-                </p>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">2. 取得する情報</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">当社は、本サービスの提供にあたり、以下の情報を取得することがあります。</p>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">2.1 利用者から直接提供される情報</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>氏名</li>
-                    <li>メールアドレス</li>
-                    <li>電話番号</li>
-                    <li>会社名・屋号</li>
-                    <li>その他、登録フォームで入力された情報</li>
-                </ul>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">2.2 サービス利用に伴い自動的に取得される情報</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>IPアドレス</li>
-                    <li>ブラウザの種類・バージョン</li>
-                    <li>オペレーティングシステム</li>
-                    <li>アクセス日時</li>
-                    <li>参照元URL</li>
-                    <li>Cookie情報</li>
-                    <li>サービス利用履歴</li>
-                </ul>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">2.3 サービス利用に関連する情報</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>入力されたURL</li>
-                    <li>入力されたプロンプト</li>
-                    <li>アップロードされた画像</li>
-                    <li>生成されたコンテンツ</li>
-                    <li>サービス利用状況（生成回数、使用機能等）</li>
-                </ul>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">3. 情報の利用目的</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">当社は、取得した情報を以下の目的で利用します。</p>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本サービスの提供、運営、改善</li>
-                    <li>利用者からのお問い合わせへの対応</li>
-                    <li>利用料金の請求</li>
-                    <li>本サービスに関する通知、案内の送信</li>
-                    <li>マーケティング・広告配信（利用者の同意がある場合）</li>
-                    <li>利用状況の分析・統計処理</li>
-                    <li>不正利用の防止、セキュリティの確保</li>
-                    <li>法令に基づく対応</li>
-                    <li>その他、上記利用目的に付随する目的</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">4. 情報の第三者提供</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">当社は、以下の場合を除き、利用者の同意なく個人情報を第三者に提供しません。</p>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>法令に基づく場合</li>
-                    <li>人の生命、身体または財産の保護のために必要がある場合であって、本人の同意を得ることが困難であるとき</li>
-                    <li>公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合であって、本人の同意を得ることが困難であるとき</li>
-                    <li>国の機関もしくは地方公共団体またはその委託を受けた者が法令の定める事務を遂行することに対して協力する必要がある場合であって、本人の同意を得ることにより当該事務の遂行に支障を及ぼすおそれがあるとき</li>
-                    <li>合併、会社分割、事業譲渡その他の事由による事業の承継に伴って個人情報が提供される場合</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">5. 外部サービスの利用</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">当社は、本サービスの提供にあたり、以下の外部サービスを利用する場合があります。各サービスにおける情報の取扱いについては、各社のプライバシーポリシーをご確認ください。</p>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">5.1 AI・機械学習サービス</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>Google Cloud Platform（Gemini API等）</li>
-                    <li>その他のAIサービスプロバイダー</li>
-                </ul>
-                <p className="text-gray-600 text-xs mt-1">※ これらのサービスに送信されるデータ（プロンプト、画像等）は、各サービス提供者のプライバシーポリシーに従って処理されます。</p>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">5.2 インフラ・ホスティング</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>Supabase（認証、データベース）</li>
-                    <li>Vercel（ホスティング）</li>
-                    <li>Cloudflare（CDN、セキュリティ）</li>
-                </ul>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">5.3 分析ツール</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>Google Analytics（利用状況の分析）</li>
-                </ul>
-
-                <h4 className="text-sm font-bold mt-3 mb-1 text-gray-800">5.4 決済サービス</h4>
-                <ul className="list-disc list-inside space-y-0.5 text-gray-700 text-sm">
-                    <li>Stripe（決済処理）</li>
-                </ul>
-                <p className="text-gray-600 text-xs mt-1">※ クレジットカード情報は当社では保持せず、決済サービス提供者が直接処理します。</p>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">6. Cookieの利用</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、本サービスにおいてCookie（クッキー）を使用します。</li>
-                    <li>Cookieは、利用者の認証状態の維持、利用状況の分析、サービスの改善等のために使用されます。</li>
-                    <li>利用者は、ブラウザの設定によりCookieの受け入れを拒否することができますが、その場合、本サービスの一部機能が利用できなくなる可能性があります。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">7. 情報の安全管理</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、個人情報の漏洩、滅失、毀損を防止するため、適切なセキュリティ対策を講じます。</li>
-                    <li>当社は、個人情報を取り扱う従業員に対し、適切な教育・監督を行います。</li>
-                    <li>当社は、個人情報の取扱いを外部に委託する場合、委託先に対し適切な監督を行います。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">8. 情報の保存期間</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、利用目的の達成に必要な期間、個人情報を保存します。</li>
-                    <li>アカウント情報は、アカウント削除後6ヶ月間保存した後、削除します。</li>
-                    <li>サービス利用履歴は、統計処理後、匿名化した上で保存することがあります。</li>
-                    <li>法令により保存が義務付けられている情報は、法令で定められた期間保存します。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">9. 利用者の権利</h3>
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">利用者は、当社に対し、以下の権利を行使することができます。</p>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li><strong>開示請求権:</strong> 当社が保有する利用者の個人情報の開示を請求することができます。</li>
-                    <li><strong>訂正請求権:</strong> 個人情報が事実と異なる場合、訂正を請求することができます。</li>
-                    <li><strong>利用停止請求権:</strong> 個人情報の利用の停止を請求することができます。</li>
-                    <li><strong>削除請求権:</strong> 個人情報の削除を請求することができます。</li>
-                    <li><strong>第三者提供停止請求権:</strong> 第三者への提供の停止を請求することができます。</li>
-                </ol>
-                <p className="text-gray-700 text-sm leading-relaxed mt-2">
-                    上記の請求を行う場合は、本ポリシー末尾の連絡先までお問い合わせください。なお、ご本人確認のための書類の提出をお願いする場合があります。
-                </p>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">10. 未成年者の利用</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>本サービスは、18歳以上の方を対象としています。</li>
-                    <li>18歳未満の方が本サービスを利用する場合は、親権者または法定代理人の同意が必要です。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">11. 海外への情報移転</h3>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                    当社が利用する外部サービス（クラウドサービス、AI API等）のサーバーは、日本国外に所在する場合があります。この場合、利用者の情報は、当該国・地域の法令に従って処理される可能性があります。当社は、海外への情報移転にあたり、適切な安全管理措置を講じます。
-                </p>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">12. 本ポリシーの変更</h3>
-                <ol className="list-decimal list-inside space-y-1 text-gray-700 text-sm leading-relaxed">
-                    <li>当社は、法令の改正、事業内容の変更等により、本ポリシーを変更することがあります。</li>
-                    <li>重要な変更を行う場合は、本サービス上での通知またはメールにより利用者にお知らせします。</li>
-                    <li>変更後の本ポリシーは、本サービス上に掲載した時点から効力を生じます。</li>
-                </ol>
-            </section>
-
-            <section className="mb-6">
-                <h3 className="text-base font-bold mb-2 pb-1 border-b border-gray-200 text-gray-900">13. お問い合わせ</h3>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                    本ポリシーに関するお問い合わせ、個人情報に関する請求は、以下の連絡先までお願いいたします。
-                </p>
-                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-gray-700 text-sm">
-                        <strong>株式会社ZETTAI</strong><br />
-                        <strong>個人情報保護責任者:</strong> 代表取締役<br />
-                        メール: <a href="mailto:team@zettai.co.jp" className="text-amber-600 hover:underline">team@zettai.co.jp</a>
-                    </p>
-                </div>
-            </section>
-
-            <div className="mt-6 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                    制定日: 2026年1月10日<br />
-                    株式会社ZETTAI
-                </p>
-            </div>
-        </div>
     );
 }
