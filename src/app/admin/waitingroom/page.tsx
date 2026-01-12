@@ -24,6 +24,7 @@ interface WaitingRoomEntry {
     phone: string | null;
     remarks: string | null;
     status: string;
+    plan: string | null;
     adminNotes: string | null;
     processedAt: string | null;
     processedBy: string | null;
@@ -287,7 +288,14 @@ export default function WaitingRoomPage() {
                                 {/* Main Row */}
                                 <div
                                     className="px-4 py-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50"
-                                    onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
+                                    onClick={() => {
+                                        const newExpandedId = expandedEntry === entry.id ? null : entry.id;
+                                        setExpandedEntry(newExpandedId);
+                                        // 展開時に既存プランを選択状態にセット
+                                        if (newExpandedId && entry.plan && !selectedPlan[entry.id]) {
+                                            setSelectedPlan(prev => ({ ...prev, [entry.id]: entry.plan! }));
+                                        }
+                                    }}
                                 >
                                     {/* Status */}
                                     <div className="w-24 flex-shrink-0">
@@ -326,12 +334,23 @@ export default function WaitingRoomPage() {
                                         </div>
                                     </div>
 
-                                    {/* Reply Count */}
+                                    {/* Plan */}
                                     <div className="w-20 flex-shrink-0 text-center">
+                                        {entry.plan ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
+                                                {PLAN_OPTIONS.find(p => p.value === entry.plan)?.label || entry.plan}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </div>
+
+                                    {/* Reply Count */}
+                                    <div className="w-16 flex-shrink-0 text-center">
                                         {entry.replies.length > 0 && (
                                             <span className="inline-flex items-center gap-1 text-xs text-gray-600">
                                                 <MessageSquare className="w-3 h-3" />
-                                                {entry.replies.length}件
+                                                {entry.replies.length}
                                             </span>
                                         )}
                                     </div>

@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     try {
-        const { entryId, status, adminNotes } = await request.json();
+        const { entryId, status, adminNotes, plan } = await request.json();
 
         if (!entryId) {
             return NextResponse.json({ error: 'entryId is required' }, { status: 400 });
@@ -112,6 +112,11 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
 
+        const validPlans = ['free', 'poc', 'pro', 'expert'];
+        if (plan && !validPlans.includes(plan)) {
+            return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+        }
+
         const updateData: any = {
             processedAt: new Date(),
             processedBy: user.id,
@@ -119,6 +124,7 @@ export async function PATCH(request: NextRequest) {
 
         if (status) updateData.status = status;
         if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+        if (plan) updateData.plan = plan;
 
         const entry = await prisma.waitingRoomEntry.update({
             where: { id: entryId },

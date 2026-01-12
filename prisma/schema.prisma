@@ -189,6 +189,7 @@ model WaitingRoomEntry {
   phone       String?
   remarks     String?
   status      String               @default("pending") // pending, approved, rejected, invited, registered
+  plan        String?              // 選択されたプラン: free, poc, pro, expert
   adminNotes  String?              // 管理者用メモ
   processedAt DateTime?            // 処理日時
   processedBy String?              // 処理した管理者のID
