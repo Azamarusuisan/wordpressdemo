@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, X, RefreshCw, Shield, Clock, Mail, Zap, Database, FileText, Crown, Ban, AlertTriangle } from 'lucide-react';
+import { Check, X, RefreshCw, Shield, Clock, Mail, Zap, Database, FileText, Crown, Ban, AlertTriangle, CreditCard, Plus, DollarSign } from 'lucide-react';
 
 // プラン定義（src/lib/plans.ts と同期）
 const PLANS = {
@@ -32,12 +32,19 @@ interface User {
     usage: UserUsage;
 }
 
+interface CreditInfo {
+    currentBalanceUsd: number;
+    loading: boolean;
+}
+
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [processing, setProcessing] = useState<string | null>(null);
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
+    const [creditInfoMap, setCreditInfoMap] = useState<Map<string, CreditInfo>>(new Map());
+    const [creditAmount, setCreditAmount] = useState<string>('10');
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -141,6 +148,81 @@ export default function UsersPage() {
             setProcessing(null);
         }
     };
+
+    // クレジット情報を取得
+    const fetchCreditInfo = async (userId: string) => {
+        // ローディング状態を設定
+        setCreditInfoMap(prev => {
+            const newMap = new Map(prev);
+            newMap.set(userId, { currentBalanceUsd: 0, loading: true });
+            return newMap;
+        });
+
+        try {
+            const res = await fetch(`/api/admin/credits?userId=${userId}`);
+            if (!res.ok) {
+                throw new Error('Failed to fetch credit info');
+            }
+            const data = await res.json();
+            setCreditInfoMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(userId, { currentBalanceUsd: data.currentBalanceUsd || 0, loading: false });
+                return newMap;
+            });
+        } catch (err) {
+            setCreditInfoMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(userId, { currentBalanceUsd: 0, loading: false });
+                return newMap;
+            });
+        }
+    };
+
+    // クレジット付与
+    const handleCreditGrant = async (userId: string, amount: number) => {
+        if (amount <= 0) {
+            alert('金額は0より大きい値を入力してください');
+            return;
+        }
+
+        try {
+            setProcessing(userId);
+            const res = await fetch('/api/admin/credits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    amount,
+                    description: `管理者によるクレジット付与 $${amount}`,
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to grant credit');
+            }
+
+            const data = await res.json();
+            setCreditInfoMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(userId, { currentBalanceUsd: data.newBalance, loading: false });
+                return newMap;
+            });
+
+            alert(`$${amount} のクレジットを付与しました。新残高: $${data.newBalance.toFixed(2)}`);
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setProcessing(null);
+        }
+    };
+
+    // ユーザー展開時にクレジット情報を取得
+    useEffect(() => {
+        if (expandedUser && !creditInfoMap.has(expandedUser)) {
+            fetchCreditInfo(expandedUser);
+        }
+    }, [expandedUser]);
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
@@ -398,6 +480,81 @@ export default function UsersPage() {
                                                         </button>
                                                     ))}
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Credit Management */}
+                                        <div className="mt-6 pt-4 border-t">
+                                            <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                                                <CreditCard className="w-4 h-4 text-amber-500" />
+                                                クレジット管理
+                                            </h4>
+                                            <div className="bg-white rounded-lg border p-4">
+                                                {/* 現在の残高 */}
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <span className="text-sm text-gray-600">現在の残高</span>
+                                                    <div className="flex items-center gap-2">
+                                                        {creditInfoMap.get(user.id)?.loading ? (
+                                                            <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
+                                                        ) : (
+                                                            <span className="text-xl font-bold text-amber-600">
+                                                                ${(creditInfoMap.get(user.id)?.currentBalanceUsd || 0).toFixed(2)}
+                                                            </span>
+                                                        )}
+                                                        <button
+                                                            onClick={() => fetchCreditInfo(user.id)}
+                                                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                                            title="更新"
+                                                        >
+                                                            <RefreshCw className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* クレジット付与 */}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex-1">
+                                                        <label className="text-xs text-gray-500 mb-1 block">付与額 (USD)</label>
+                                                        <div className="relative">
+                                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                            <input
+                                                                type="number"
+                                                                min="0.01"
+                                                                step="0.01"
+                                                                value={creditAmount}
+                                                                onChange={(e) => setCreditAmount(e.target.value)}
+                                                                className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                                                placeholder="10.00"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 pt-5">
+                                                        {[5, 10, 20, 50].map((amount) => (
+                                                            <button
+                                                                key={amount}
+                                                                onClick={() => setCreditAmount(amount.toString())}
+                                                                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                                                            >
+                                                                ${amount}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="pt-5">
+                                                        <button
+                                                            onClick={() => handleCreditGrant(user.id, parseFloat(creditAmount) || 0)}
+                                                            disabled={processing === user.id || !creditAmount || parseFloat(creditAmount) <= 0}
+                                                            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2 transition-colors"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                            付与
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* 注意書き */}
+                                                <p className="text-xs text-gray-400 mt-3">
+                                                    ※ Freeプランのユーザーはクレジットを使用しません（自分のAPIキーを使用）
+                                                </p>
                                             </div>
                                         </div>
 

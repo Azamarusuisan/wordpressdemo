@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Loader2, Sparkles, Settings2, ChevronRight, ChevronDown, Monitor, Smartphone } from 'lucide-react';
+import { X, Loader2, Sparkles, Settings2, ChevronRight, ChevronDown, Monitor, Smartphone, AlertCircle, CreditCard, Key, ExternalLink } from 'lucide-react';
 import { SectionBoundaryEditor } from './SectionBoundaryEditor';
+import Link from 'next/link';
 
 interface Section {
     index: number;
@@ -67,6 +68,7 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
     const [progress, setProgress] = useState('');
     const [generatedPageId, setGeneratedPageId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [errorType, setErrorType] = useState<'generic' | 'credit' | 'apiKey' | 'subscription' | null>(null);
 
     // Step 1: Detect sections
     const handleDetect = async () => {
@@ -105,6 +107,10 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
     const handleGenerate = async (sections: Section[]) => {
         setStep('generating');
         setProgress('生成を開始しています...');
+        setError(null);
+        setErrorType(null);
+
+        console.log('[SmartImport] Starting import:', { url, device, importMode, style, sectionsCount: sections.length });
 
         try {
             const response = await fetch('/api/import-url', {
@@ -121,8 +127,39 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                 })
             });
 
+            // エラーレスポンスの詳細を取得
             if (!response.ok) {
-                throw new Error('生成リクエストに失敗しました');
+                console.error('[SmartImport] API error:', response.status, response.statusText);
+
+                let errorData: any = {};
+                try {
+                    errorData = await response.json();
+                } catch {
+                    // JSONパースに失敗した場合
+                }
+
+                console.error('[SmartImport] Error details:', errorData);
+
+                // エラータイプを判定
+                if (response.status === 402 || errorData.error === 'API_KEY_REQUIRED') {
+                    setErrorType('apiKey');
+                    throw new Error(errorData.message || 'Freeプランでは自分のGoogle AI APIキーの設定が必要です。設定画面でAPIキーを入力してください。');
+                } else if (response.status === 429) {
+                    if (errorData.needPurchase || errorData.message?.includes('クレジット')) {
+                        setErrorType('credit');
+                        throw new Error(errorData.message || `クレジットが不足しています。現在の残高: $${errorData.usage?.current?.toFixed(2) || '0.00'}`);
+                    } else if (errorData.needSubscription) {
+                        setErrorType('subscription');
+                        throw new Error(errorData.message || 'サブスクリプションが必要です。プランを選択してください。');
+                    }
+                    throw new Error(errorData.message || errorData.reason || '使用量制限に達しました。');
+                } else if (response.status === 401) {
+                    throw new Error('ログインが必要です。再ログインしてください。');
+                } else if (response.status === 400) {
+                    throw new Error(errorData.error || '入力内容に問題があります。URLを確認してください。');
+                } else {
+                    throw new Error(errorData.error || errorData.message || `サーバーエラーが発生しました (${response.status})`);
+                }
             }
 
             const reader = response.body?.getReader();
@@ -131,6 +168,8 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
             if (!reader) {
                 throw new Error('レスポンスストリームがありません');
             }
+
+            console.log('[SmartImport] Reading stream...');
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -142,23 +181,33 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                 for (const line of lines) {
                     try {
                         const data = JSON.parse(line.replace('data: ', ''));
+                        console.log('[SmartImport] Stream data:', data.type, data.message || '');
 
                         if (data.type === 'progress') {
                             setProgress(data.message || '');
                         } else if (data.type === 'complete' && data.pageId) {
+                            console.log('[SmartImport] Complete! PageId:', data.pageId);
                             setGeneratedPageId(data.pageId);
                             setStep('complete');
                         } else if (data.type === 'error') {
+                            console.error('[SmartImport] Stream error:', data.error);
                             throw new Error(data.error || '生成中にエラーが発生しました');
                         }
                     } catch (parseError) {
-                        // Skip invalid JSON
+                        // Skip invalid JSON (but log it for debugging)
+                        if (line.trim() && !line.includes('undefined')) {
+                            console.warn('[SmartImport] Failed to parse:', line);
+                        }
                     }
                 }
             }
 
         } catch (err: any) {
+            console.error('[SmartImport] Error:', err);
             setError(err.message);
+            if (!errorType) {
+                setErrorType('generic');
+            }
             setStep('error');
         }
     };
@@ -403,20 +452,132 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                     )}
 
                     {step === 'error' && (
-                        <div className="py-12 text-center">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <X className="w-8 h-8 text-red-600" />
+                        <div className="py-8">
+                            {/* Error Icon based on type */}
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                                errorType === 'credit' ? 'bg-amber-100' :
+                                errorType === 'apiKey' ? 'bg-blue-100' :
+                                errorType === 'subscription' ? 'bg-purple-100' :
+                                'bg-red-100'
+                            }`}>
+                                {errorType === 'credit' ? (
+                                    <CreditCard className="w-8 h-8 text-amber-600" />
+                                ) : errorType === 'apiKey' ? (
+                                    <Key className="w-8 h-8 text-blue-600" />
+                                ) : errorType === 'subscription' ? (
+                                    <AlertCircle className="w-8 h-8 text-purple-600" />
+                                ) : (
+                                    <X className="w-8 h-8 text-red-600" />
+                                )}
                             </div>
-                            <h3 className="text-lg font-medium text-gray-800 mb-2">
-                                エラーが発生しました
+
+                            {/* Error Title */}
+                            <h3 className="text-lg font-bold text-gray-900 mb-2 text-center">
+                                {errorType === 'credit' ? 'クレジット不足' :
+                                 errorType === 'apiKey' ? 'APIキーが必要です' :
+                                 errorType === 'subscription' ? 'プランの選択が必要です' :
+                                 'エラーが発生しました'}
                             </h3>
-                            <p className="text-red-600 mb-6">{error}</p>
-                            <button
-                                onClick={() => setStep('input')}
-                                className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                            >
-                                やり直す
-                            </button>
+
+                            {/* Error Message Box */}
+                            <div className={`mx-auto max-w-md p-4 rounded-lg mb-6 ${
+                                errorType === 'credit' ? 'bg-amber-50 border border-amber-200' :
+                                errorType === 'apiKey' ? 'bg-blue-50 border border-blue-200' :
+                                errorType === 'subscription' ? 'bg-purple-50 border border-purple-200' :
+                                'bg-red-50 border border-red-200'
+                            }`}>
+                                <p className={`text-sm ${
+                                    errorType === 'credit' ? 'text-amber-800' :
+                                    errorType === 'apiKey' ? 'text-blue-800' :
+                                    errorType === 'subscription' ? 'text-purple-800' :
+                                    'text-red-800'
+                                }`}>
+                                    {error}
+                                </p>
+                            </div>
+
+                            {/* Action Buttons based on error type */}
+                            <div className="flex flex-col items-center gap-3">
+                                {errorType === 'credit' && (
+                                    <>
+                                        <p className="text-sm text-gray-500 mb-2">
+                                            クレジットを追加するか、管理者に連絡してください。
+                                        </p>
+                                        <div className="flex gap-3">
+                                            <Link
+                                                href="/admin/settings"
+                                                className="px-5 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                                <CreditCard className="w-4 h-4" />
+                                                設定画面へ
+                                            </Link>
+                                            <button
+                                                onClick={() => setStep('input')}
+                                                className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                                            >
+                                                やり直す
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+
+                                {errorType === 'apiKey' && (
+                                    <>
+                                        <p className="text-sm text-gray-500 mb-2">
+                                            Google AI Studio でAPIキーを取得し、設定画面で入力してください。
+                                        </p>
+                                        <div className="flex gap-3">
+                                            <Link
+                                                href="/admin/settings"
+                                                className="px-5 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                                <Key className="w-4 h-4" />
+                                                設定画面へ
+                                            </Link>
+                                            <a
+                                                href="https://aistudio.google.com/apikey"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium"
+                                            >
+                                                APIキー取得
+                                                <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                        </div>
+                                    </>
+                                )}
+
+                                {errorType === 'subscription' && (
+                                    <>
+                                        <p className="text-sm text-gray-500 mb-2">
+                                            有料プランに登録するか、Freeプランで自分のAPIキーを設定してください。
+                                        </p>
+                                        <Link
+                                            href="/admin/settings"
+                                            className="px-5 py-2.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2 font-medium"
+                                        >
+                                            プラン設定へ
+                                        </Link>
+                                    </>
+                                )}
+
+                                {errorType === 'generic' && (
+                                    <button
+                                        onClick={() => setStep('input')}
+                                        className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                                    >
+                                        やり直す
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Debug info for developers */}
+                            <details className="mt-6 text-xs text-gray-400">
+                                <summary className="cursor-pointer hover:text-gray-600">デバッグ情報</summary>
+                                <pre className="mt-2 p-3 bg-gray-100 rounded-lg overflow-auto text-left">
+                                    {JSON.stringify({ errorType, error, url, importMode, style }, null, 2)}
+                                </pre>
+                            </details>
                         </div>
                     )}
                 </div>
