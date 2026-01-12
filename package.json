@@ -41,7 +41,7 @@
     "openai": "^6.15.0",
     "postcss": "^8.5.6",
     "puppeteer-core": "^24.7.0",
-    "@sparticuz/chromium": "^136.0.0",
+    "@sparticuz/chromium": "^143.0.0",
     "react": "^18.3.1",
     "react-confetti": "^6.4.0",
     "react-dom": "^18.3.1",
