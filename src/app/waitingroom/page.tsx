@@ -326,28 +326,35 @@ export default function WaitingRoomPage() {
                                 />
                             </div>
 
-                            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight mb-4">
+                            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-6">
                                 LP制作を、
+                                <br className="hidden lg:block" />
                                 <span className="text-amber-500">もっと簡単に。</span>
                             </h1>
 
-                            <p className="text-gray-600 mb-6 max-w-md">
+                            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-lg leading-relaxed">
                                 既存サイトのURLを入力するだけで、デザインを自動で取り込み。
                                 画像生成やインペイント編集で自由にカスタマイズできます。
                             </p>
 
                             {/* Feature List */}
-                            <ul className="space-y-2 text-sm text-gray-700">
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                            <ul className="space-y-3 text-base sm:text-lg text-gray-700 font-medium">
+                                <li className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                        <Check className="w-4 h-4 text-amber-600" />
+                                    </div>
                                     URLからデザインを自動取り込み
                                 </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                <li className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                        <Check className="w-4 h-4 text-amber-600" />
+                                    </div>
                                     画像生成・インペイント編集
                                 </li>
-                                <li className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                <li className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                        <Check className="w-4 h-4 text-amber-600" />
+                                    </div>
                                     HTMLエクスポートですぐに公開
                                 </li>
                             </ul>

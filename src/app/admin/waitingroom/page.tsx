@@ -40,6 +40,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
     registered: { label: '登録済', color: 'bg-purple-100 text-purple-700', icon: <Check className="w-3 h-3" /> },
 };
 
+const PLAN_OPTIONS = [
+    { value: 'free', label: 'Free', description: '無料プラン' },
+    { value: 'poc', label: 'PoC', description: '¥20,000/月（初月無料）' },
+    { value: 'pro', label: 'Pro', description: '¥10,000/月' },
+    { value: 'expert', label: 'Expert', description: '¥30,000/月' },
+];
+
 export default function WaitingRoomPage() {
     const [entries, setEntries] = useState<WaitingRoomEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,6 +55,7 @@ export default function WaitingRoomPage() {
     const [expandedEntry, setExpandedEntry] = useState<number | null>(null);
     const [replyMessage, setReplyMessage] = useState<Record<number, string>>({});
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [selectedPlan, setSelectedPlan] = useState<Record<number, string>>({});
 
     const fetchEntries = useCallback(async () => {
         try {
@@ -72,12 +80,22 @@ export default function WaitingRoomPage() {
     }, [fetchEntries]);
 
     const handleStatusChange = async (entryId: number, status: string) => {
+        // 承認時はプラン選択が必要
+        if (status === 'approved' && !selectedPlan[entryId]) {
+            alert('承認する場合はプランを選択してください');
+            return;
+        }
+
         try {
             setProcessing(entryId);
             const res = await fetch('/api/admin/waitingroom', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entryId, status }),
+                body: JSON.stringify({
+                    entryId,
+                    status,
+                    plan: status === 'approved' ? selectedPlan[entryId] : undefined,
+                }),
             });
 
             if (!res.ok) {
@@ -381,8 +399,27 @@ export default function WaitingRoomPage() {
                                                     )}
                                                 </div>
 
+                                                {/* Plan Selection */}
+                                                <h4 className="text-sm font-medium text-gray-900 mt-4 mb-3">プラン選択</h4>
+                                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                                    {PLAN_OPTIONS.map((plan) => (
+                                                        <button
+                                                            key={plan.value}
+                                                            onClick={() => setSelectedPlan(prev => ({ ...prev, [entry.id]: plan.value }))}
+                                                            className={`px-3 py-2 text-left text-xs font-medium rounded-lg border transition-all ${
+                                                                selectedPlan[entry.id] === plan.value
+                                                                    ? 'border-amber-500 bg-amber-50 text-amber-700 ring-2 ring-amber-200'
+                                                                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            <span className="font-bold">{plan.label}</span>
+                                                            <span className="block text-gray-500 font-normal">{plan.description}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+
                                                 {/* Status Change */}
-                                                <h4 className="text-sm font-medium text-gray-900 mt-4 mb-3">ステータス変更</h4>
+                                                <h4 className="text-sm font-medium text-gray-900 mb-3">ステータス変更</h4>
                                                 <div className="flex flex-wrap gap-2">
                                                     {Object.entries(STATUS_CONFIG).map(([status, config]) => (
                                                         <button
@@ -402,6 +439,9 @@ export default function WaitingRoomPage() {
                                                         </button>
                                                     ))}
                                                 </div>
+                                                {!selectedPlan[entry.id] && (
+                                                    <p className="text-xs text-amber-600 mt-2">※ 承認する場合はプランを先に選択してください</p>
+                                                )}
 
                                                 {/* Delete */}
                                                 <div className="mt-4 pt-4 border-t">
