@@ -11,22 +11,22 @@ import { createClient } from '@/lib/supabase/client';
 
 // プラン定義（plans.tsと同期）
 const PLAN_INFO: Record<string, { name: string; color: string }> = {
-    free: { name: 'Free', color: 'text-gray-600' },
-    starter: { name: 'Starter', color: 'text-blue-600' },
-    pro: { name: 'Pro', color: 'text-purple-600' },
-    enterprise: { name: 'Enterprise', color: 'text-amber-600' },
+    free: { name: '無料', color: 'text-gray-600' },
+    starter: { name: 'スターター', color: 'text-blue-600' },
+    pro: { name: 'プロ', color: 'text-purple-600' },
+    enterprise: { name: 'エンタープライズ', color: 'text-amber-600' },
 };
 
 // ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
 const navItems = [
-    { name: 'Pages', href: '/admin/pages', icon: FileText, prefetchUrl: '/api/pages', adminOnly: false },
-    { name: 'Media', href: '/admin/media', icon: Images, prefetchUrl: '/api/media', adminOnly: false },
-    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3, prefetchUrl: '/api/admin/stats?days=30', adminOnly: false },
-    { name: 'History', href: '/admin/import-history', icon: History, prefetchUrl: null, adminOnly: false },
-    { name: 'Navigation', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation', adminOnly: false },
-    { name: 'Settings', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings', adminOnly: false },
-    { name: 'Users', href: '/admin/users', icon: Shield, prefetchUrl: null, adminOnly: true },
-    { name: 'Waitingroom', href: '/admin/waitingroom', icon: Inbox, prefetchUrl: '/api/admin/waitingroom', adminOnly: true },
+    { name: 'ページ一覧', href: '/admin/pages', icon: FileText, prefetchUrl: '/api/pages', adminOnly: false },
+    { name: 'メディア', href: '/admin/media', icon: Images, prefetchUrl: '/api/media', adminOnly: false },
+    { name: 'API利用状況', href: '/admin/api-usage', icon: BarChart3, prefetchUrl: '/api/admin/stats?days=30', adminOnly: false },
+    { name: '履歴', href: '/admin/import-history', icon: History, prefetchUrl: null, adminOnly: false },
+    { name: 'ナビゲーション', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation', adminOnly: false },
+    { name: '設定', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings', adminOnly: false },
+    { name: 'ユーザー管理', href: '/admin/users', icon: Shield, prefetchUrl: null, adminOnly: true },
+    { name: '待機リスト', href: '/admin/waitingroom', icon: Inbox, prefetchUrl: '/api/admin/waitingroom', adminOnly: true },
 ] as const;
 
 // データプリフェッチ用のキャッシュ
@@ -131,7 +131,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                 </div>
 
                 <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
-                    <div className="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Menu</div>
+                    <div className="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/70">メニュー</div>
                     {navItems
                         .filter((item) => !item.adminOnly || isAdmin)
                         .map((item) => {
@@ -175,7 +175,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                                 {isAdmin && (
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-bold rounded">
                                         <Shield className="h-2.5 w-2.5" />
-                                        Admin
+                                        管理者
                                     </span>
                                 )}
                             </div>
@@ -184,7 +184,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                                 PLAN_INFO[plan]?.color || "text-muted-foreground"
                             )}>
                                 <Crown className="h-3 w-3" />
-                                {PLAN_INFO[plan]?.name || 'Free'}
+                                {PLAN_INFO[plan]?.name || '無料'}
                             </div>
                         </div>
                     </div>

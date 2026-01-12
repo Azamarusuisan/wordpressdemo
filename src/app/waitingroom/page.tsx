@@ -590,24 +590,25 @@ export default function WaitingRoomPage() {
             </section>
 
             {/* Features Section */}
-            <section className="py-24 bg-gray-50">
+            <section className="py-12 md:py-32 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-center mb-16"
+                        className="text-center mb-10 md:mb-16"
                     >
                         <Badge variant="amber" className="mb-4">Features</Badge>
-                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
                             LP Builderでできること
                         </h2>
-                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            高品質なランディングページを誰でも簡単に作成・編集できます。
+                        <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
+                            高品質なランディングページを<br className="md:hidden" />誰でも簡単に作成・編集できます。
                         </p>
                     </motion.div>
 
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Mobile: Horizontal Scroll, Desktop: Grid */}
+                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-6 md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
                         {FEATURES.map((feature, index) => (
                             <motion.div
                                 key={feature.title}
@@ -615,9 +616,10 @@ export default function WaitingRoomPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.05 }}
+                                className="min-w-[280px] snap-center flex-shrink-0 md:min-w-0"
                             >
                                 <Card className="h-full hover:shadow-lg transition-all duration-300 group border-0 bg-white">
-                                    <CardHeader>
+                                    <CardHeader className="p-6">
                                         <div className={cn(
                                             "w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white transition-transform group-hover:scale-110",
                                             feature.color
@@ -628,8 +630,10 @@ export default function WaitingRoomPage() {
                                             {feature.title}
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-gray-600">{feature.description}</p>
+                                    <CardContent className="p-6 pt-0">
+                                        <p className="text-sm text-gray-600 leading-relaxed">
+                                            {feature.description}
+                                        </p>
                                     </CardContent>
                                 </Card>
                             </motion.div>
@@ -639,412 +643,399 @@ export default function WaitingRoomPage() {
             </section>
 
             {/* How it works */}
-            <section className="py-32 bg-white relative overflow-hidden">
+            {/* How it works - Swiss Style */}
+            <section className="py-16 md:py-32 bg-white relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div className="mb-12 md:mb-24">
+                        <h2 className="text-5xl sm:text-8xl font-black tracking-tighter text-gray-900 mb-6 md:mb-8 leading-[0.9]">
+                            HOW IT<br />WORKS
+                        </h2>
+                        <div className="h-2 w-32 bg-amber-500" />
+                    </div>
+
+                    <div className="flex overflow-x-auto snap-x snap-mandatory md:grid md:grid-cols-3 border-t-2 border-black scrollbar-hide">
+                        {[
+                            {
+                                step: '01',
+                                title: 'INPUT URL',
+                                jpTitle: 'URLを入力',
+                                description: '参考にしたいLPのURLを入力、\nまたは新規作成を選択。',
+                                icon: Globe
+                            },
+                            {
+                                step: '02',
+                                title: 'EDIT FREELY',
+                                jpTitle: '自由に編集',
+                                description: 'テキスト修正や画像生成も。\nプロンプトで直感的に変更。',
+                                icon: Wand2
+                            },
+                            {
+                                step: '03',
+                                title: 'EXPORT HTML',
+                                jpTitle: 'エクスポート',
+                                description: '完成したLPをHTMLで書き出し。\n即座に公開可能です。',
+                                icon: Download
+                            },
+                        ].map((item, index) => (
+                            <div
+                                key={item.step}
+                                className="group relative border-b-2 md:border-b-0 md:border-r-2 border-black last:border-r-0 p-6 md:p-8 pt-10 md:pt-12 hover:bg-black hover:text-white transition-colors duration-300 min-w-[280px] snap-center flex-shrink-0 md:min-w-0"
+                            >
+                                <div className="mb-8 md:mb-12 flex justify-between items-start">
+                                    <span className="text-6xl md:text-7xl font-black text-gray-200 group-hover:text-amber-500 transition-colors font-mono tracking-tighter">
+                                        {item.step}
+                                    </span>
+                                    <item.icon className="w-8 h-8 md:w-10 md:h-10 text-black group-hover:text-white transition-colors" strokeWidth={1.5} />
+                                </div>
+
+                                <h3 className="text-2xl md:text-3xl font-black mb-2 tracking-tight uppercase">
+                                    {item.title}
+                                </h3>
+                                <p className="text-base md:text-lg font-bold text-gray-400 group-hover:text-gray-500 mb-4 md:mb-6">{item.jpTitle}</p>
+                                <p className="text-gray-600 group-hover:text-gray-300 leading-relaxed font-medium text-sm md:text-base whitespace-pre-line">
+                                    {item.description}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Pricing Section - Linear/Angular */}
+            <section className="py-20 md:py-32 bg-gray-50 border-t-2 border-black">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="mb-16 md:mb-32">
+                        <h2 className="text-6xl sm:text-9xl font-black tracking-tighter text-gray-900 mb-8 leading-[0.85]">
+                            PRICING
+                        </h2>
+                        <div className="h-2 w-32 bg-amber-500 mb-10" />
+                        <p className="text-xl md:text-3xl text-gray-900 font-bold max-w-2xl leading-tight">
+                            必要な分だけ、必要な時に。<br className="hidden md:block" />
+                            透明性の高い<span className="inline-block">「Pay as you go」</span>システム。
+                        </p>
+                    </div>
+
+                    {/* Cost Logic Grid */}
+                    <div className="mb-24 bg-white border-2 border-black p-6 md:p-16">
+                        <div className="grid lg:grid-cols-2 gap-12 md:gap-20 items-center">
+                            <div>
+                                <div className="inline-block bg-black text-white text-xs md:text-sm font-black px-4 py-2 mb-6 md:mb-8 uppercase tracking-widest">
+                                    Cost Performance
+                                </div>
+                                <h3 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">LP制作コストの革命</h3>
+                                <div className="flex flex-wrap items-baseline gap-2 md:gap-4 mb-6 md:mb-8">
+                                    <span className="text-7xl md:text-9xl font-black tracking-tighter text-black leading-none">
+                                        ¥15
+                                    </span>
+                                    <span className="text-xl md:text-3xl font-bold text-gray-500">〜 ¥120 / 1LP</span>
+                                </div>
+                                <p className="text-base md:text-xl text-gray-600 font-bold leading-relaxed">
+                                    従来の制作フローにおける<span className="inline-block">「固定費」を撤廃。</span><br className="hidden md:block" />
+                                    <span className="inline-block">AIによる自動化で、</span><span className="inline-block">圧倒的なコスト効率を実現しました。</span>
+                                </p>
+                            </div>
+
+                            <div className="border-2 border-black bg-gray-50 p-6 md:p-10">
+                                <h4 className="text-sm md:text-base font-black text-gray-900 uppercase tracking-wider mb-6 md:mb-8 border-b-2 border-black pb-4">
+                                    Breakdown (Estimate)
+                                </h4>
+                                <div className="space-y-4 md:space-y-6">
+                                    <div className="flex justify-between items-center text-sm md:text-lg font-bold">
+                                        <span className="flex items-center gap-3">
+                                            <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
+                                                <Image className="w-4 h-4" />
+                                            </span>
+                                            画像生成 (x5)
+                                        </span>
+                                        <span className="font-mono text-lg md:text-xl">¥15 - ¥30</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm md:text-lg font-bold">
+                                        <span className="flex items-center gap-3">
+                                            <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
+                                                <Wand2 className="w-4 h-4" />
+                                            </span>
+                                            インペイント (x3)
+                                        </span>
+                                        <span className="font-mono text-lg md:text-xl">¥9 - ¥18</span>
+                                    </div>
+                                    <div className="pt-6 mt-6 border-t-2 border-gray-200 flex justify-between items-center">
+                                        <span className="font-black text-lg md:text-xl text-gray-900">ESTIMATED TOTAL</span>
+                                        <span className="font-mono text-2xl md:text-3xl font-black text-amber-600 bg-amber-100 px-2">¥24 - ¥48</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Plans Grid */}
+                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-0 md:pb-0 md:mx-0 md:px-0 bg-transparent md:bg-white md:border-2 md:border-black md:divide-x-2 divide-black scrollbar-hide">
+                        {PLAN_DATA.map((plan) => (
+                            <div
+                                key={plan.id}
+                                className={cn(
+                                    "p-6 md:p-12 transition-all hover:bg-gray-50 flex flex-col h-full min-w-[300px] snap-center flex-shrink-0 md:min-w-0 bg-white border-2 border-black md:border-none",
+                                    plan.highlight ? "bg-amber-50" : ""
+                                )}
+                            >
+                                <div className="mb-auto">
+                                    <h3 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{plan.name}</h3>
+                                    <p className="text-xs text-black font-black tracking-widest uppercase mb-6 md:mb-8 border-b-2 border-black pb-4 inline-block">{plan.description}</p>
+
+                                    <div className="flex items-baseline gap-1 mb-6 md:mb-8">
+                                        <span className="text-5xl md:text-6xl font-black tracking-tighter">{plan.price}</span>
+                                        <span className="text-gray-500 font-mono text-xs md:text-sm font-bold">{plan.period}</span>
+                                    </div>
+
+                                    <div className="mb-8 md:mb-10 inline-flex items-center gap-2 text-xs md:text-sm font-bold font-mono text-black bg-white border-2 border-black px-3 md:px-4 py-2">
+                                        <CreditCard className="w-4 h-4" />
+                                        CREDIT: {plan.credit}
+                                    </div>
+
+                                    <ul className="space-y-4 md:space-y-5 mb-8 md:mb-12">
+                                        {plan.features.map((feature, i) => (
+                                            <li key={i} className="flex items-start gap-4 text-sm md:text-base font-bold text-gray-900">
+                                                <div className="w-5 h-5 md:w-6 md:h-6 bg-black text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    <Check className="w-3 h-3 md:w-4 md:h-4" strokeWidth={4} />
+                                                </div>
+                                                {feature}
+                                            </li>
+                                        ))}
+                                        {plan.limitations.map((limitation, i) => (
+                                            <li key={i} className="flex items-start gap-4 text-xs md:text-sm font-bold text-gray-400">
+                                                <div className="w-5 h-5 md:w-6 md:h-6 border-2 border-gray-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    <X className="w-3 h-3 md:w-4 md:h-4 text-gray-300" strokeWidth={3} />
+                                                </div>
+                                                {limitation}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <Button
+                                    className={cn(
+                                        "w-full h-12 md:h-14 rounded-none text-base md:text-lg font-black tracking-widest uppercase transition-all duration-200 border-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]",
+                                        plan.highlight
+                                            ? "bg-amber-500 border-black text-black hover:bg-amber-400"
+                                            : "bg-white border-black text-black hover:bg-gray-100"
+                                    )}
+                                >
+                                    {plan.highlight ? "Get Started" : "Start Free"}
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Credit Usage */}
+                    <div className="max-w-5xl mx-auto mt-20 md:mt-32">
+                        <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-8">
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Credit Consumption</h3>
+                                <p className="text-sm font-bold text-gray-500 mt-2">各機能のクレジット消費一覧</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-2 border-black bg-black gap-0.5">
+                            {CREDIT_USAGE.map((item, index) => (
+                                <div
+                                    key={item.action}
+                                    className="bg-white p-4 md:p-6 flex flex-col justify-between h-full hover:bg-amber-50 transition-colors"
+                                >
+                                    <div className="mb-4">
+                                        <item.icon className="w-5 h-5 text-black mb-3" />
+                                        <p className="text-xs font-black text-gray-500 uppercase tracking-wider">{item.action}</p>
+                                    </div>
+                                    <p className="text-lg font-black text-gray-900 tracking-tight tabular-nums">{item.cost}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* FAQ Section */}
+            <section className="py-24 bg-gray-50">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="text-center mb-24"
+                        className="text-center mb-12"
                     >
-                        {/* How it works - Swiss Style */}
-                        <section className="py-20 md:py-32 bg-white">
-                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <div className="mb-16 md:mb-24">
-                                    <h2 className="text-5xl sm:text-8xl font-black tracking-tighter text-gray-900 mb-8 leading-[0.9]">
-                                        HOW IT<br />WORKS
-                                    </h2>
-                                    <div className="h-2 w-32 bg-amber-500" />
-                                </div>
+                        <Badge variant="secondary" className="mb-4 gap-1.5">
+                            <HelpCircle className="w-3 h-3" />
+                            よくある質問
+                        </Badge>
+                        <h2 className="text-4xl font-black tracking-tight">
+                            わからないことはありませんか？
+                        </h2>
+                    </motion.div>
 
-                                <div className="grid md:grid-cols-3 border-t-2 border-black">
-                                    {[
-                                        {
-                                            step: '01',
-                                            title: 'INPUT URL',
-                                            jpTitle: 'URLを入力',
-                                            description: '参考にしたいLPのURLを入力、\nまたは新規作成を選択。',
-                                            icon: Globe
-                                        },
-                                        {
-                                            step: '02',
-                                            title: 'EDIT FREELY',
-                                            jpTitle: '自由に編集',
-                                            description: 'テキスト修正や画像生成も。\nプロンプトで直感的に変更。',
-                                            icon: Wand2
-                                        },
-                                        {
-                                            step: '03',
-                                            title: 'EXPORT HTML',
-                                            jpTitle: 'エクスポート',
-                                            description: '完成したLPをHTMLで書き出し。\n即座に公開可能です。',
-                                            icon: Download
-                                        },
-                                    ].map((item, index) => (
-                                        <div
-                                            key={item.step}
-                                            className="group relative border-b-2 md:border-b-0 md:border-r-2 border-black last:border-r-0 p-8 pt-12 hover:bg-black hover:text-white transition-colors duration-300"
-                                        >
-                                            <div className="mb-12 flex justify-between items-start">
-                                                <span className="text-7xl font-black text-gray-200 group-hover:text-amber-500 transition-colors font-mono tracking-tighter">
-                                                    {item.step}
-                                                </span>
-                                                <item.icon className="w-10 h-10 text-black group-hover:text-white transition-colors" strokeWidth={1.5} />
-                                            </div>
-
-                                            <h3 className="text-3xl font-black mb-2 tracking-tight uppercase">
-                                                {item.title}
-                                            </h3>
-                                            <p className="text-lg font-bold text-gray-400 group-hover:text-gray-500 mb-6">{item.jpTitle}</p>
-                                            <p className="text-gray-600 group-hover:text-gray-300 leading-relaxed font-medium text-base whitespace-pre-line">
-                                                {item.description}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Pricing Section - Linear/Angular */}
-                        <section className="py-20 md:py-32 bg-gray-50 border-t-2 border-black">
-                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <div className="mb-20 md:mb-32">
-                                    <h2 className="text-5xl sm:text-9xl font-black tracking-tighter text-gray-900 mb-8 leading-[0.85]">
-                                        PRICING
-                                    </h2>
-                                    <div className="h-2 w-32 bg-amber-500 mb-10" />
-                                    <p className="text-xl md:text-3xl text-gray-900 font-bold max-w-2xl leading-tight">
-                                        必要な分だけ、必要な時に。<br />
-                                        透明性の高い「Pay as you go」システム。
-                                    </p>
-                                </div>
-
-                                {/* Cost Logic Grid */}
-                                <div className="mb-24 bg-white border-2 border-black p-6 md:p-16">
-                                    <div className="grid lg:grid-cols-2 gap-12 md:gap-20 items-center">
-                                        <div>
-                                            <div className="inline-block bg-black text-white text-sm font-black px-4 py-2 mb-8 uppercase tracking-widest">
-                                                Cost Performance
-                                            </div>
-                                            <h3 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">LP制作コストの革命</h3>
-                                            <div className="flex flex-wrap items-baseline gap-4 mb-8">
-                                                <span className="text-8xl md:text-9xl font-black tracking-tighter text-black leading-none">
-                                                    ¥15
-                                                </span>
-                                                <span className="text-2xl md:text-3xl font-bold text-gray-500">〜 ¥120 / 1LP</span>
-                                            </div>
-                                            <p className="text-lg md:text-xl text-gray-600 font-bold leading-relaxed">
-                                                従来の制作フローにおける「固定費」を撤廃。<br />
-                                                AIによる自動化で、圧倒的なコスト効率を実現しました。
-                                            </p>
-                                        </div>
-
-                                        <div className="border-2 border-black bg-gray-50 p-8 md:p-10">
-                                            <h4 className="text-base font-black text-gray-900 uppercase tracking-wider mb-8 border-b-2 border-black pb-4">
-                                                Breakdown (Estimate)
-                                            </h4>
-                                            <div className="space-y-6">
-                                                <div className="flex justify-between items-center text-base md:text-lg font-bold">
-                                                    <span className="flex items-center gap-3">
-                                                        <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
-                                                            <Image className="w-4 h-4" />
-                                                        </span>
-                                                        画像生成 (x5)
-                                                    </span>
-                                                    <span className="font-mono text-xl">¥15 - ¥30</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-base md:text-lg font-bold">
-                                                    <span className="flex items-center gap-3">
-                                                        <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
-                                                            <Wand2 className="w-4 h-4" />
-                                                        </span>
-                                                        インペイント (x3)
-                                                    </span>
-                                                    <span className="font-mono text-xl">¥9 - ¥18</span>
-                                                </div>
-                                                <div className="pt-6 mt-6 border-t-2 border-gray-200 flex justify-between items-center">
-                                                    <span className="font-black text-xl text-gray-900">ESTIMATED TOTAL</span>
-                                                    <span className="font-mono text-3xl font-black text-amber-600 bg-amber-100 px-2">¥24 - ¥48</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Plans Grid */}
-                                <div className="grid md:grid-cols-3 bg-white border-2 border-black divide-y-2 md:divide-y-0 md:divide-x-2 divide-black">
-                                    {PLAN_DATA.map((plan) => (
-                                        <div
-                                            key={plan.id}
-                                            className={cn(
-                                                "p-8 md:p-12 transition-all hover:bg-gray-50 flex flex-col h-full",
-                                                plan.highlight ? "bg-amber-50" : ""
-                                            )}
-                                        >
-                                            <div className="mb-auto">
-                                                <h3 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">{plan.name}</h3>
-                                                <p className="text-xs text-black font-black tracking-widest uppercase mb-8 border-b-2 border-black pb-4 inline-block">{plan.description}</p>
-
-                                                <div className="flex items-baseline gap-1 mb-8">
-                                                    <span className="text-6xl font-black tracking-tighter">{plan.price}</span>
-                                                    <span className="text-gray-500 font-mono text-sm font-bold">{plan.period}</span>
-                                                </div>
-
-                                                <div className="mb-10 inline-flex items-center gap-2 text-sm font-bold font-mono text-black bg-white border-2 border-black px-4 py-2">
-                                                    <CreditCard className="w-4 h-4" />
-                                                    CREDIT: {plan.credit}
-                                                </div>
-
-                                                <ul className="space-y-5 mb-12">
-                                                    {plan.features.map((feature, i) => (
-                                                        <li key={i} className="flex items-start gap-4 text-base font-bold text-gray-900">
-                                                            <div className="w-6 h-6 bg-black text-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                                <Check className="w-4 h-4" strokeWidth={4} />
-                                                            </div>
-                                                            {feature}
-                                                        </li>
-                                                    ))}
-                                                    {plan.limitations.map((limitation, i) => (
-                                                        <li key={i} className="flex items-start gap-4 text-sm font-bold text-gray-400">
-                                                            <div className="w-6 h-6 border-2 border-gray-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                                <X className="w-4 h-4 text-gray-300" strokeWidth={3} />
-                                                            </div>
-                                                            {limitation}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-
-                                            <Button
-                                                className={cn(
-                                                    "w-full h-14 rounded-none text-lg font-black tracking-widest uppercase transition-all duration-200 border-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]",
-                                                    plan.highlight
-                                                        ? "bg-amber-500 border-black text-black hover:bg-amber-400"
-                                                        : "bg-white border-black text-black hover:bg-gray-100"
-                                                )}
-                                            >
-                                                {plan.highlight ? "Get Started" : "Start Free"}
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Credit Usage */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    className="max-w-5xl mx-auto"
+                    <Accordion type="single" collapsible className="space-y-3">
+                        {FAQ_DATA.map((faq, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, x: -20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <AccordionItem
+                                    value={`item-${index}`}
+                                    className="bg-white rounded-xl px-6 border-0 shadow-sm data-[state=open]:shadow-lg data-[state=open]:ring-2 data-[state=open]:ring-amber-400 transition-all"
                                 >
-                                    <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-8">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900">各機能のクレジット消費</h3>
-                                            <p className="text-sm text-gray-500 mt-1">機能を使用するたびにクレジットが消費されます</p>
+                                    <AccordionTrigger className="text-left font-bold hover:no-underline py-5">
+                                        <div className="flex items-center gap-4">
+                                            <span className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-black flex-shrink-0">
+                                                Q{index + 1}
+                                            </span>
+                                            <span>{faq.question}</span>
                                         </div>
-                                    </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="text-gray-600 pb-5 pl-12">
+                                        {faq.answer}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </motion.div>
+                        ))}
+                    </Accordion>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-t border-l border-gray-200 bg-gray-200 gap-px">
-                                        {CREDIT_USAGE.map((item, index) => (
-                                            <div
-                                                key={item.action}
-                                                className="bg-white p-6 flex flex-col justify-between h-full hover:bg-amber-50 transition-colors"
-                                            >
-                                                <div className="mb-4">
-                                                    <item.icon className="w-5 h-5 text-gray-400 mb-3" />
-                                                    <p className="text-xs font-bold text-gray-500">{item.action}</p>
-                                                </div>
-                                                <p className="text-lg font-bold text-gray-900 tracking-tight tabular-nums">{item.cost}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            </div>
-                        </section>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="mt-12 text-center"
+                    >
+                        <p className="text-gray-500 mb-4">その他のご質問は</p>
+                        <a
+                            href="mailto:team@zettai.co.jp"
+                            className="inline-flex items-center gap-2 text-amber-600 font-bold hover:text-amber-700 transition-colors"
+                        >
+                            <Mail className="w-4 h-4" />
+                            team@zettai.co.jp
+                            <ArrowRight className="w-4 h-4" />
+                        </a>
+                    </motion.div>
+                </div>
+            </section>
 
-                        {/* FAQ Section */}
-                        <section className="py-24 bg-gray-50">
-                            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    className="text-center mb-12"
-                                >
-                                    <Badge variant="secondary" className="mb-4 gap-1.5">
-                                        <HelpCircle className="w-3 h-3" />
-                                        よくある質問
-                                    </Badge>
-                                    <h2 className="text-4xl font-black tracking-tight">
-                                        わからないことはありませんか？
-                                    </h2>
-                                </motion.div>
+            {/* CTA Section */}
+            <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
 
-                                <Accordion type="single" collapsible className="space-y-3">
-                                    {FAQ_DATA.map((faq, index) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            whileInView={{ opacity: 1, x: 0 }}
-                                            viewport={{ once: true }}
-                                            transition={{ delay: index * 0.05 }}
-                                        >
-                                            <AccordionItem
-                                                value={`item-${index}`}
-                                                className="bg-white rounded-xl px-6 border-0 shadow-sm data-[state=open]:shadow-lg data-[state=open]:ring-2 data-[state=open]:ring-amber-400 transition-all"
-                                            >
-                                                <AccordionTrigger className="text-left font-bold hover:no-underline py-5">
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-black flex-shrink-0">
-                                                            Q{index + 1}
-                                                        </span>
-                                                        <span>{faq.question}</span>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="text-gray-600 pb-5 pl-12">
-                                                    {faq.answer}
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </motion.div>
-                                    ))}
-                                </Accordion>
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                    >
+                        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-8">
+                            LP制作をもっとシンプルに。
+                            <br />
+                            もっとクリエイティブに。
+                        </h2>
+                        <p className="text-gray-400 mb-10 max-w-xl mx-auto text-lg">
+                            PoCプランは初月無料でお試しいただけます。
+                            <br />
+                            まずは順番待ちリストにご登録ください。
+                        </p>
+                        <Button
+                            variant="amber"
+                            size="xl"
+                            onClick={scrollToTop}
+                            className="gap-3"
+                        >
+                            順番待ちリストに登録する
+                            <ArrowRight className="w-5 h-5" />
+                        </Button>
+                    </motion.div>
+                </div>
+            </section>
 
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    className="mt-12 text-center"
-                                >
-                                    <p className="text-gray-500 mb-4">その他のご質問は</p>
-                                    <a
-                                        href="mailto:team@zettai.co.jp"
-                                        className="inline-flex items-center gap-2 text-amber-600 font-bold hover:text-amber-700 transition-colors"
-                                    >
-                                        <Mail className="w-4 h-4" />
-                                        team@zettai.co.jp
-                                        <ArrowRight className="w-4 h-4" />
-                                    </a>
-                                </motion.div>
-                            </div>
-                        </section>
+            {/* Footer */}
+            <footer className="py-8 bg-gray-950 text-white border-t border-gray-800">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-md" />
+                            <span className="font-bold">LP Builder</span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            © 2026 ZETTAI INC. ALL RIGHTS RESERVED.
+                        </p>
+                        <div className="flex items-center gap-6 text-sm">
+                            <button
+                                onClick={() => setModalType('terms')}
+                                className="text-gray-500 hover:text-amber-500 transition-colors"
+                            >
+                                利用規約
+                            </button>
+                            <button
+                                onClick={() => setModalType('privacy')}
+                                className="text-gray-500 hover:text-amber-500 transition-colors"
+                            >
+                                プライバシー
+                            </button>
+                            <a href="mailto:team@zettai.co.jp" className="text-gray-500 hover:text-amber-500 transition-colors">
+                                team@zettai.co.jp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
 
-                        {/* CTA Section */}
-                        <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-                            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
-
-                            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                >
-                                    <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-8">
-                                        LP制作をもっとシンプルに。
-                                        <br />
-                                        もっとクリエイティブに。
-                                    </h2>
-                                    <p className="text-gray-400 mb-10 max-w-xl mx-auto text-lg">
-                                        PoCプランは初月無料でお試しいただけます。
-                                        <br />
-                                        まずは順番待ちリストにご登録ください。
-                                    </p>
-                                    <Button
-                                        variant="amber"
-                                        size="xl"
-                                        onClick={scrollToTop}
-                                        className="gap-3"
-                                    >
-                                        順番待ちリストに登録する
-                                        <ArrowRight className="w-5 h-5" />
-                                    </Button>
-                                </motion.div>
-                            </div>
-                        </section>
-
-                        {/* Footer */}
-                        <footer className="py-8 bg-gray-950 text-white border-t border-gray-800">
-                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-md" />
-                                        <span className="font-bold">LP Builder</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500">
-                                        © 2026 ZETTAI INC. ALL RIGHTS RESERVED.
-                                    </p>
-                                    <div className="flex items-center gap-6 text-sm">
-                                        <button
-                                            onClick={() => setModalType('terms')}
-                                            className="text-gray-500 hover:text-amber-500 transition-colors"
-                                        >
-                                            利用規約
-                                        </button>
-                                        <button
-                                            onClick={() => setModalType('privacy')}
-                                            className="text-gray-500 hover:text-amber-500 transition-colors"
-                                        >
-                                            プライバシー
-                                        </button>
-                                        <a href="mailto:team@zettai.co.jp" className="text-gray-500 hover:text-amber-500 transition-colors">
-                                            team@zettai.co.jp
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </footer>
-
-                        {/* Terms / Privacy Modal */}
-                        <AnimatePresence>
-                            {modalType && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            {/* Terms / Privacy Modal */}
+            <AnimatePresence>
+                {modalType && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setModalType(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                                <h2 className="text-xl font-bold">
+                                    {modalType === 'terms' ? '利用規約' : 'プライバシーポリシー'}
+                                </h2>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setModalType(null)}
                                 >
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden"
-                                        onClick={(e) => e.stopPropagation()}
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </div>
+                            <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
+                                <div className="prose prose-sm prose-gray max-w-none">
+                                    <p className="text-sm text-gray-500">
+                                        {modalType === 'terms'
+                                            ? '利用規約の詳細は /terms ページをご確認ください。'
+                                            : 'プライバシーポリシーの詳細は /privacy ページをご確認ください。'}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4"
+                                        onClick={() => window.open(modalType === 'terms' ? '/terms' : '/privacy', '_blank')}
                                     >
-                                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                                            <h2 className="text-xl font-bold">
-                                                {modalType === 'terms' ? '利用規約' : 'プライバシーポリシー'}
-                                            </h2>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => setModalType(null)}
-                                            >
-                                                <X className="w-5 h-5" />
-                                            </Button>
-                                        </div>
-                                        <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
-                                            <div className="prose prose-sm prose-gray max-w-none">
-                                                <p className="text-sm text-gray-500">
-                                                    {modalType === 'terms'
-                                                        ? '利用規約の詳細は /terms ページをご確認ください。'
-                                                        : 'プライバシーポリシーの詳細は /privacy ページをご確認ください。'}
-                                                </p>
-                                                <Button
-                                                    variant="outline"
-                                                    className="mt-4"
-                                                    onClick={() => window.open(modalType === 'terms' ? '/terms' : '/privacy', '_blank')}
-                                                >
-                                                    詳細を見る
-                                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </main>
-                    );
+                                        詳細を見る
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </main>
+    );
 }

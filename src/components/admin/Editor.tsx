@@ -3356,7 +3356,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black text-gray-900"><span>画像を編集</span></h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><span>Powered by Nano Banana</span></p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><span>Nano Banana エンジン</span></p>
                                 </div>
                             </div>
                             <p className="text-sm text-gray-500 mb-6 font-medium">
@@ -3497,7 +3497,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     <div className="flex-1 overflow-y-auto p-4 space-y-6">
                         {/* 基本操作 */}
                         <div className="space-y-3">
-                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Basic Actions</p>
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">基本操作</p>
                             <div className="grid grid-cols-2 gap-2">
                                 {/* 公開設定 */}
                                 <button
@@ -3612,7 +3612,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                         />
                                                     </div>
                                                     <span className="text-xs text-gray-600 truncate flex-1">
-                                                        {section.role || `Section ${idx + 1}`}
+                                                        {section.role || `セクション ${idx + 1}`}
                                                     </span>
                                                 </button>
                                             ))}
@@ -3668,10 +3668,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <span className="text-xs text-gray-600 truncate block">
-                                                            {section.role || `Section ${idx + 1}`}
+                                                            {section.role || `セクション ${idx + 1}`}
                                                         </span>
                                                         <span className="text-[9px] text-gray-400 block -mt-0.5">
-                                                            {section.config?.overlays?.length || 0} overlays
+                                                            {section.config?.overlays?.length || 0}件のオーバーレイ
                                                         </span>
                                                     </div>
                                                 </button>
@@ -3799,20 +3799,20 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                         {/* 高度な機能 */}
                         <div className="space-y-2">
-                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">Advanced</p>
+                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest pl-1">高度な機能</p>
 
                             {/* カラーパレット */}
                             <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                                 <button onClick={() => toggleTool('color-palette')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Droplet className="h-3.5 w-3.5" /></div>
-                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Color Palette</h4><p className="text-[10px] text-gray-500">Global colors</p></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">カラーパレット</h4><p className="text-[10px] text-gray-500">グローバルカラー設定</p></div>
                                     </div>
                                     {expandedTools.has('color-palette') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                                 </button>
                                 {expandedTools.has('color-palette') && (
                                     <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
-                                        <button onClick={() => setShowColorPaletteModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Configure Palette</button>
+                                        <button onClick={() => setShowColorPaletteModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">パレット設定</button>
                                     </div>
                                 )}
                             </div>
@@ -3822,13 +3822,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 <button onClick={() => toggleTool('copy-edit')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Type className="h-3.5 w-3.5" /></div>
-                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Copy Editor</h4><p className="text-[10px] text-gray-500">AI Text Generation</p></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">コピー編集</h4><p className="text-[10px] text-gray-500">AI文章生成</p></div>
                                     </div>
                                     {expandedTools.has('copy-edit') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                                 </button>
                                 {expandedTools.has('copy-edit') && (
                                     <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
-                                        <button onClick={() => setShowCopyEditModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Edit Copy</button>
+                                        <button onClick={() => setShowCopyEditModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">テキスト編集</button>
                                     </div>
                                 )}
                             </div>
@@ -3838,13 +3838,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 <button onClick={() => toggleTool('cta')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><MousePointer className="h-3.5 w-3.5" /></div>
-                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">CTA Config</h4><p className="text-[10px] text-gray-500">Button links</p></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">CTA設定</h4><p className="text-[10px] text-gray-500">ボタンリンク</p></div>
                                     </div>
                                     {expandedTools.has('cta') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                                 </button>
                                 {expandedTools.has('cta') && (
                                     <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
-                                        <button onClick={() => setShowCTAModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Configure CTA</button>
+                                        <button onClick={() => setShowCTAModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">CTA設定</button>
                                     </div>
                                 )}
                             </div>
@@ -3854,13 +3854,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 <button onClick={() => toggleTool('mobile')} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Smartphone className="h-3.5 w-3.5" /></div>
-                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">Mobile Opt</h4><p className="text-[10px] text-gray-500">Auto-generate mobile</p></div>
+                                        <div className="text-left"><h4 className="text-xs font-semibold text-gray-900">モバイル最適化</h4><p className="text-[10px] text-gray-500">モバイル版自動生成</p></div>
                                     </div>
                                     {expandedTools.has('mobile') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                                 </button>
                                 {expandedTools.has('mobile') && (
                                     <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
-                                        <button onClick={() => setShowMobileOptimizeModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Generate Mobile</button>
+                                        <button onClick={() => setShowMobileOptimizeModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">モバイル版生成</button>
                                     </div>
                                 )}
                             </div>
@@ -3871,15 +3871,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Video className="h-3.5 w-3.5" /></div>
                                         <div className="text-left">
-                                            <h4 className="text-xs font-semibold text-gray-900 flex items-center gap-2">Video<span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0 bg-gray-900 text-white rounded-sm font-medium">Max</span></h4>
-                                            <p className="text-[10px] text-gray-500">Insert video</p>
+                                            <h4 className="text-xs font-semibold text-gray-900 flex items-center gap-2">動画<span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0 bg-gray-900 text-white rounded-sm font-medium">Max</span></h4>
+                                            <p className="text-[10px] text-gray-500">動画を挿入</p>
                                         </div>
                                     </div>
                                     {expandedTools.has('video') ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                                 </button>
                                 {expandedTools.has('video') && (
                                     <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2 pt-2">
-                                        <button onClick={() => setShowVideoModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">Add Video</button>
+                                        <button onClick={() => setShowVideoModal(true)} className="w-full py-2 bg-gray-50 text-gray-700 text-xs font-medium rounded hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200">動画追加</button>
                                     </div>
                                 )}
                             </div>
