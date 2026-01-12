@@ -258,8 +258,15 @@ export function CreditDisplay() {
           className={`relative overflow-hidden bg-gradient-to-r ${planStyle.gradient} p-6 text-white`}
         >
           <div className="absolute inset-0 bg-black/10" />
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24" />
+          <motion.img
+            src="/bell-bag.png"
+            alt="Credit Bag"
+            className="absolute -right-8 -bottom-12 w-48 h-48 object-contain opacity-40 rotate-12"
+            initial={{ rotate: 0, scale: 0.8 }}
+            animate={{ rotate: 12, scale: 1 }}
+            transition={{ duration: 0.8, ease: "backOut" }}
+          />
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
@@ -341,11 +348,10 @@ export function CreditDisplay() {
                 <Tabs.Trigger
                   key={tab.id}
                   value={tab.id}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    selectedTab === tab.id
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${selectedTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                    }`}
                 >
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
@@ -369,13 +375,12 @@ export function CreditDisplay() {
                 className="h-3 bg-gray-100 rounded-full overflow-hidden"
               >
                 <Progress.Indicator
-                  className={`h-full transition-all duration-500 ease-out ${
-                    usagePercentage >= 90
+                  className={`h-full transition-all duration-500 ease-out ${usagePercentage >= 90
                       ? 'bg-gradient-to-r from-red-500 to-red-600'
                       : usagePercentage >= 70
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500'
                         : 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                  }`}
+                    }`}
                   style={{ width: `${usagePercentage}%` }}
                 />
               </Progress.Root>
@@ -479,13 +484,12 @@ export function CreditDisplay() {
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`p-2 rounded-lg ${
-                          tx.type === 'plan_grant'
+                        className={`p-2 rounded-lg ${tx.type === 'plan_grant'
                             ? 'bg-purple-100'
                             : tx.type === 'purchase'
                               ? 'bg-green-100'
                               : 'bg-gray-100'
-                        }`}
+                          }`}
                       >
                         {tx.type === 'plan_grant' ? (
                           <Gift className="w-4 h-4 text-purple-600" />
@@ -512,9 +516,8 @@ export function CreditDisplay() {
                       </div>
                     </div>
                     <span
-                      className={`font-mono text-sm font-medium ${
-                        tx.amountUsd >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
+                      className={`font-mono text-sm font-medium ${tx.amountUsd >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
                     >
                       {tx.amountUsd >= 0 ? '+' : ''}${tx.amountUsd.toFixed(4)}
                     </span>
@@ -568,11 +571,10 @@ export function CreditDisplay() {
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handlePurchase(pkg)}
                       disabled={purchaseLoading !== null}
-                      className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                        purchaseLoading === pkg.id
+                      className={`w-full p-4 border-2 rounded-xl text-left transition-all ${purchaseLoading === pkg.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-blue-500 hover:shadow-md'
-                      } disabled:opacity-50`}
+                        } disabled:opacity-50`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -722,11 +724,10 @@ export function SubscriptionRequired() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * index }}
-            className={`relative rounded-2xl border-2 p-6 transition-all hover:shadow-lg ${
-              plan.popular
+            className={`relative rounded-2xl border-2 p-6 transition-all hover:shadow-lg ${plan.popular
                 ? 'border-blue-500 shadow-blue-100'
                 : 'border-gray-200 hover:border-gray-300'
-            }`}
+              }`}
           >
             {plan.popular && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -771,11 +772,10 @@ export function SubscriptionRequired() {
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSubscribe(plan.id)}
               disabled={loading !== null}
-              className={`mt-6 w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                plan.popular
+              className={`mt-6 w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${plan.popular
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } disabled:opacity-50`}
+                } disabled:opacity-50`}
             >
               {loading === plan.id ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

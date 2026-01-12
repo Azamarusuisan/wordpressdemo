@@ -109,8 +109,17 @@ export function InsufficientCreditProvider({ children }: ProviderProps) {
                   <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
                     {/* ヘッダー - 警告カラー */}
                     <div className="relative bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+
                       <div className="absolute inset-0 bg-black/10" />
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                      <motion.img
+                        src="/bell-bag.png"
+                        alt="Credit Bag"
+                        className="absolute -right-6 -bottom-8 w-32 h-32 object-contain opacity-40 rotate-[10deg]"
+                        initial={{ rotate: 10, scale: 0.9 }}
+                        animate={{ rotate: 15, scale: 1 }}
+                        transition={{ duration: 0.8, ease: "backOut" }}
+                      />
+                      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
                       <Dialog.Close asChild>
                         <button className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors">
