@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
@@ -333,23 +334,71 @@ export async function POST(request: NextRequest) {
     }
 
     // 使用量制限チェック
+    log.info(`Checking generation limit for user: ${user.id}`);
     const limitCheck = await checkGenerationLimit(user.id);
+
     if (!limitCheck.allowed) {
         // FreeプランでAPIキー未設定の場合
         if (limitCheck.needApiKey) {
+            log.error(`[LIMIT] API key required for user ${user.id}`);
+            console.error('[IMPORT-URL] 402 Error: API key required', { userId: user.id, reason: limitCheck.reason });
             return Response.json({
                 error: 'API_KEY_REQUIRED',
-                message: limitCheck.reason,
+                message: limitCheck.reason || 'Freeプランでは自分のGoogle AI APIキーの設定が必要です。設定画面でAPIキーを入力してください。',
+                needApiKey: true,
             }, { status: 402 });
         }
+
+        // クレジット不足の場合
+        if (limitCheck.needPurchase) {
+            log.error(`[LIMIT] Credit insufficient for user ${user.id}: balance=$${limitCheck.currentBalanceUsd?.toFixed(4)}`);
+            console.error('[IMPORT-URL] 429 Error: Credit insufficient', {
+                userId: user.id,
+                balance: limitCheck.currentBalanceUsd,
+                reason: limitCheck.reason
+            });
+            return Response.json({
+                error: 'CREDIT_INSUFFICIENT',
+                message: limitCheck.reason || `クレジットが不足しています。現在の残高: $${limitCheck.currentBalanceUsd?.toFixed(2) || '0.00'}`,
+                needPurchase: true,
+                currentBalanceUsd: limitCheck.currentBalanceUsd,
+            }, { status: 429 });
+        }
+
+        // サブスクリプションが必要な場合
+        if (limitCheck.needSubscription) {
+            log.error(`[LIMIT] Subscription required for user ${user.id}`);
+            console.error('[IMPORT-URL] 429 Error: Subscription required', { userId: user.id, reason: limitCheck.reason });
+            return Response.json({
+                error: 'SUBSCRIPTION_REQUIRED',
+                message: limitCheck.reason || 'サブスクリプションが必要です。プランを選択してください。',
+                needSubscription: true,
+            }, { status: 429 });
+        }
+
+        // その他の制限
+        log.error(`[LIMIT] Usage limit exceeded for user ${user.id}: ${limitCheck.reason}`);
+        console.error('[IMPORT-URL] 429 Error: Usage limit exceeded', {
+            userId: user.id,
+            reason: limitCheck.reason,
+            current: limitCheck.current,
+            limit: limitCheck.limit
+        });
         return Response.json({
-            error: 'Usage limit exceeded',
-            message: limitCheck.reason,
+            error: 'USAGE_LIMIT_EXCEEDED',
+            message: limitCheck.reason || '使用量制限に達しました。',
             usage: {
                 current: limitCheck.current,
                 limit: limitCheck.limit,
             }
         }, { status: 429 });
+    }
+
+    log.success(`Limit check passed for user ${user.id}`);
+    if (limitCheck.usingOwnApiKey) {
+        log.info(`Using user's own API key (credit consumption skipped)`);
+    } else {
+        log.info(`Using system API key, balance: $${limitCheck.currentBalanceUsd?.toFixed(4) || 'N/A'}`);
     }
 
     const body = await request.json();
@@ -400,9 +449,16 @@ export async function POST(request: NextRequest) {
         // 1. Launch Puppeteer
         send({ type: 'progress', step: 'browser', message: 'ブラウザを起動中...' });
         log.info('Launching Puppeteer...');
+
+        // クラウド環境用にChromiumを設定
+        const executablePath = await chromium.executablePath();
+        log.info(`Chromium path: ${executablePath}`);
+
         const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath,
+            headless: chromium.headless,
         });
         const page = await browser.newPage();
 

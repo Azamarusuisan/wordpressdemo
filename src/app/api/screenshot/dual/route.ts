@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import sharp from 'sharp';
@@ -324,9 +325,14 @@ export async function POST(request: NextRequest) {
 
         let browser;
         try {
+            const executablePath = await chromium.executablePath();
+            log.info(`Chromium path: ${executablePath}`);
+
             browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
+                args: chromium.args,
+                defaultViewport: chromium.defaultViewport,
+                executablePath,
+                headless: chromium.headless,
             });
         } catch (launchError: any) {
             log.error(`Browser launch failed: ${launchError.message}`);

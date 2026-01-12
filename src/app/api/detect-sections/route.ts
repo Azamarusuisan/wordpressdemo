@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import sharp from 'sharp';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
@@ -247,9 +248,14 @@ export async function POST(request: NextRequest) {
 
         // Launch Puppeteer
         log.info('Launching Puppeteer...');
+        const executablePath = await chromium.executablePath();
+        log.info(`Chromium path: ${executablePath}`);
+
         const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath,
+            headless: chromium.headless,
         });
         const page = await browser.newPage();
 
