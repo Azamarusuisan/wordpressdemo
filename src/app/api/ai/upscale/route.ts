@@ -1,40 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
+import Replicate from 'replicate';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 
-// Real-ESRGAN (UpscalerJS) を動的インポート（TensorFlow.js対応）
-let Upscaler: any = null;
-let esrganModel: any = null;
-
-async function getUpscaler() {
-    if (!Upscaler) {
-        // 動的インポートでサーバーサイドのみでロード
-        const upscalerModule = await import('upscaler');
-        Upscaler = upscalerModule.default;
-
-        // ESRGAN Thick モデル（高品質版）
-        const modelModule = await import('@upscalerjs/esrgan-thick');
-        esrganModel = modelModule.default;
-    }
-    return { Upscaler, esrganModel };
-}
-
 interface UpscaleRequest {
     imageUrl?: string;
     imageBase64?: string;
-    scale?: number;        // 拡大倍率（2, 4）Real-ESRGANは2x/4xをサポート
-    useRealESRGAN?: boolean; // Real-ESRGAN使用（デフォルト: true）
+    scale?: number;        // 拡大倍率（2, 4）
+    useAI?: boolean;       // AI超解像を使用するか（デフォルト: true）
+}
+
+// Replicate クライアント遅延初期化
+let _replicate: Replicate | null = null;
+
+function getReplicate(): Replicate | null {
+    if (!_replicate) {
+        const apiToken = process.env.REPLICATE_API_TOKEN;
+        if (!apiToken) {
+            return null;
+        }
+        _replicate = new Replicate({ auth: apiToken });
+    }
+    return _replicate;
 }
 
 export async function POST(request: NextRequest) {
     const startTime = createTimer();
 
     // ユーザー認証
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabaseClient = await createClient();
+    const { data: { user } } = await supabaseClient.auth.getUser();
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -45,19 +43,21 @@ export async function POST(request: NextRequest) {
             imageUrl,
             imageBase64,
             scale = 2,
-            useRealESRGAN = true
+            useAI = true,
         }: UpscaleRequest = await request.json();
 
-        // Real-ESRGANは2xと4xのみサポート
+        // 拡大倍率を制限（2x または 4x）
         const safeScale = scale >= 3 ? 4 : 2;
 
         // 画像データ取得
         let imageBuffer: Buffer;
+        let inputImageUrl: string | null = null;
 
         if (imageBase64) {
             const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
             imageBuffer = Buffer.from(base64Data, 'base64');
         } else if (imageUrl) {
+            inputImageUrl = imageUrl;
             const imageResponse = await fetch(imageUrl);
             if (!imageResponse.ok) {
                 throw new Error('画像の取得に失敗しました');
@@ -76,55 +76,55 @@ export async function POST(request: NextRequest) {
         let upscaledBuffer: Buffer;
         let modelName = 'sharp-lanczos3';
 
-        if (useRealESRGAN) {
+        // AI超解像を試行
+        const replicate = getReplicate();
+        if (useAI && replicate) {
             try {
-                // Real-ESRGAN (UpscalerJS) を使用
-                const { Upscaler, esrganModel } = await getUpscaler();
+                console.log('Using Real-ESRGAN via Replicate API...');
 
-                // UpscalerJSインスタンス作成
-                const upscaler = new Upscaler({
-                    model: esrganModel,
-                });
-
-                // Base64形式で入力
-                const inputBase64 = `data:image/png;base64,${imageBuffer.toString('base64')}`;
-
-                // アップスケール実行（結果はBase64 Data URL）
-                const upscaledDataUrl = await upscaler.upscale(inputBase64, {
-                    output: 'base64',
-                    patchSize: 64,      // メモリ使用量を抑えるためパッチ処理
-                    padding: 2,
-                });
-
-                // Base64からBufferに変換
-                const upscaledBase64 = upscaledDataUrl.replace(/^data:image\/\w+;base64,/, '');
-                upscaledBuffer = Buffer.from(upscaledBase64, 'base64');
-                modelName = 'real-esrgan-thick';
-
-                // 必要に応じて追加のスケール調整（4xの場合）
-                if (safeScale === 4) {
-                    // Real-ESRGANを2回適用で4x
-                    const secondPass = await upscaler.upscale(upscaledDataUrl, {
-                        output: 'base64',
-                        patchSize: 64,
-                        padding: 2,
-                    });
-                    const secondBase64 = secondPass.replace(/^data:image\/\w+;base64,/, '');
-                    upscaledBuffer = Buffer.from(secondBase64, 'base64');
+                // Base64からデータURLを生成（Replicateが直接受け入れ可能）
+                let inputForReplicate: string;
+                if (inputImageUrl) {
+                    inputForReplicate = inputImageUrl;
+                } else {
+                    // Base64の場合はデータURLとして渡す
+                    inputForReplicate = `data:image/png;base64,${imageBuffer.toString('base64')}`;
                 }
 
-                // クリーンアップ
-                upscaler.dispose();
+                // Real-ESRGAN モデルを実行
+                const output = await replicate.run(
+                    "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+                    {
+                        input: {
+                            image: inputForReplicate,
+                            scale: safeScale,
+                            face_enhance: false,  // 顔補正は無効（LP画像用）
+                        }
+                    }
+                );
 
-            } catch (esrganError: any) {
-                console.warn('Real-ESRGAN failed, falling back to Sharp:', esrganError.message);
+                // 結果URLから画像を取得（Replicateは画像URLを返す）
+                const outputUrl = String(output);
+                const resultResponse = await fetch(outputUrl);
+                if (!resultResponse.ok) {
+                    throw new Error('Real-ESRGAN結果の取得に失敗しました');
+                }
+                upscaledBuffer = Buffer.from(await resultResponse.arrayBuffer());
+                modelName = 'real-esrgan-replicate';
+                console.log('Real-ESRGAN upscale completed successfully');
+
+            } catch (aiError: any) {
+                console.warn('Real-ESRGAN failed, falling back to Sharp:', aiError.message);
                 // フォールバック: Sharp使用
                 upscaledBuffer = await sharpUpscale(imageBuffer, safeScale);
                 modelName = 'sharp-lanczos3-fallback';
             }
         } else {
-            // Sharp使用
+            // Sharp使用（AIが無効またはReplicate未設定）
             upscaledBuffer = await sharpUpscale(imageBuffer, safeScale);
+            if (!replicate && useAI) {
+                console.log('REPLICATE_API_TOKEN not configured, using Sharp');
+            }
         }
 
         // 最終的なサイズを取得
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         const newHeight = finalMetadata.height || originalHeight * safeScale;
 
         // Supabaseにアップロード
-        const filename = `upscaled-esrgan-${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
+        const filename = `upscaled-${modelName}-${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
         const { error: uploadError } = await supabase
             .storage
             .from('images')
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
                 mime: 'image/png',
                 width: newWidth,
                 height: newHeight,
-                sourceType: 'upscale-esrgan',
+                sourceType: modelName.includes('esrgan') ? 'upscale-ai' : 'upscale',
             },
         });
 
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
             type: 'upscale',
             endpoint: '/api/ai/upscale',
             model: modelName,
-            inputPrompt: `Real-ESRGAN Upscale ${originalWidth}x${originalHeight} → ${newWidth}x${newHeight} (${safeScale}x)`,
+            inputPrompt: `Upscale ${originalWidth}x${originalHeight} → ${newWidth}x${newHeight} (${safeScale}x)`,
             status: 'succeeded',
             startTime
         });
@@ -184,6 +184,7 @@ export async function POST(request: NextRequest) {
             media,
             upscaleInfo: {
                 model: modelName,
+                isAI: modelName.includes('esrgan'),
                 originalSize: { width: originalWidth, height: originalHeight },
                 newSize: { width: newWidth, height: newHeight },
                 scale: safeScale,
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             type: 'upscale',
             endpoint: '/api/ai/upscale',
-            model: 'real-esrgan-thick',
+            model: 'error',
             inputPrompt: 'Error',
             status: 'failed',
             errorMessage: error.message,
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// Sharp フォールバック関数
+// Sharp フォールバック関数（高品質補間）
 async function sharpUpscale(imageBuffer: Buffer, scale: number): Promise<Buffer> {
     const metadata = await sharp(imageBuffer).metadata();
     const newWidth = Math.round((metadata.width || 1024) * scale);

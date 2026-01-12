@@ -6,12 +6,22 @@
 import Stripe from 'stripe';
 import { PLANS, CREDIT_PACKAGES, type PlanType } from './plans';
 
-// Stripeクライアント初期化
-// TODO: 本番実装時にAPIバージョンを確認
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-12-15.clover',
-  typescript: true,
-});
+// Stripeクライアント遅延初期化（ビルド時エラー防止）
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    _stripe = new Stripe(secretKey, {
+      apiVersion: '2025-12-15.clover',
+      typescript: true,
+    });
+  }
+  return _stripe;
+}
 
 // ベースURL
 const getBaseUrl = () =>
@@ -25,6 +35,8 @@ export async function getOrCreateCustomer(
   userId: string,
   name?: string
 ): Promise<string> {
+  const stripe = getStripe();
+
   // 既存のCustomerを検索
   const existingCustomers = await stripe.customers.list({
     email,
@@ -54,6 +66,7 @@ export async function createSubscriptionCheckout(
   planId: PlanType,
   customerId?: string
 ): Promise<string> {
+  const stripe = getStripe();
   const plan = PLANS[planId];
   if (!plan) {
     throw new Error(`Invalid plan: ${planId}`);
@@ -101,6 +114,7 @@ export async function createCreditPurchaseCheckout(
   packageId: number,
   customerId?: string
 ): Promise<string> {
+  const stripe = getStripe();
   const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
   if (!pkg) {
     throw new Error(`Invalid package: ${packageId}`);
@@ -147,6 +161,7 @@ export async function cancelSubscription(
   stripeSubscriptionId: string,
   cancelAtPeriodEnd: boolean = true
 ): Promise<Stripe.Subscription> {
+  const stripe = getStripe();
   if (cancelAtPeriodEnd) {
     // 期間終了時にキャンセル
     return stripe.subscriptions.update(stripeSubscriptionId, {
@@ -164,6 +179,7 @@ export async function cancelSubscription(
 export async function resumeSubscription(
   stripeSubscriptionId: string
 ): Promise<Stripe.Subscription> {
+  const stripe = getStripe();
   return stripe.subscriptions.update(stripeSubscriptionId, {
     cancel_at_period_end: false,
   });
@@ -176,6 +192,7 @@ export async function changeSubscriptionPlan(
   stripeSubscriptionId: string,
   newPlanId: PlanType
 ): Promise<Stripe.Subscription> {
+  const stripe = getStripe();
   const plan = PLANS[newPlanId];
   if (!plan) {
     throw new Error(`Invalid plan: ${newPlanId}`);
@@ -206,6 +223,7 @@ export async function changeSubscriptionPlan(
 export async function getSubscriptionDetails(
   stripeSubscriptionId: string
 ): Promise<Stripe.Subscription | null> {
+  const stripe = getStripe();
   try {
     return await stripe.subscriptions.retrieve(stripeSubscriptionId);
   } catch {
@@ -220,6 +238,7 @@ export async function createCustomerPortalSession(
   stripeCustomerId: string,
   returnUrl?: string
 ): Promise<string> {
+  const stripe = getStripe();
   const session = await stripe.billingPortal.sessions.create({
     customer: stripeCustomerId,
     return_url: returnUrl || `${getBaseUrl()}/admin/settings`,
@@ -235,6 +254,7 @@ export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string
 ): Stripe.Event {
+  const stripe = getStripe();
   return stripe.webhooks.constructEvent(
     payload,
     signature,
@@ -260,6 +280,7 @@ export function getPlanIdFromPriceId(priceId: string): PlanType | null {
 export async function getCheckoutSession(
   sessionId: string
 ): Promise<Stripe.Checkout.Session> {
+  const stripe = getStripe();
   return stripe.checkout.sessions.retrieve(sessionId, {
     expand: ['subscription', 'customer'],
   });

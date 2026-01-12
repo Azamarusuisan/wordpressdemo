@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, X, RefreshCw, Shield, Clock, Mail, Zap, Database, FileText, Crown, Ban, AlertTriangle } from 'lucide-react';
 
-// プラン定義（サーバー側と同期）
+// プラン定義（src/lib/plans.ts と同期）
 const PLANS = {
-    free: { name: 'Free', color: 'bg-gray-100 text-gray-700', description: '月10回生成' },
-    starter: { name: 'Starter', color: 'bg-blue-100 text-blue-700', description: '月100回生成' },
-    pro: { name: 'Pro', color: 'bg-purple-100 text-purple-700', description: '月500回生成' },
-    enterprise: { name: 'Enterprise', color: 'bg-amber-100 text-amber-700', description: '無制限' },
+    free: { name: 'Free', color: 'bg-gray-100 text-gray-700', description: '自分のAPIキー使用' },
+    pro: { name: 'Pro', color: 'bg-purple-100 text-purple-700', description: '月$16.67クレジット' },
+    expert: { name: 'Expert', color: 'bg-blue-100 text-blue-700', description: '月$50クレジット' },
+    enterprise: { name: 'Enterprise', color: 'bg-amber-100 text-amber-700', description: '月$166.67クレジット' },
 };
 
 interface UserUsage {

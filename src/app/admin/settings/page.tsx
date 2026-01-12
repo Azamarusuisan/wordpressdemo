@@ -89,7 +89,7 @@ export default function SettingsPage() {
                 const res = await fetch('/api/user/credits');
                 if (res.ok) {
                     const data = await res.json();
-                    setCreditBalance(data.balanceUsd);
+                    setCreditBalance(data.credits?.currentBalanceUsd ?? null);
                 }
             } catch (e) {
                 console.error('Failed to fetch credit balance', e);

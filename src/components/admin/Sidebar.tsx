@@ -19,14 +19,14 @@ const PLAN_INFO: Record<string, { name: string; color: string }> = {
 
 // ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
 const navItems = [
-    { name: 'Pages', href: '/admin/pages', icon: FileText, prefetchUrl: '/api/pages' },
-    { name: 'Media', href: '/admin/media', icon: Images, prefetchUrl: '/api/media' },
-    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3, prefetchUrl: '/api/admin/stats?days=30' },
-    { name: 'History', href: '/admin/import-history', icon: History, prefetchUrl: null },
-    { name: 'Navigation', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation' },
-    { name: 'Settings', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings' },
-    { name: 'Users', href: '/admin/users', icon: Shield, prefetchUrl: null },
-    { name: 'Waitingroom', href: '/admin/waitingroom', icon: Inbox, prefetchUrl: '/api/admin/waitingroom' },
+    { name: 'Pages', href: '/admin/pages', icon: FileText, prefetchUrl: '/api/pages', adminOnly: false },
+    { name: 'Media', href: '/admin/media', icon: Images, prefetchUrl: '/api/media', adminOnly: false },
+    { name: 'API Usage', href: '/admin/api-usage', icon: BarChart3, prefetchUrl: '/api/admin/stats?days=30', adminOnly: false },
+    { name: 'History', href: '/admin/import-history', icon: History, prefetchUrl: null, adminOnly: false },
+    { name: 'Navigation', href: '/admin/navigation', icon: Navigation, prefetchUrl: '/api/config/navigation', adminOnly: false },
+    { name: 'Settings', href: '/admin/settings', icon: Settings, prefetchUrl: '/api/admin/settings', adminOnly: false },
+    { name: 'Users', href: '/admin/users', icon: Shield, prefetchUrl: null, adminOnly: true },
+    { name: 'Waitingroom', href: '/admin/waitingroom', icon: Inbox, prefetchUrl: '/api/admin/waitingroom', adminOnly: true },
 ] as const;
 
 // データプリフェッチ用のキャッシュ
@@ -51,7 +51,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
     // SWRでユーザー設定を取得（キャッシュ済み）
     const { data: userSettings } = useUserSettings();
-    const plan = userSettings?.plan || 'normal';
+    const plan = userSettings?.plan || 'free';
     const username = user?.email?.split('@')[0] || 'User';
     const isAdmin = userSettings?.role === 'admin';
 
@@ -132,7 +132,9 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
                 <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
                     <div className="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Menu</div>
-                    {navItems.map((item) => {
+                    {navItems
+                        .filter((item) => !item.adminOnly || isAdmin)
+                        .map((item) => {
                         const Icon = item.icon;
                         const isActive = activeItem === item.href;
                         return (

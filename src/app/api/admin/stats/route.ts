@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 
+// 管理者かどうかをチェック
+async function isAdmin(userId: string): Promise<boolean> {
+    const userSettings = await prisma.userSettings.findUnique({
+        where: { userId },
+        select: { role: true }
+    });
+    return userSettings?.role === 'admin';
+}
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient();
@@ -13,7 +22,17 @@ export async function GET(request: NextRequest) {
 
         const searchParams = request.nextUrl.searchParams;
         const days = parseInt(searchParams.get('days') || '30');
-        const targetUserId = searchParams.get('userId') || user.id;
+        const requestedUserId = searchParams.get('userId');
+
+        // 他人のデータを見る場合は管理者チェック
+        let targetUserId = user.id;
+        if (requestedUserId && requestedUserId !== user.id) {
+            const admin = await isAdmin(user.id);
+            if (!admin) {
+                return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
+            }
+            targetUserId = requestedUserId;
+        }
 
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
