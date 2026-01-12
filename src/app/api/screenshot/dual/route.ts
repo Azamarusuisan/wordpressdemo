@@ -331,7 +331,7 @@ export async function POST(request: NextRequest) {
             browser = await puppeteer.launch({
                 args: chromium.args,
                 executablePath,
-                headless: chromium.headless,
+                headless: true,
             });
         } catch (launchError: any) {
             log.error(`Browser launch failed: ${launchError.message}`);
