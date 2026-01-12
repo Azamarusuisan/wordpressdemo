@@ -263,9 +263,10 @@ export default function VideoInsertModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-violet-50">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center shadow-lg">
                             <Video className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -291,7 +292,7 @@ export default function VideoInsertModal({
                                     className={clsx(
                                         "relative rounded-lg overflow-hidden border-2 transition-all",
                                         selectedSection === String(section.id)
-                                            ? "border-indigo-500 ring-2 ring-indigo-200"
+                                            ? "border-gray-900 ring-2 ring-gray-200"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
@@ -323,15 +324,15 @@ export default function VideoInsertModal({
                                         className={clsx(
                                             "p-3 rounded-xl border-2 text-left transition-all",
                                             videoSource === source.id
-                                                ? "border-indigo-500 bg-indigo-50"
+                                                ? "border-gray-900 bg-gray-50"
                                                 : "border-gray-200 hover:border-gray-300",
-                                            source.id === 'ai-generate' && "border-purple-200 hover:border-purple-300",
-                                            source.id === 'ai-generate' && videoSource === source.id && "border-purple-500 bg-purple-50"
+                                            source.id === 'ai-generate' && "border-gray-200 hover:border-gray-300",
+                                            source.id === 'ai-generate' && videoSource === source.id && "border-gray-900 bg-gray-50"
                                         )}
                                     >
                                         <Icon className={clsx(
                                             "h-5 w-5 mb-2",
-                                            source.id === 'ai-generate' ? "text-purple-600" : "text-gray-600"
+                                            source.id === 'ai-generate' ? "text-gray-900" : "text-gray-600"
                                         )} />
                                         <p className="text-sm font-medium text-gray-900">{source.label}</p>
                                         <p className="text-xs text-gray-500">{source.description}</p>
@@ -351,7 +352,7 @@ export default function VideoInsertModal({
                                     value={videoUrl}
                                     onChange={(e) => setVideoUrl(e.target.value)}
                                     placeholder="https://www.youtube.com/watch?v=..."
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
                                 />
                                 {videoUrl && extractYouTubeId(videoUrl) && (
                                     <div className="mt-3 p-3 bg-gray-50 rounded-lg">
@@ -391,7 +392,7 @@ export default function VideoInsertModal({
                                             <button
                                                 onClick={handleUploadVideo}
                                                 disabled={isUploading}
-                                                className="px-4 py-2 bg-indigo-500 text-white text-sm font-bold rounded-lg hover:bg-indigo-600 disabled:opacity-50 flex items-center gap-2"
+                                                className="px-4 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
                                             >
                                                 {isUploading ? (
                                                     <>
@@ -423,7 +424,7 @@ export default function VideoInsertModal({
                                     value={embedCode}
                                     onChange={(e) => setEmbedCode(e.target.value)}
                                     placeholder='<iframe src="..." ...></iframe>'
-                                    className="w-full h-24 px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                    className="w-full h-24 px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
                                 />
                             </div>
                         )}
@@ -431,14 +432,14 @@ export default function VideoInsertModal({
                         {videoSource === 'ai-generate' && (
                             <div className="space-y-4">
                                 {/* API課金費用 */}
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                     <div className="flex items-center gap-2">
-                                        <DollarSign className="h-4 w-4 text-amber-600" />
-                                        <span className="text-xs font-bold text-amber-800">
+                                        <DollarSign className="h-4 w-4 text-gray-600" />
+                                        <span className="text-xs font-bold text-gray-900">
                                             AI動画生成の課金費用: 約${(aiDuration * 0.35).toFixed(2)}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-amber-600 mt-1 ml-6">
+                                    <p className="text-[10px] text-gray-600 mt-1 ml-6">
                                         Veo 2: {aiDuration}秒 × $0.35/秒
                                     </p>
                                 </div>
@@ -449,7 +450,7 @@ export default function VideoInsertModal({
                                         value={aiPrompt}
                                         onChange={(e) => setAiPrompt(e.target.value)}
                                         placeholder="例: 青い空の下、波が静かに打ち寄せるビーチの風景。カメラはゆっくりと右にパンする。"
-                                        className="w-full h-24 px-4 py-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                        className="w-full h-24 px-4 py-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
                                     />
                                 </div>
 
@@ -459,7 +460,7 @@ export default function VideoInsertModal({
                                         {selectedSection && (
                                             <button
                                                 onClick={useSelectedSectionImage}
-                                                className="px-3 py-2 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                                                className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                                             >
                                                 選択中のセクション画像を使用
                                             </button>
@@ -489,7 +490,7 @@ export default function VideoInsertModal({
                                                 className={clsx(
                                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                                                     aiDuration === d
-                                                        ? "bg-purple-500 text-white"
+                                                        ? "bg-black text-white"
                                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                                 )}
                                             >
@@ -502,7 +503,7 @@ export default function VideoInsertModal({
                                 <button
                                     onClick={handleGenerateVideo}
                                     disabled={!aiPrompt.trim() || isGenerating}
-                                    className="w-full py-3 bg-gradient-to-r from-purple-500 to-violet-600 text-white text-sm font-bold rounded-lg hover:from-purple-600 hover:to-violet-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isGenerating ? (
                                         <>
@@ -518,8 +519,8 @@ export default function VideoInsertModal({
                                 </button>
 
                                 {generatedVideoUrl && (
-                                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                        <div className="flex items-center gap-2 text-green-700 mb-2">
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                        <div className="flex items-center gap-2 text-gray-700 mb-2">
                                             <Check className="h-4 w-4" />
                                             <span className="text-sm font-bold">生成完了</span>
                                         </div>
@@ -545,7 +546,7 @@ export default function VideoInsertModal({
                                     className={clsx(
                                         "p-3 rounded-xl border-2 text-left transition-all",
                                         displayMode === mode.id
-                                            ? "border-indigo-500 bg-indigo-50"
+                                            ? "border-gray-900 bg-gray-50"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
@@ -569,7 +570,7 @@ export default function VideoInsertModal({
                                         max="90"
                                         value={videoX}
                                         onChange={(e) => setVideoX(Number(e.target.value))}
-                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                     />
                                 </div>
                                 <div>
@@ -580,7 +581,7 @@ export default function VideoInsertModal({
                                         max="90"
                                         value={videoY}
                                         onChange={(e) => setVideoY(Number(e.target.value))}
-                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                     />
                                 </div>
                                 <div>
@@ -591,7 +592,7 @@ export default function VideoInsertModal({
                                         max="80"
                                         value={videoWidth}
                                         onChange={(e) => setVideoWidth(Number(e.target.value))}
-                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                     />
                                 </div>
                             </div>
@@ -607,7 +608,7 @@ export default function VideoInsertModal({
                                 type="checkbox"
                                 checked={autoplay}
                                 onChange={(e) => setAutoplay(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-gray-500"
                             />
                             <span className="text-sm text-gray-700">自動再生</span>
                         </label>
@@ -616,7 +617,7 @@ export default function VideoInsertModal({
                                 type="checkbox"
                                 checked={loop}
                                 onChange={(e) => setLoop(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-gray-500"
                             />
                             <span className="text-sm text-gray-700">ループ再生</span>
                         </label>
@@ -625,7 +626,7 @@ export default function VideoInsertModal({
                                 type="checkbox"
                                 checked={muted}
                                 onChange={(e) => setMuted(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                                className="h-4 w-4 rounded border-gray-300 text-black focus:ring-gray-500"
                             />
                             <span className="text-sm text-gray-700">ミュート（自動再生時は必須）</span>
                         </label>
@@ -643,7 +644,7 @@ export default function VideoInsertModal({
                     <button
                         onClick={handleInsert}
                         disabled={!selectedSection || isInserting}
-                        className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-bold rounded-lg hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                        className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     >
                         {isInserting ? (
                             <>

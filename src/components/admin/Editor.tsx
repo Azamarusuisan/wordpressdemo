@@ -19,7 +19,7 @@ import VideoInsertModal from '@/components/admin/VideoInsertModal';
 import SectionInsertModal from '@/components/admin/SectionInsertModal';
 import SectionCropModal from '@/components/admin/SectionCropModal';
 import OverlayEditorModal from '@/components/admin/OverlayEditorModal';
-import { GripVertical, Trash2, X, Upload, Sparkles, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, Wand2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool } from 'lucide-react';
 import type { ClickableArea } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -2661,7 +2661,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                         <div className="relative">
                                                             <div className="absolute inset-0 rounded-full bg-white/20 animate-ping" style={{ animationDuration: '1.5s' }} />
                                                             <div className="relative w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-                                                                <Sparkles className="h-10 w-10 text-white animate-pulse" />
+                                                                <RefreshCw className="h-10 w-10 text-white animate-spin" />
                                                             </div>
                                                         </div>
                                                         {/* テキスト */}
@@ -2702,8 +2702,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             className={clsx(
                                                 "relative h-12 flex items-center justify-center cursor-pointer transition-all",
                                                 selectedBoundaries.has(sectionIndex)
-                                                    ? "bg-gradient-to-r from-rose-500 to-pink-500"
-                                                    : "bg-gradient-to-r from-gray-200 to-gray-300 hover:from-rose-200 hover:to-pink-200"
+                                                    ? "bg-gray-900"
+                                                    : "bg-gray-100 hover:bg-gray-200"
                                             )}
                                             onClick={() => {
                                                 setSelectedBoundaries(prev => {
@@ -2721,7 +2721,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                 "flex items-center gap-2 px-4 py-2 rounded-full transition-all",
                                                 selectedBoundaries.has(sectionIndex)
                                                     ? "bg-white/20 text-white"
-                                                    : "bg-white shadow-sm text-gray-600"
+                                                    : "bg-white shadow-sm text-gray-900"
                                             )}>
                                                 {selectedBoundaries.has(sectionIndex) ? (
                                                     <>
@@ -2744,7 +2744,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             className={clsx(
                                                 "h-16 border-2 border-dashed rounded-lg mx-2 my-1 transition-all flex items-center justify-center",
                                                 dragOverSectionId === `after-${section.id}`
-                                                    ? "border-violet-500 bg-violet-50"
+                                                    ? "border-gray-900 bg-gray-50"
                                                     : "border-gray-300 bg-gray-50/50"
                                             )}
                                             onDragOver={(e) => {
@@ -2766,7 +2766,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/insert:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleOpenInsertModal(sectionIndex + 1)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-full shadow-lg hover:shadow-xl transition-all"
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-full shadow-lg hover:shadow-xl transition-all"
                                                 >
                                                     <Plus className="h-3.5 w-3.5" />
                                                     挿入
@@ -2811,9 +2811,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             </>
                         )}
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <RefreshCw className="h-4 w-4 text-orange-500" />
+                            <RefreshCw className="h-4 w-4 text-gray-900" />
                             <span>対象</span>
-                            <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                            <span className="bg-gray-100 text-gray-900 px-2 py-0.5 rounded-sm text-xs font-bold">
                                 {selectedSectionsForRegenerate.size}件
                             </span>
                         </div>
@@ -2859,7 +2859,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 }
                             }}
                             disabled={selectedSectionsForRegenerate.size === 0 || isSaving}
-                            className="px-4 py-1.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-lg hover:from-orange-600 hover:to-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-sm hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <RefreshCw className="h-3.5 w-3.5" />
                             再生成実行
@@ -2873,9 +2873,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
                     <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-2xl shadow-2xl border border-gray-200">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Palette className="h-4 w-4 text-amber-500" />
+                            <Palette className="h-4 w-4 text-gray-900" />
                             <span>背景色統一</span>
-                            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                            <span className="bg-gray-100 text-gray-900 px-2 py-0.5 rounded-sm text-xs font-bold">
                                 {selectedSectionsForBackgroundUnify.size}件
                             </span>
                         </div>
@@ -2913,7 +2913,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 }
                             }}
                             disabled={selectedSectionsForBackgroundUnify.size === 0}
-                            className="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-sm hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <Palette className="h-3.5 w-3.5" />
                             背景色を変更
@@ -3012,7 +3012,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     <button
                                                         key={`local-${index}`}
                                                         onClick={() => handleRestoreVersion(showHistoryPanel, index)}
-                                                        className="group relative aspect-[9/16] bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all"
+                                                        className="group relative aspect-[9/16] bg-gray-100 rounded-sm overflow-hidden border-2 border-transparent hover:border-gray-400 transition-all"
                                                     >
                                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                                         <img
@@ -3026,7 +3026,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                             </span>
                                                         </div>
                                                         <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
-                                                            <span className="bg-purple-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                                            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded-sm text-[9px] font-bold">
                                                                 一時
                                                             </span>
                                                         </div>
@@ -3053,15 +3053,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     >
                                                         {/* ヘッダー：編集タイプと日時 */}
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${item.actionType === 'design-unify' ? 'bg-purple-100 text-purple-700' :
-                                                                item.actionType === 'background-unify' ? 'bg-amber-100 text-amber-700' :
-                                                                    item.actionType === 'inpaint' ? 'bg-blue-100 text-blue-700' :
-                                                                        item.actionType === 'regenerate' ? 'bg-orange-100 text-orange-700' :
-                                                                            item.actionType === 'regenerate-heavy-mobile' ? 'bg-orange-100 text-orange-700' :
-                                                                                item.actionType === 'restore-canvas' ? 'bg-green-100 text-green-700' :
-                                                                                    item.actionType === 'boundary-design' ? 'bg-pink-100 text-pink-700' :
-                                                                                        item.actionType === 'revert' ? 'bg-gray-100 text-gray-700' :
-                                                                                            'bg-gray-100 text-gray-700'
+                                                            <span className={`px-2 py-1 rounded-sm text-xs font-bold ${item.actionType === 'design-unify' ? 'bg-gray-100 text-gray-900' :
+                                                                item.actionType === 'background-unify' ? 'bg-gray-100 text-gray-900' :
+                                                                    item.actionType === 'inpaint' ? 'bg-gray-100 text-gray-900' :
+                                                                        item.actionType === 'regenerate' ? 'bg-gray-100 text-gray-900' :
+                                                                            item.actionType === 'regenerate-heavy-mobile' ? 'bg-gray-100 text-gray-900' :
+                                                                                item.actionType === 'restore-canvas' ? 'bg-gray-100 text-gray-900' :
+                                                                                    item.actionType === 'boundary-design' ? 'bg-gray-100 text-gray-900' :
+                                                                                        item.actionType === 'revert' ? 'bg-gray-100 text-gray-900' :
+                                                                                            'bg-gray-100 text-gray-900'
                                                                 }`}>
                                                                 {item.actionType === 'design-unify' ? '🎨 デザイン統一' :
                                                                     item.actionType === 'background-unify' ? '🎨 背景色統一' :
@@ -3101,7 +3101,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                                     item.previousImageId,
                                                                     item.previousImage?.filePath
                                                                 )}
-                                                                className="flex-1 group relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border-2 border-green-300 hover:border-green-500 transition-all"
+                                                                className="flex-1 group relative aspect-[9/16] max-h-24 bg-gray-200 rounded-sm overflow-hidden border-2 border-gray-300 hover:border-gray-500 transition-all"
                                                             >
                                                                 {item.previousImage?.filePath && (
                                                                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -3116,7 +3116,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                                         戻す
                                                                     </span>
                                                                 </div>
-                                                                <span className="absolute bottom-0.5 left-0.5 bg-green-600 text-white px-1 py-0.5 rounded text-[8px] font-bold">
+                                                                <span className="absolute bottom-0.5 left-0.5 bg-gray-500 text-white px-1 py-0.5 rounded-sm text-[8px] font-bold">
                                                                     前
                                                                 </span>
                                                             </button>
@@ -3125,7 +3125,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                             <span className="text-gray-400 text-lg">→</span>
 
                                                             {/* After */}
-                                                            <div className="flex-1 relative aspect-[9/16] max-h-24 bg-gray-200 rounded-lg overflow-hidden border-2 border-blue-300">
+                                                            <div className="flex-1 relative aspect-[9/16] max-h-24 bg-gray-200 rounded-sm overflow-hidden border-2 border-gray-900">
                                                                 {item.newImage?.filePath && (
                                                                     /* eslint-disable-next-line @next/next/no-img-element */
                                                                     <img
@@ -3158,7 +3158,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                             img.id,
                                                             img.filePath
                                                         )}
-                                                        className="group relative aspect-[9/16] bg-gray-100 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all"
+                                                        className="group relative aspect-[9/16] bg-gray-100 rounded-sm overflow-hidden border-2 border-transparent hover:border-gray-400 transition-all"
                                                     >
                                                         {img.filePath && (
                                                             /* eslint-disable-next-line @next/next/no-img-element */
@@ -3174,7 +3174,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                             </span>
                                                         </div>
                                                         <div className="absolute bottom-1 left-1 right-1">
-                                                            <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                                            <span className="bg-gray-600 text-white px-1.5 py-0.5 rounded-sm text-[9px] font-bold">
                                                                 {img.sourceType === 'dual-import-desktop' ? 'インポート' :
                                                                     img.sourceType === 'restyle-edit' ? 'リスタイル' : '元画像'}
                                                             </span>
@@ -3336,7 +3336,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     disabled={isGeneratingSectionImage || !sectionAIPrompt}
                                     className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-sm font-black text-white shadow-xl shadow-blue-100 hover:bg-blue-700 disabled:opacity-50 transition-all"
                                 >
-                                    {isGeneratingSectionImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                    {isGeneratingSectionImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                     <span>画像を生成</span>
                                 </button>
                             </div>
@@ -3351,12 +3351,12 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     <div className="w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in zoom-in duration-300">
                         <div className="p-8">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                                    <Wand2 className="h-5 w-5 text-purple-600" />
+                                <div className="h-10 w-10 rounded-sm bg-gray-100 flex items-center justify-center">
+                                    <PenTool className="h-5 w-5 text-gray-900" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-gray-900"><span>AIで画像を編集</span></h3>
-                                    <p className="text-[10px] font-bold text-purple-500 uppercase tracking-widest"><span>Powered by Nano Banana</span></p>
+                                    <h3 className="text-xl font-black text-gray-900"><span>画像を編集</span></h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><span>Powered by Nano Banana</span></p>
                                 </div>
                             </div>
                             <p className="text-sm text-gray-500 mb-6 font-medium">
@@ -3371,17 +3371,17 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <textarea
                                         value={editImagePrompt}
                                         onChange={(e) => setEditImagePrompt(e.target.value)}
-                                        className="w-full min-h-[150px] rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-purple-50 transition-all shadow-inner"
+                                        className="w-full min-h-[150px] rounded-sm border border-gray-200 bg-gray-50 p-4 text-sm font-medium outline-none focus:bg-white focus:ring-2 focus:ring-gray-200 transition-all shadow-inner text-gray-900"
                                         placeholder="例: この電力会社のLPを、熱々の冷凍餃子の販促用に作り変えてください。ターゲットは主婦層で、シズル感を重視。色味はオレンジ系の暖色で。"
                                     />
                                 </div>
 
                                 {aiProductInfo && (
-                                    <div className="rounded-xl bg-purple-50 p-3 border border-purple-100">
-                                        <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">
+                                    <div className="rounded-sm bg-gray-50 p-3 border border-gray-200">
+                                        <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-1">
                                             <span>プロモーション情報（自動適用）</span>
                                         </p>
-                                        <p className="text-xs text-purple-700 line-clamp-2">{aiProductInfo}</p>
+                                        <p className="text-xs text-gray-600 line-clamp-2">{aiProductInfo}</p>
                                     </div>
                                 )}
                             </div>
@@ -3396,9 +3396,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 <button
                                     onClick={handleEditImage}
                                     disabled={isEditingImage || !editImagePrompt}
-                                    className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-purple-600 py-3.5 text-sm font-black text-white shadow-xl shadow-purple-100 hover:bg-purple-700 disabled:opacity-50 transition-all"
+                                    className="flex-[2] flex items-center justify-center gap-2 rounded-sm bg-gray-900 py-3.5 text-sm font-black text-white hover:bg-gray-800 disabled:opacity-50 transition-all"
                                 >
-                                    {isEditingImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                    {isEditingImage ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PenTool className="h-4 w-4" />}
                                     <span>{isEditingImage ? '編集中...' : '画像を編集'}</span>
                                 </button>
                             </div>
@@ -3414,22 +3414,22 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     <button
                         onClick={() => setSidebarTab('tools')}
                         className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-all",
+                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-sm transition-all border",
                             sidebarTab === 'tools'
-                                ? "bg-gray-100 text-gray-900"
-                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                ? "bg-gray-900 text-white border-gray-900"
+                                : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                         )}
                     >
-                        <Wand2 className="h-3.5 w-3.5" />
+                        <PenTool className="h-3.5 w-3.5" />
                         ツール
                     </button>
                     <button
                         onClick={() => setSidebarTab('assets')}
                         className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md transition-all",
+                            "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-sm transition-all border",
                             sidebarTab === 'assets'
-                                ? "bg-gray-100 text-gray-900"
-                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                ? "bg-gray-900 text-white border-gray-900"
+                                : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                         )}
                     >
                         <ImageIcon className="h-3.5 w-3.5" />
@@ -3441,15 +3441,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                 {sidebarTab === 'assets' && (
                     <>
                         {insertFromLibraryIndex !== null && (
-                            <div className="mx-3 mb-2 p-3 bg-blue-50 border border-blue-100 rounded-md">
+                            <div className="mx-3 mb-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs font-medium text-blue-900">挿入モード</p>
-                                        <p className="text-[10px] text-blue-700">セクション {insertFromLibraryIndex + 1} の位置に挿入します</p>
+                                        <p className="text-xs font-medium text-gray-900">挿入モード</p>
+                                        <p className="text-[10px] text-gray-600">セクション {insertFromLibraryIndex + 1} の位置に挿入します</p>
                                     </div>
                                     <button
                                         onClick={() => setInsertFromLibraryIndex(null)}
-                                        className="text-[10px] text-blue-700 hover:text-blue-900 underline"
+                                        className="text-[10px] text-gray-600 hover:text-gray-900 underline"
                                     >
                                         キャンセル
                                     </button>
@@ -3503,15 +3503,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 <button
                                     onClick={() => setStatus(status === 'published' ? 'draft' : 'published')}
                                     className={clsx(
-                                        "flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-xs font-medium transition-all border",
+                                        "flex items-center justify-center gap-2 px-3 py-2.5 rounded-sm text-xs font-medium transition-all border",
                                         status === 'published'
-                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                            ? "bg-gray-900 text-white border-gray-900"
                                             : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                                     )}
                                 >
                                     <span className={clsx(
                                         "w-1.5 h-1.5 rounded-full",
-                                        status === 'published' ? "bg-emerald-500" : "bg-gray-300"
+                                        status === 'published' ? "bg-white" : "bg-gray-300"
                                     )} />
                                     {status === 'published' ? 'Published' : 'Draft'}
                                 </button>
@@ -3711,7 +3711,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                 setBoundaryFixMode(false);
                                             }}
                                             disabled={sections.length === 0}
-                                            className="w-full py-2 bg-red-50 text-red-600 text-xs font-medium rounded hover:bg-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-100"
+                                            className="w-full py-2 bg-gray-50 text-gray-600 text-xs font-medium rounded hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200"
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
                                             Select to Delete
@@ -3871,7 +3871,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     <div className="flex items-center gap-3">
                                         <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-500"><Video className="h-3.5 w-3.5" /></div>
                                         <div className="text-left">
-                                            <h4 className="text-xs font-semibold text-gray-900 flex items-center gap-2">Video<span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0 bg-gray-900 text-white rounded font-medium">Max</span></h4>
+                                            <h4 className="text-xs font-semibold text-gray-900 flex items-center gap-2">Video<span className="flex items-center gap-0.5 text-[8px] px-1.5 py-0 bg-gray-900 text-white rounded-sm font-medium">Max</span></h4>
                                             <p className="text-[10px] text-gray-500">Insert video</p>
                                         </div>
                                     </div>

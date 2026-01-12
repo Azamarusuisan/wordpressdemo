@@ -242,9 +242,9 @@ export default function CTAManagementModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-rose-50 to-pink-50">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center shadow-lg">
                             <MousePointer className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -279,7 +279,7 @@ export default function CTAManagementModal({
                                             className={clsx(
                                                 "w-full p-2 rounded-lg text-left transition-all",
                                                 String(section.id) === selectedSectionId
-                                                    ? "bg-rose-100 text-rose-700"
+                                                    ? "bg-gray-100 text-gray-900"
                                                     : "hover:bg-gray-100 text-gray-600"
                                             )}
                                         >
@@ -287,7 +287,7 @@ export default function CTAManagementModal({
                                                 {section.role || `Section ${idx + 1}`}
                                             </p>
                                             {ctaCount > 0 && (
-                                                <span className="text-[10px] text-rose-500">
+                                                <span className="text-[10px] text-gray-500">
                                                     {ctaCount}個のCTA
                                                 </span>
                                             )}
@@ -322,8 +322,8 @@ export default function CTAManagementModal({
                                         className={clsx(
                                             "absolute border-2 transition-colors",
                                             editingArea?.id === area.id
-                                                ? "border-rose-500 bg-rose-500/30"
-                                                : "border-rose-300 bg-rose-300/20 hover:bg-rose-400/30",
+                                                ? "border-black bg-black/20"
+                                                : "border-gray-500 bg-gray-500/10 hover:bg-gray-500/20",
                                             draggingArea === area.id && "cursor-grabbing",
                                             resizingArea === area.id && "cursor-se-resize"
                                         )}
@@ -335,7 +335,7 @@ export default function CTAManagementModal({
                                         }}
                                     >
                                         {/* ラベル */}
-                                        <div className="absolute -top-6 left-0 bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-t whitespace-nowrap pointer-events-none">
+                                        <div className="absolute -top-6 left-0 bg-black text-white text-[10px] px-2 py-0.5 rounded-t whitespace-nowrap pointer-events-none">
                                             {area.label || area.actionType}
                                         </div>
                                         {/* ドラッグハンドル (中央) */}
@@ -343,12 +343,12 @@ export default function CTAManagementModal({
                                             onMouseDown={(e) => handleDragStart(e, area.id, area)}
                                             className="absolute inset-0 cursor-grab active:cursor-grabbing flex items-center justify-center"
                                         >
-                                            <Move className="h-5 w-5 text-rose-600 opacity-60 pointer-events-none" />
+                                            <Move className="h-5 w-5 text-gray-900 opacity-60 pointer-events-none" />
                                         </div>
                                         {/* リサイズハンドル (右下) */}
                                         <div
                                             onMouseDown={(e) => handleResizeStart(e, area.id, area)}
-                                            className="absolute -right-1 -bottom-1 w-4 h-4 bg-rose-500 rounded-sm cursor-se-resize flex items-center justify-center shadow"
+                                            className="absolute -right-1 -bottom-1 w-4 h-4 bg-black rounded-sm cursor-se-resize flex items-center justify-center shadow"
                                         >
                                             <Maximize2 className="h-2.5 w-2.5 text-white pointer-events-none" />
                                         </div>
@@ -363,7 +363,7 @@ export default function CTAManagementModal({
 
                         <button
                             onClick={addClickableArea}
-                            className="mt-4 w-full py-2 border-2 border-dashed border-rose-300 rounded-lg text-rose-500 text-sm font-medium hover:bg-rose-50 transition-colors flex items-center justify-center gap-2"
+                            className="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
                         >
                             <Plus className="h-4 w-4" />
                             CTAエリアを追加
@@ -384,7 +384,7 @@ export default function CTAManagementModal({
                                             value={globalConfig.defaultUrl}
                                             onChange={(e) => setGlobalConfig(prev => ({ ...prev, defaultUrl: e.target.value }))}
                                             placeholder="#contact"
-                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300"
+                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
                                         />
                                     </div>
                                     <div>
@@ -394,7 +394,7 @@ export default function CTAManagementModal({
                                             value={globalConfig.defaultLabel}
                                             onChange={(e) => setGlobalConfig(prev => ({ ...prev, defaultLabel: e.target.value }))}
                                             placeholder="お問い合わせ"
-                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300"
+                                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
                                         />
                                     </div>
                                 </div>
@@ -434,7 +434,7 @@ export default function CTAManagementModal({
                                                         className={clsx(
                                                             "p-2 rounded-lg border text-xs transition-all flex items-center gap-1",
                                                             editingArea.actionType === type.value
-                                                                ? "border-rose-500 bg-rose-50 text-rose-700"
+                                                                ? "border-gray-900 bg-gray-100 text-gray-900"
                                                                 : "border-gray-200 hover:border-gray-300"
                                                         )}
                                                     >
@@ -446,8 +446,8 @@ export default function CTAManagementModal({
                                         </div>
 
                                         {/* リンク先URL - 目立つように強調 */}
-                                        <div className="p-3 bg-rose-50 border-2 border-rose-200 rounded-lg">
-                                            <label className="text-xs font-bold text-rose-700 mb-2 flex items-center gap-1">
+                                        <div className="p-3 bg-gray-50 border-2 border-gray-200 rounded-lg">
+                                            <label className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
                                                 <Link2 className="h-3.5 w-3.5" />
                                                 {editingArea.actionType === 'url' && 'リンク先URL（クリック時の遷移先）'}
                                                 {editingArea.actionType === 'email' && 'メールアドレス'}
@@ -466,9 +466,9 @@ export default function CTAManagementModal({
                                                                 : editingArea.actionType === 'scroll' ? '#section-id'
                                                                     : 'お問い合わせ'
                                                 }
-                                                className="w-full px-3 py-2.5 text-sm border-2 border-rose-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-medium"
+                                                className="w-full px-3 py-2.5 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white font-medium"
                                             />
-                                            <p className="mt-1.5 text-[10px] text-rose-600">
+                                            <p className="mt-1.5 text-[10px] text-gray-600">
                                                 {editingArea.actionType === 'url' && '例: https://example.com, /contact, #form'}
                                                 {editingArea.actionType === 'email' && '例: info@company.com'}
                                                 {editingArea.actionType === 'phone' && '例: 03-1234-5678, 0120-xxx-xxx'}
@@ -519,7 +519,7 @@ export default function CTAManagementModal({
                                                     onChange={(e) => updateClickableArea(editingArea.id, { height: Number(e.target.value) / 100 })}
                                                     min="1"
                                                     max="100"
-                                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300"
+                                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
                                                 />
                                             </div>
                                         </div>
@@ -553,7 +553,7 @@ export default function CTAManagementModal({
                     </button>
                     <button
                         onClick={handleApply}
-                        className="px-6 py-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-bold rounded-lg hover:from-rose-600 hover:to-pink-600 transition-all flex items-center gap-2"
+                        className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-all flex items-center gap-2"
                     >
                         <Check className="h-4 w-4" />
                         設定を適用

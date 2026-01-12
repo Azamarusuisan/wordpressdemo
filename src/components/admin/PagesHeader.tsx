@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Globe, Loader2, X, Layout, Sparkles, Monitor, Smartphone, Copy, Wand2, Palette, Scissors } from 'lucide-react';
+import { Plus, Globe, Loader2, X, Layout, Sparkles, Monitor, Smartphone, Copy, Wand2, Palette, Scissors, Download, RefreshCw, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { SmartImportModal } from './SmartImportModal';
@@ -331,17 +331,17 @@ export function PagesHeader() {
                                             setShowSelection(false);
                                             setShowSmartImport(true);
                                         }}
-                                        className="group flex flex-col items-start rounded-lg border-2 border-purple-200 p-6 text-left transition-all hover:border-purple-500 hover:bg-purple-50 relative overflow-hidden"
+                                        className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50 relative"
                                     >
-                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold rounded-full">
+                                        <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded">
                                             NEW
                                         </div>
-                                        <div className="mb-4 rounded-md bg-gradient-to-r from-purple-500 to-indigo-500 p-3 text-white">
+                                        <div className="mb-4 rounded-md bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                                             <Scissors className="h-6 w-6" />
                                         </div>
                                         <h3 className="text-base font-bold text-foreground mb-1"><span>スマートインポート</span></h3>
                                         <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                            <span>セクション境界を確認・調整してから生成。より綺麗な仕上がりに。</span>
+                                            <span>URLからセクション境界をAI検出。調整後に生成を開始。</span>
                                         </p>
                                     </button>
 
@@ -407,7 +407,7 @@ export function PagesHeader() {
                                                 onClick={() => setDevice('dual')}
                                                 disabled={isImporting}
                                                 className={`flex-1 flex items-center justify-center gap-2 rounded-md py-2 text-sm font-bold transition-all disabled:opacity-50 ${device === 'dual'
-                                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                                                    ? 'bg-black text-white'
                                                     : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                                                     }`}
                                             >
@@ -426,12 +426,12 @@ export function PagesHeader() {
 
                                     {/* デュアルモードの場合は変換モードをスキップ */}
                                     {device === 'dual' ? (
-                                        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-                                            <div className="flex items-center gap-3 text-sm text-gray-700">
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                            <div className="flex items-center gap-3 text-sm text-gray-900">
                                                 <div className="flex items-center gap-1">
-                                                    <Monitor className="w-5 h-5 text-blue-600" />
+                                                    <Monitor className="w-5 h-5 text-gray-900" />
                                                     <span className="text-gray-400">+</span>
-                                                    <Smartphone className="w-4 h-4 text-purple-600" />
+                                                    <Smartphone className="w-4 h-4 text-gray-900" />
                                                 </div>
                                                 <span>デスクトップとモバイル両方のスクリーンショットを同時に取得します</span>
                                             </div>
@@ -478,7 +478,7 @@ export function PagesHeader() {
                                                             : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                                                             }`}
                                                     >
-                                                        <Wand2 className="h-4 w-4" />
+                                                        <RefreshCw className="h-4 w-4" />
                                                         <span>全体を再構成</span>
                                                     </button>
                                                 </div>
@@ -491,111 +491,111 @@ export function PagesHeader() {
 
                                             {/* Design Customization Options */}
                                             {importMode !== 'faithful' && (
-                                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-200 border-t border-border pt-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Wand2 className="h-4 w-4 text-primary" />
-                                                <span className="text-sm font-bold text-foreground">デザイン設定</span>
-                                            </div>
-
-                                            {/* Style Select */}
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>スタイル</span>
-                                                </label>
-                                                <div className="flex gap-2 flex-wrap">
-                                                    {STYLE_OPTIONS.map((opt) => (
-                                                        <button
-                                                            key={opt.id}
-                                                            type="button"
-                                                            onClick={() => setStyle(opt.id)}
-                                                            disabled={isImporting}
-                                                            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1 ${style === opt.id
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                                                }`}
-                                                        >
-                                                            <span>{opt.icon}</span>
-                                                            {opt.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Color Scheme */}
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>カラー</span>
-                                                </label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {COLOR_SCHEMES.map((scheme) => (
-                                                        <button
-                                                            key={scheme.id}
-                                                            type="button"
-                                                            onClick={() => setColorScheme(scheme.id)}
-                                                            disabled={isImporting}
-                                                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${colorScheme === scheme.id
-                                                                ? 'bg-primary text-primary-foreground'
-                                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                                                }`}
-                                                        >
-                                                            {scheme.id !== 'original' && (
-                                                                <div className="flex gap-0.5">
-                                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[0] }} />
-                                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[1] }} />
-                                                                </div>
-                                                            )}
-                                                            <span>{scheme.label}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Layout Option - heavyモードのみ表示 */}
-                                            {importMode === 'heavy' && (
-                                                <div>
-                                                    <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                        <span>レイアウト</span>
-                                                    </label>
-                                                    <div className="flex gap-2">
-                                                        {LAYOUT_OPTIONS.map((opt) => (
-                                                            <button
-                                                                key={opt.id}
-                                                                type="button"
-                                                                onClick={() => setLayoutOption(opt.id)}
-                                                                disabled={isImporting}
-                                                                className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${layoutOption === opt.id
-                                                                    ? 'bg-primary text-primary-foreground'
-                                                                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                                                    }`}
-                                                            >
-                                                                {opt.label}
-                                                            </button>
-                                                        ))}
+                                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200 border-t border-border pt-4">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Settings className="h-4 w-4 text-primary" />
+                                                        <span className="text-sm font-bold text-foreground">デザイン設定</span>
                                                     </div>
-                                                    <p className="mt-1 text-[10px] text-muted-foreground">
-                                                        {LAYOUT_OPTIONS.find(o => o.id === layoutOption)?.description}
-                                                    </p>
+
+                                                    {/* Style Select */}
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                            <span>スタイル</span>
+                                                        </label>
+                                                        <div className="flex gap-2 flex-wrap">
+                                                            {STYLE_OPTIONS.map((opt) => (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    type="button"
+                                                                    onClick={() => setStyle(opt.id)}
+                                                                    disabled={isImporting}
+                                                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1 ${style === opt.id
+                                                                        ? 'bg-primary text-primary-foreground'
+                                                                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                        }`}
+                                                                >
+                                                                    <span>{opt.icon}</span>
+                                                                    {opt.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Color Scheme */}
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                            <span>カラー</span>
+                                                        </label>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {COLOR_SCHEMES.map((scheme) => (
+                                                                <button
+                                                                    key={scheme.id}
+                                                                    type="button"
+                                                                    onClick={() => setColorScheme(scheme.id)}
+                                                                    disabled={isImporting}
+                                                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${colorScheme === scheme.id
+                                                                        ? 'bg-primary text-primary-foreground'
+                                                                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                        }`}
+                                                                >
+                                                                    {scheme.id !== 'original' && (
+                                                                        <div className="flex gap-0.5">
+                                                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[0] }} />
+                                                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: scheme.colors[1] }} />
+                                                                        </div>
+                                                                    )}
+                                                                    <span>{scheme.label}</span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Layout Option - heavyモードのみ表示 */}
+                                                    {importMode === 'heavy' && (
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                                <span>レイアウト</span>
+                                                            </label>
+                                                            <div className="flex gap-2">
+                                                                {LAYOUT_OPTIONS.map((opt) => (
+                                                                    <button
+                                                                        key={opt.id}
+                                                                        type="button"
+                                                                        onClick={() => setLayoutOption(opt.id)}
+                                                                        disabled={isImporting}
+                                                                        className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all disabled:opacity-50 ${layoutOption === opt.id
+                                                                            ? 'bg-primary text-primary-foreground'
+                                                                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                                                            }`}
+                                                                    >
+                                                                        {opt.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <p className="mt-1 text-[10px] text-muted-foreground">
+                                                                {LAYOUT_OPTIONS.find(o => o.id === layoutOption)?.description}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Custom Prompt */}
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                                            <span>追加指示（任意）</span>
+                                                        </label>
+                                                        <textarea
+                                                            value={customPrompt}
+                                                            onChange={(e) => setCustomPrompt(e.target.value)}
+                                                            disabled={isImporting}
+                                                            placeholder="例: ヘッダーを大きく、CTAボタンを目立たせて"
+                                                            className="w-full h-20 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 resize-none"
+                                                        />
+                                                        <p className="mt-1 text-[10px] text-muted-foreground">
+                                                            AIがこの指示を元にデザインを調整します
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             )}
-
-                                            {/* Custom Prompt */}
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                                                    <span>追加指示（任意）</span>
-                                                </label>
-                                                <textarea
-                                                    value={customPrompt}
-                                                    onChange={(e) => setCustomPrompt(e.target.value)}
-                                                    disabled={isImporting}
-                                                    placeholder="例: ヘッダーを大きく、CTAボタンを目立たせて"
-                                                    className="w-full h-20 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 resize-none"
-                                                />
-                                                <p className="mt-1 text-[10px] text-muted-foreground">
-                                                    AIがこの指示を元にデザインを調整します
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
                                         </>
                                     )}
 
@@ -638,7 +638,7 @@ export function PagesHeader() {
                                             disabled={isImporting || !importUrl}
                                             className="flex-[2] flex items-center justify-center gap-2 rounded-md bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
                                         >
-                                            {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                            {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                             <span>{isImporting ? '処理中...' : 'インポート実行'}</span>
                                         </button>
                                     </div>

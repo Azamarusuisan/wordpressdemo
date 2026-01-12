@@ -226,7 +226,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                 <div className="flex items-center justify-between px-5 py-4 border-b bg-white">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            <Palette className="h-5 w-5 text-amber-600" />
+                            <Palette className="h-5 w-5 text-gray-900" />
                             背景色統一
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -256,11 +256,10 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                 <button
                                                     key={section.id}
                                                     onClick={() => setReferenceSectionId(section.id)}
-                                                    className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                                                        referenceSectionId === section.id
-                                                            ? 'border-blue-500 ring-2 ring-blue-200'
+                                                    className={`relative rounded-lg overflow-hidden border-2 transition-all ${referenceSectionId === section.id
+                                                            ? 'border-gray-900 ring-2 ring-gray-200'
                                                             : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {section.image?.filePath && (
                                                         <img
@@ -269,11 +268,10 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                             className="w-full h-24 object-cover"
                                                         />
                                                     )}
-                                                    <div className={`absolute bottom-0 left-0 right-0 text-[10px] font-bold text-center py-0.5 ${
-                                                        referenceSectionId === section.id
-                                                            ? 'bg-blue-500 text-white'
+                                                    <div className={`absolute bottom-0 left-0 right-0 text-[10px] font-bold text-center py-0.5 ${referenceSectionId === section.id
+                                                            ? 'bg-gray-900 text-white'
                                                             : 'bg-gray-800/70 text-white'
-                                                    }`}>
+                                                        }`}>
                                                         {referenceSectionId === section.id ? (
                                                             <span className="flex items-center justify-center gap-1">
                                                                 <Eye className="h-3 w-3" />
@@ -315,7 +313,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                 <button
                                                     onClick={handleDetectColor}
                                                     disabled={isDetecting}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-bold rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all disabled:opacity-50"
+                                                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-all disabled:opacity-50"
                                                 >
                                                     {isDetecting ? (
                                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -325,21 +323,21 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                     背景色を自動検出
                                                 </button>
                                                 {detectedColor && (
-                                                    <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                                         <div className="flex items-center gap-3">
                                                             <div
-                                                                className="w-10 h-10 rounded-lg border-2 border-blue-300"
+                                                                className="w-10 h-10 rounded-lg border-2 border-gray-300"
                                                                 style={{ backgroundColor: detectedColor.color }}
                                                             />
                                                             <div>
-                                                                <p className="text-sm font-bold text-blue-800">
+                                                                <p className="text-sm font-bold text-gray-900">
                                                                     {detectedColor.colorName}
                                                                 </p>
-                                                                <p className="text-xs text-blue-600">
+                                                                <p className="text-xs text-gray-600">
                                                                     {detectedColor.color} • {detectedColor.description}
                                                                 </p>
                                                             </div>
-                                                            <Check className="h-5 w-5 text-green-500 ml-auto" />
+                                                            <Check className="h-5 w-5 text-gray-900 ml-auto" />
                                                         </div>
                                                     </div>
                                                 )}
@@ -352,13 +350,13 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                         <label className="block text-sm font-bold text-gray-700 mb-2">
                                             変更対象セクション（{selectedSections.filter(s => s.id !== referenceSectionId).length}件）
                                         </label>
-                                        <div className="grid grid-cols-6 gap-2 max-h-24 overflow-y-auto p-2 bg-amber-50 rounded-lg">
+                                        <div className="grid grid-cols-6 gap-2 max-h-24 overflow-y-auto p-2 bg-gray-50 rounded-lg">
                                             {selectedSections
                                                 .filter(s => s.id !== referenceSectionId)
                                                 .map((section) => (
                                                     <div
                                                         key={section.id}
-                                                        className="relative rounded overflow-hidden border-2 border-amber-300"
+                                                        className="relative rounded overflow-hidden border-2 border-gray-300"
                                                     >
                                                         {section.image?.filePath && (
                                                             <img
@@ -367,7 +365,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                                 className="w-full h-12 object-cover"
                                                             />
                                                         )}
-                                                        <div className="absolute bottom-0 left-0 right-0 bg-amber-500 text-white text-[8px] font-bold text-center">
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 text-white text-[8px] font-bold text-center">
                                                             {section.order + 1}
                                                         </div>
                                                     </div>
@@ -401,7 +399,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                     }
                                                 }}
                                                 placeholder="#FFFFFF"
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-300"
                                             />
                                         </div>
                                         {/* プリセットカラー */}
@@ -410,11 +408,10 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                 <button
                                                     key={color}
                                                     onClick={() => setTargetColor(color)}
-                                                    className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                                                        targetColor === color
-                                                            ? 'border-amber-500 ring-2 ring-amber-200'
+                                                    className={`w-8 h-8 rounded-lg border-2 transition-all ${targetColor === color
+                                                            ? 'border-gray-900 ring-2 ring-gray-200'
                                                             : 'border-gray-300 hover:border-gray-400'
-                                                    }`}
+                                                        }`}
                                                     style={{ backgroundColor: color }}
                                                     title={color}
                                                 />
@@ -432,11 +429,10 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                                 <button
                                                     key={value}
                                                     onClick={() => setResolution(value)}
-                                                    className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${
-                                                        resolution === value
-                                                            ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                    className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${resolution === value
+                                                            ? 'border-gray-900 bg-gray-50 text-gray-900'
                                                             : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <span className="text-lg font-bold">{label}</span>
                                                     <span className="text-xs">{desc}</span>
@@ -446,19 +442,19 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                     </div>
 
                                     {/* モバイル画像オプション */}
-                                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                         <label className="flex items-center gap-3 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={includeMobile}
                                                 onChange={(e) => setIncludeMobile(e.target.checked)}
-                                                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-500"
                                             />
                                             <div>
-                                                <span className="text-sm font-bold text-purple-800">
+                                                <span className="text-sm font-bold text-gray-900">
                                                     モバイル画像も同時に処理
                                                 </span>
-                                                <p className="text-xs text-purple-600 mt-0.5">
+                                                <p className="text-xs text-gray-600 mt-0.5">
                                                     モバイル用画像がある場合、同じ背景色で変更します
                                                 </p>
                                             </div>
@@ -470,7 +466,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                     ) : (
                         /* 処理中 */
                         <div className="py-12 flex flex-col items-center justify-center">
-                            <Loader2 className="h-12 w-12 text-amber-600 animate-spin mb-4" />
+                            <Loader2 className="h-12 w-12 text-gray-900 animate-spin mb-4" />
                             <p className="text-sm font-medium text-gray-700">背景色を変更中...</p>
                             {progress && (
                                 <div className="mt-4 w-full max-w-xs">
@@ -480,7 +476,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                     </div>
                                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-amber-500 transition-all duration-300"
+                                            className="h-full bg-black transition-all duration-300"
                                             style={{ width: `${(progress.current / progress.total) * 100}%` }}
                                         />
                                     </div>
@@ -498,14 +494,14 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                     <div className="px-5 py-4 border-t bg-gray-50">
                         {/* API課金費用の表示（configureステップ時） */}
                         {step === 'configure' && selectedSections.filter(s => s.id !== referenceSectionId).length > 0 && (
-                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-amber-600" />
-                                    <span className="text-xs font-bold text-amber-800">
+                                    <DollarSign className="h-4 w-4 text-gray-600" />
+                                    <span className="text-xs font-bold text-gray-900">
                                         この作業のAPI課金費用: 約${(selectedSections.filter(s => s.id !== referenceSectionId).length * GEMINI_PRICING['gemini-3-pro-image-preview'].perImage).toFixed(2)}
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-amber-600 mt-1 ml-6">
+                                <p className="text-[10px] text-gray-600 mt-1 ml-6">
                                     {selectedSections.filter(s => s.id !== referenceSectionId).length}件 × $0.04（Gemini 3 Pro Image）
                                 </p>
                             </div>
@@ -529,7 +525,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                 <button
                                     onClick={() => setStep('configure')}
                                     disabled={!referenceSectionId}
-                                    className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     次へ
                                 </button>
@@ -537,7 +533,7 @@ export function BackgroundUnifyModal({ sections, selectedSectionIds, onClose, on
                                 <button
                                     onClick={handleExecute}
                                     disabled={selectedSections.filter(s => s.id !== referenceSectionId).length === 0}
-                                    className="flex items-center gap-2 px-5 py-2 bg-amber-600 text-white text-sm font-bold rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Palette className="h-4 w-4" />
                                     {selectedSections.filter(s => s.id !== referenceSectionId).length}件の背景色を変更

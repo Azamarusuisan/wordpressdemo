@@ -13,7 +13,13 @@ import {
     Palette,
     Video,
     Globe,
-    X
+    X,
+    HelpCircle,
+    ChevronDown,
+    Zap,
+    CreditCard,
+    Building2,
+    User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -74,6 +80,115 @@ const FEATURES = [
     },
 ];
 
+// FAQデータ
+const FAQ_DATA = [
+    {
+        question: 'LP Builder とは何ですか？',
+        answer: 'LP BuilderはAI技術を活用したランディングページ作成ツールです。既存LPのURLを入力して取り込み、AI画像生成やインペイント編集で自由にカスタマイズできます。コーディング不要で、誰でも簡単に高品質なLPを作成できます。',
+    },
+    {
+        question: 'クレジットとは何ですか？',
+        answer: 'クレジットはAI機能を使用するための通貨です。画像生成、インペイント編集、リスタイルなどのAI処理にクレジットが消費されます。月額プランには毎月クレジットが付与され、追加購入も可能です。',
+    },
+    {
+        question: 'LP1つ作成するのにどのくらいクレジットが必要ですか？',
+        answer: 'シンプルなLP（5〜6セクション、画像3〜5枚生成）で約$0.10〜$0.20（約15〜30円）、本格的なLP（10セクション以上、画像10枚以上）で約$0.30〜$0.80（約45〜120円）が目安です。Proプラン（月$16.67）なら、月に50〜150ページ程度のLPを作成できます。',
+    },
+    {
+        question: 'どのような画像を生成できますか？',
+        answer: 'Google Geminiを使用して、ヒーロー画像、商品画像、背景画像など様々な画像を生成できます。プロンプトを入力するだけで、LP用に最適化された高品質な画像が生成されます。また、既存画像の一部を編集するインペイント機能も利用可能です。',
+    },
+    {
+        question: '無料で試せますか？',
+        answer: 'Freeプランでは、ご自身のGoogle AI Studio APIキーをご用意いただければ、基本機能を無料でお試しいただけます。4Kアップスケール、リスタイル、動画生成は有料プランのみの機能となります。',
+    },
+    {
+        question: 'URLから取り込んだLPの著作権はどうなりますか？',
+        answer: '取り込んだLPのデザインを参考にする場合は、元のサイトの著作権にご注意ください。生成した新しいコンテンツ（AI画像など）の著作権は利用者に帰属しますが、元サイトのコンテンツをそのまま使用する場合は権利者の許可が必要です。',
+    },
+    {
+        question: '作成したLPはどのように公開できますか？',
+        answer: 'HTMLエクスポート機能で、完成したLPをHTMLファイルとしてダウンロードできます。お好みのホスティングサービス（Vercel、Netlify、AWS S3など）にアップロードするだけで公開できます。',
+    },
+    {
+        question: 'サポートはありますか？',
+        answer: 'メールサポート（team@zettai.co.jp）をご利用いただけます。Expertプラン以上では優先サポートが適用され、より迅速な対応が可能です。',
+    },
+];
+
+// プラン・クレジット情報
+const PLAN_DATA = [
+    {
+        id: 'free',
+        name: 'Free',
+        price: '¥0',
+        period: '/月',
+        credit: '0',
+        creditNote: '※自分のAPIキーが必要',
+        description: 'まずは試してみたい方に',
+        icon: User,
+        features: [
+            '最大10ページ',
+            'AI画像生成（自分のAPIキー）',
+            'HTMLエクスポート',
+        ],
+        limitations: [
+            '4Kアップスケール不可',
+            'リスタイル不可',
+            '動画生成不可',
+        ],
+        highlight: false,
+    },
+    {
+        id: 'pro',
+        name: 'Pro',
+        price: '¥10,000',
+        period: '/月',
+        credit: '$16.67',
+        creditNote: '約50〜150LP分',
+        description: 'スタートアップ・個人事業主に',
+        icon: Zap,
+        features: [
+            '最大50ページ',
+            '月間クレジット $16.67分',
+            'AI画像生成',
+            '4Kアップスケール',
+            'リスタイル機能',
+            'HTMLエクスポート',
+        ],
+        limitations: [],
+        highlight: true,
+    },
+    {
+        id: 'expert',
+        name: 'Expert',
+        price: '¥30,000',
+        period: '/月',
+        credit: '$50',
+        creditNote: '約150〜500LP分',
+        description: '代理店・中規模ビジネスに',
+        icon: Building2,
+        features: [
+            '最大200ページ',
+            '月間クレジット $50分',
+            'Pro全機能',
+            '動画生成',
+            '優先サポート',
+        ],
+        limitations: [],
+        highlight: false,
+    },
+];
+
+// クレジット消費目安
+const CREDIT_USAGE = [
+    { action: 'AI画像生成', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1枚あたり' },
+    { action: 'インペイント編集', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1回あたり' },
+    { action: 'リスタイル', cost: '$0.02〜0.04', costJpy: '約3〜6円', note: '1セクションあたり' },
+    { action: '動画生成', cost: '$0.35', costJpy: '約53円', note: '1秒あたり' },
+    { action: 'URL取り込み', cost: 'ほぼ無料', costJpy: '〜1円', note: 'テキスト処理のみ' },
+];
+
 export default function WaitingRoomPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1);
@@ -86,6 +201,7 @@ export default function WaitingRoomPage() {
         remarks: '',
     });
     const [modalType, setModalType] = useState<'terms' | 'privacy' | null>(null);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
     // Load Lottie Script
     useEffect(() => {
@@ -617,6 +733,312 @@ export default function WaitingRoomPage() {
                             </motion.div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* Pricing & Credits Section */}
+            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gradient-to-b from-white via-amber-50/30 to-white relative overflow-hidden">
+                {/* Decorative background elements */}
+                <div className="absolute top-20 left-10 w-72 h-72 bg-amber-200/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-200/20 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="max-w-6xl mx-auto relative z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center mb-20"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            whileInView={{ scale: 1, opacity: 1 }}
+                            viewport={{ once: true }}
+                            className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-2 rounded-full text-sm font-bold mb-6"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            シンプルな料金体系
+                        </motion.div>
+                        <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6 text-gray-900">
+                            LP1つ、<span className="text-amber-600">約15円</span>から。
+                        </h2>
+                        <p className="text-gray-600 max-w-xl mx-auto text-lg leading-relaxed">
+                            使った分だけのクレジット制。<br />
+                            ムダな固定費はかかりません。
+                        </p>
+                    </motion.div>
+
+                    {/* Highlight: Cost per LP */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                        className="mb-16 bg-gradient-to-r from-amber-500 to-orange-500 rounded-3xl p-8 md:p-10 text-white shadow-xl shadow-amber-500/20"
+                    >
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div>
+                                <p className="text-amber-100 font-medium mb-2">LP1つあたりの制作コスト</p>
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-5xl md:text-6xl font-black">¥15</span>
+                                    <span className="text-2xl font-bold text-amber-200">〜 ¥120</span>
+                                </div>
+                                <p className="text-amber-100 mt-2 text-sm">※画像生成5〜20回の場合</p>
+                            </div>
+                            <div className="flex-shrink-0 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                                <p className="text-amber-100 text-sm mb-3 font-medium">制作コスト内訳（目安）</p>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between gap-8 text-sm">
+                                        <span className="text-white/80">画像生成 ×5枚</span>
+                                        <span className="font-bold">¥15〜30</span>
+                                    </div>
+                                    <div className="flex justify-between gap-8 text-sm">
+                                        <span className="text-white/80">インペイント ×3回</span>
+                                        <span className="font-bold">¥9〜18</span>
+                                    </div>
+                                    <div className="flex justify-between gap-8 text-sm">
+                                        <span className="text-white/80">リスタイル ×2回</span>
+                                        <span className="font-bold">¥6〜12</span>
+                                    </div>
+                                    <div className="border-t border-white/20 pt-2 mt-2 flex justify-between gap-8">
+                                        <span className="text-white font-bold">合計</span>
+                                        <span className="font-black">約¥30〜60</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Plan Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                        {PLAN_DATA.map((plan, index) => (
+                            <motion.div
+                                key={plan.id}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: index * 0.15 }}
+                                whileHover={{ y: -8 }}
+                                className={`relative bg-white rounded-3xl p-8 transition-all duration-300 ${
+                                    plan.highlight
+                                        ? 'shadow-2xl shadow-amber-500/20 ring-2 ring-amber-500'
+                                        : 'shadow-lg shadow-gray-200/50 hover:shadow-xl'
+                                }`}
+                            >
+                                {plan.highlight && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-5 py-2 rounded-full shadow-lg shadow-amber-500/30 flex items-center gap-1.5">
+                                            <Sparkles className="w-3.5 h-3.5" />
+                                            人気No.1
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Plan header */}
+                                <div className="text-center mb-6 pt-2">
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+                                        plan.highlight
+                                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        <plan.icon className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="font-black text-2xl text-gray-900 mb-1">{plan.name}</h3>
+                                    <p className="text-sm text-gray-500">{plan.description}</p>
+                                </div>
+
+                                {/* Price */}
+                                <div className="text-center mb-6 pb-6 border-b border-gray-100">
+                                    <div className="flex items-baseline justify-center gap-1">
+                                        <span className="text-4xl font-black text-gray-900">{plan.price}</span>
+                                        <span className="text-gray-400 font-medium">{plan.period}</span>
+                                    </div>
+                                    <div className={`inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full text-sm font-bold ${
+                                        plan.highlight
+                                            ? 'bg-amber-100 text-amber-700'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        <CreditCard className="w-4 h-4" />
+                                        月間クレジット: {plan.credit}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">{plan.creditNote}</p>
+                                </div>
+
+                                {/* Features */}
+                                <ul className="space-y-3">
+                                    {plan.features.map((feature, i) => (
+                                        <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
+                                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <Check className="w-3 h-3 text-green-600" />
+                                            </div>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                    {plan.limitations.map((limitation, i) => (
+                                        <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
+                                            <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <X className="w-3 h-3 text-gray-400" />
+                                            </div>
+                                            {limitation}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Credit Usage Cards */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                    >
+                        <div className="text-center mb-10">
+                            <h3 className="text-2xl font-black text-gray-900 mb-2">各機能のクレジット消費</h3>
+                            <p className="text-gray-500">AIを使うたびにクレジットが消費されます</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            {CREDIT_USAGE.map((item, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:border-amber-200 transition-all text-center group"
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-gray-100 group-hover:bg-amber-100 flex items-center justify-center mx-auto mb-3 transition-colors">
+                                        {item.action === 'AI画像生成' && <Sparkles className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
+                                        {item.action === 'インペイント編集' && <Wand2 className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
+                                        {item.action === 'リスタイル' && <Palette className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
+                                        {item.action === '動画生成' && <Video className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
+                                        {item.action === 'URL取り込み' && <Globe className="w-5 h-5 text-gray-500 group-hover:text-amber-600 transition-colors" />}
+                                    </div>
+                                    <p className="text-xs font-bold text-gray-900 mb-2">{item.action}</p>
+                                    <p className="text-lg font-black text-amber-600">{item.costJpy}</p>
+                                    <p className="text-[10px] text-gray-400 mt-1">{item.note}</p>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* FAQ Section */}
+            <section className="py-24 px-6 md:px-12 lg:px-20 bg-gray-50 relative overflow-hidden">
+                {/* Decorative elements */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-300 to-transparent opacity-50" />
+
+                <div className="max-w-3xl mx-auto relative z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center mb-16"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            whileInView={{ scale: 1, opacity: 1 }}
+                            viewport={{ once: true }}
+                            className="inline-flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-bold mb-6 shadow-sm border border-gray-200"
+                        >
+                            <HelpCircle className="w-4 h-4 text-amber-500" />
+                            よくある質問
+                        </motion.div>
+                        <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
+                            わからないことは<br className="md:hidden" />ありませんか？
+                        </h2>
+                        <p className="text-gray-500">
+                            お客様からよくいただく質問をまとめました
+                        </p>
+                    </motion.div>
+
+                    <div className="space-y-3">
+                        {FAQ_DATA.map((faq, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, x: -20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.4, delay: index * 0.05 }}
+                                className="group"
+                            >
+                                <button
+                                    onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                                    className={`w-full flex items-center justify-between p-5 md:p-6 bg-white rounded-2xl transition-all duration-300 border-2 ${
+                                        openFaqIndex === index
+                                            ? 'border-amber-400 shadow-lg shadow-amber-500/10'
+                                            : 'border-transparent shadow-sm hover:shadow-md hover:border-gray-200'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                                            openFaqIndex === index
+                                                ? 'bg-amber-500 text-white rotate-0'
+                                                : 'bg-amber-100 text-amber-600'
+                                        }`}>
+                                            <span className="font-black text-sm">Q{index + 1}</span>
+                                        </div>
+                                        <span className="font-bold text-gray-900 text-left text-sm md:text-base">{faq.question}</span>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                        openFaqIndex === index
+                                            ? 'bg-amber-500 text-white'
+                                            : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'
+                                    }`}>
+                                        <ChevronDown
+                                            className={`w-4 h-4 transition-transform duration-300 ${
+                                                openFaqIndex === index ? 'rotate-180' : ''
+                                            }`}
+                                        />
+                                    </div>
+                                </button>
+                                <AnimatePresence>
+                                    {openFaqIndex === index && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="px-6 py-5 mx-4 bg-amber-50 rounded-b-2xl border-x-2 border-b-2 border-amber-200 -mt-2">
+                                                <div className="flex gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center flex-shrink-0">
+                                                        <span className="font-black text-sm text-amber-700">A</span>
+                                                    </div>
+                                                    <p className="text-gray-700 leading-relaxed text-sm md:text-base pt-2">
+                                                        {faq.answer}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Contact CTA */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                        className="mt-12 text-center"
+                    >
+                        <p className="text-gray-500 mb-4">その他のご質問は</p>
+                        <a
+                            href="mailto:team@zettai.co.jp"
+                            className="inline-flex items-center gap-2 text-amber-600 font-bold hover:text-amber-700 transition-colors"
+                        >
+                            team@zettai.co.jp
+                            <ArrowRight className="w-4 h-4" />
+                        </a>
+                    </motion.div>
                 </div>
             </section>
 

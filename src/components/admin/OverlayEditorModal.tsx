@@ -170,9 +170,9 @@ export default function OverlayEditorModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-purple-50">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center shadow-lg">
                             <MousePointer className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -207,7 +207,7 @@ export default function OverlayEditorModal({
                                     key={overlay.id}
                                     className={clsx(
                                         "absolute cursor-grab active:cursor-grabbing transition-shadow",
-                                        selectedId === overlay.id && "ring-2 ring-violet-500 ring-offset-2"
+                                        selectedId === overlay.id && "ring-2 ring-gray-900 ring-offset-2"
                                     )}
                                     style={{
                                         left: `${overlay.x}%`,
@@ -274,7 +274,7 @@ export default function OverlayEditorModal({
                             </div>
                             <button
                                 onClick={() => addOverlay()}
-                                className="w-full mt-2 px-3 py-2 text-xs font-medium border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-violet-400 hover:text-violet-600 transition-colors flex items-center justify-center gap-1"
+                                className="w-full mt-2 px-3 py-2 text-xs font-medium border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-gray-500 hover:text-gray-900 transition-colors flex items-center justify-center gap-1"
                             >
                                 <Plus className="h-3 w-3" />
                                 カスタムボタン
@@ -293,7 +293,7 @@ export default function OverlayEditorModal({
                                         type="text"
                                         value={selectedOverlay.content}
                                         onChange={(e) => updateOverlay(selectedId!, { content: e.target.value })}
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-300 focus:border-transparent"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300 focus:border-transparent"
                                     />
                                 </div>
 
@@ -378,7 +378,7 @@ export default function OverlayEditorModal({
                                             link: { url: e.target.value, newTab: selectedOverlay.link?.newTab || true }
                                         })}
                                         placeholder="https://..."
-                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-300 focus:border-transparent"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300 focus:border-transparent"
                                     />
                                     <label className="flex items-center gap-2 mt-2 text-xs text-gray-600">
                                         <input
@@ -448,7 +448,7 @@ export default function OverlayEditorModal({
                                             className={clsx(
                                                 "flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
                                                 selectedId === overlay.id
-                                                    ? "bg-violet-100 text-violet-700"
+                                                    ? "bg-gray-100 text-gray-900"
                                                     : "hover:bg-gray-100 text-gray-600"
                                             )}
                                         >
@@ -484,7 +484,7 @@ export default function OverlayEditorModal({
                     </button>
                     <button
                         onClick={handleSave}
-                        className="px-6 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-bold rounded-lg hover:from-violet-600 hover:to-purple-600 transition-all"
+                        className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-all"
                     >
                         保存
                     </button>

@@ -181,19 +181,21 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-purple-600 to-indigo-600">
-                    <div className="flex items-center gap-3 text-white">
-                        <Sparkles className="w-6 h-6" />
+                <div className="flex items-center justify-between px-6 py-4 border-b bg-white border-gray-100">
+                    <div className="flex items-center gap-3 text-gray-900">
+                        <div className="bg-black p-2 rounded-lg">
+                            <Monitor className="w-5 h-5 text-white" />
+                        </div>
                         <div>
                             <h2 className="text-xl font-bold">スマートインポート</h2>
-                            <p className="text-sm text-white/80">AIがセクション境界を自動検出</p>
+                            <p className="text-sm text-gray-500">AIがセクション境界を自動検出</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     >
-                        <X className="w-6 h-6 text-white" />
+                        <X className="w-6 h-6 text-gray-400" />
                     </button>
                 </div>
 
@@ -211,7 +213,7 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     placeholder="https://example.com"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent accent-black"
                                 />
                             </div>
 
@@ -223,22 +225,20 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => setDevice('desktop')}
-                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                                            device === 'desktop'
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${device === 'desktop'
+                                                ? 'border-gray-900 bg-gray-50 text-gray-900'
                                                 : 'border-gray-200 hover:border-gray-300'
-                                        }`}
+                                            }`}
                                     >
                                         <Monitor className="w-5 h-5" />
                                         デスクトップ
                                     </button>
                                     <button
                                         onClick={() => setDevice('mobile')}
-                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                                            device === 'mobile'
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${device === 'mobile'
+                                                ? 'border-gray-900 bg-gray-50 text-gray-900'
                                                 : 'border-gray-200 hover:border-gray-300'
-                                        }`}
+                                            }`}
                                     >
                                         <Smartphone className="w-5 h-5" />
                                         モバイル
@@ -260,13 +260,12 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                         <button
                                             key={mode.value}
                                             onClick={() => setImportMode(mode.value as any)}
-                                            className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${
-                                                importMode === mode.value
-                                                    ? 'border-purple-500 bg-purple-50'
+                                            className={`px-4 py-3 rounded-lg border-2 text-left transition-colors ${importMode === mode.value
+                                                    ? 'border-gray-900 bg-gray-50'
                                                     : 'border-gray-200 hover:border-gray-300'
-                                            }`}
+                                                }`}
                                         >
-                                            <div className={`font-medium ${importMode === mode.value ? 'text-purple-700' : 'text-gray-800'}`}>
+                                            <div className={`font-medium ${importMode === mode.value ? 'text-gray-900' : 'text-gray-800'}`}>
                                                 {mode.label}
                                             </div>
                                             <div className="text-xs text-gray-500">{mode.desc}</div>
@@ -287,15 +286,13 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                                 <button
                                                     key={opt.value}
                                                     onClick={() => setStyle(opt.value)}
-                                                    className={`px-3 py-2.5 rounded-lg text-left transition-all border ${
-                                                        style === opt.value
-                                                            ? 'bg-purple-50 border-purple-500 ring-1 ring-purple-500'
-                                                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'
-                                                    }`}
+                                                    className={`px-3 py-2.5 rounded-lg text-left transition-all border ${style === opt.value
+                                                            ? 'bg-gray-50 border-gray-900 ring-1 ring-gray-900'
+                                                            : 'bg-white border-gray-200 hover:border-gray-400 hover:bg-gray-50/50'
+                                                        }`}
                                                 >
-                                                    <div className={`font-medium text-sm ${
-                                                        style === opt.value ? 'text-purple-700' : 'text-gray-800'
-                                                    }`}>
+                                                    <div className={`font-medium text-sm ${style === opt.value ? 'text-gray-900' : 'text-gray-800'
+                                                        }`}>
                                                         {opt.label}
                                                     </div>
                                                     <div className="text-xs text-gray-500 mt-0.5">{opt.desc}</div>
@@ -313,11 +310,10 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                                 <button
                                                     key={opt.value}
                                                     onClick={() => setColorScheme(opt.value)}
-                                                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                                                        colorScheme === opt.value
-                                                            ? 'bg-purple-600 text-white'
+                                                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${colorScheme === opt.value
+                                                            ? 'bg-black text-white'
                                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {opt.label}
                                                 </button>
@@ -344,11 +340,10 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                             <button
                                 onClick={handleDetect}
                                 disabled={!url.trim()}
-                                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg font-medium"
+                                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg font-medium"
                             >
-                                <Sparkles className="w-5 h-5" />
-                                セクションを検出
                                 <ChevronRight className="w-5 h-5" />
+                                セクションを検出
                             </button>
 
                             <p className="text-xs text-gray-500 text-center">
@@ -360,7 +355,7 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
 
                     {step === 'detecting' && (
                         <div className="py-12 text-center">
-                            <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
+                            <Loader2 className="w-12 h-12 text-gray-900 animate-spin mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-gray-800 mb-2">
                                 ページを分析中...
                             </h3>
@@ -372,7 +367,7 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
 
                     {step === 'generating' && (
                         <div className="py-12 text-center">
-                            <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
+                            <Loader2 className="w-12 h-12 text-gray-900 animate-spin mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-gray-800 mb-2">
                                 生成中...
                             </h3>
@@ -400,7 +395,7 @@ export function SmartImportModal({ onClose, onImportComplete }: SmartImportModal
                                     }
                                     onClose();
                                 }}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
                             >
                                 ページを開く
                             </button>

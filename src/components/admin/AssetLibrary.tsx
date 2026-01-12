@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { Search, Loader2, Image, Film, Sparkles, Camera, X, Download, GripVertical } from 'lucide-react';
+import { Search, Loader2, Image, Film, LayoutGrid, Camera, X, Download, GripVertical, FileImage } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
@@ -23,10 +23,10 @@ interface AssetLibraryProps {
 }
 
 const CATEGORIES = [
-    { id: 'all', label: 'すべて', icon: Sparkles },
+    { id: 'all', label: 'すべて', icon: LayoutGrid },
     { id: 'lottie', label: 'アニメ', icon: Film },
     { id: 'illustration', label: 'イラスト', icon: Image },
-    { id: 'icon', label: 'アイコン', icon: Sparkles },
+    { id: 'icon', label: 'アイコン', icon: FileImage },
     { id: 'photo', label: '写真', icon: Camera },
 ] as const;
 
@@ -107,7 +107,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
             setAssets(data.assets || []);
 
             if (data.assets?.length === 0) {
-                toast('素材が見つかりませんでした', { icon: '🔍' });
+                toast('素材が見つかりませんでした');
             }
         } catch (error) {
             toast.error('検索に失敗しました');
@@ -283,14 +283,7 @@ export function AssetLibrary({ onAssetSelect, onClose, onDragStart, onDragEnd }:
 
                                 {/* ソースバッジ */}
                                 <div className="absolute top-1 right-1">
-                                    <span className={clsx(
-                                        "text-[8px] px-1.5 py-0.5 rounded font-medium",
-                                        asset.type === 'lottie' && "bg-purple-100 text-purple-700",
-                                        asset.type === 'illustration' && "bg-blue-100 text-blue-700",
-                                        asset.type === 'icon' && "bg-green-100 text-green-700",
-                                        asset.type === 'photo' && "bg-amber-100 text-amber-700",
-                                        asset.type === 'button' && "bg-indigo-100 text-indigo-700"
-                                    )}>
+                                    <span className="text-[8px] px-1.5 py-0.5 rounded-sm font-medium bg-white/90 text-gray-900 border border-gray-100 shadow-sm">
                                         {asset.source}
                                     </span>
                                 </div>

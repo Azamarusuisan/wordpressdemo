@@ -114,9 +114,9 @@ export default function SectionCropModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center shadow-lg">
                             <Crop className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -161,7 +161,7 @@ export default function SectionCropModal({
 
                                 {/* 選択領域の境界線 */}
                                 <div
-                                    className="absolute left-0 right-0 border-2 border-dashed border-emerald-400 pointer-events-none"
+                                    className="absolute left-0 right-0 border-2 border-dashed border-white pointer-events-none"
                                     style={{
                                         top: `${cropArea.startY * 100}%`,
                                         bottom: `${(1 - cropArea.endY) * 100}%`
@@ -174,7 +174,7 @@ export default function SectionCropModal({
                                     style={{ top: `calc(${cropArea.startY * 100}% - 12px)` }}
                                     onMouseDown={handleMouseDown('start')}
                                 >
-                                    <div className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                                    <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
                                         <ChevronUp className="h-3 w-3" />
                                         上端
                                     </div>
@@ -186,7 +186,7 @@ export default function SectionCropModal({
                                     style={{ top: `calc(${cropArea.endY * 100}% - 12px)` }}
                                     onMouseDown={handleMouseDown('end')}
                                 >
-                                    <div className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                                    <div className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
                                         <ChevronDown className="h-3 w-3" />
                                         下端
                                     </div>
@@ -208,7 +208,7 @@ export default function SectionCropModal({
                                     className={clsx(
                                         "w-full p-3 rounded-xl border-2 text-left transition-all",
                                         action === 'crop'
-                                            ? "border-emerald-500 bg-emerald-50"
+                                            ? "border-gray-900 bg-gray-50"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
@@ -220,7 +220,7 @@ export default function SectionCropModal({
                                     className={clsx(
                                         "w-full p-3 rounded-xl border-2 text-left transition-all",
                                         action === 'split'
-                                            ? "border-emerald-500 bg-emerald-50"
+                                            ? "border-gray-900 bg-gray-50"
                                             : "border-gray-200 hover:border-gray-300"
                                     )}
                                 >
@@ -244,7 +244,7 @@ export default function SectionCropModal({
                                 </div>
                                 <div className="flex justify-between pt-2 border-t">
                                     <span className="text-gray-600">高さ</span>
-                                    <span className="font-mono text-emerald-600 font-bold">{cropHeightPx}px</span>
+                                    <span className="font-mono text-gray-900 font-bold">{cropHeightPx}px</span>
                                 </div>
                             </div>
                         </div>
@@ -271,7 +271,7 @@ export default function SectionCropModal({
                     <button
                         onClick={handleCrop}
                         disabled={isCropping}
-                        className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold rounded-lg hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                        className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     >
                         {isCropping ? (
                             <>処理中...</>

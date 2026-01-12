@@ -63,19 +63,20 @@ export default function SectionInsertModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-blue-500 to-indigo-500">
+                {/* ヘッダー */}
+                <div className="flex items-center justify-between px-5 py-4 border-b bg-white border-gray-100">
                     <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <ImageIcon className="h-5 w-5" />
                             セクションを挿入
                         </h2>
-                        <p className="text-xs text-blue-100 mt-0.5">
+                        <p className="text-xs text-gray-500 mt-0.5">
                             セクション {insertIndex + 1} の位置に挿入します
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                        className="p-2 text-gray-400 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -85,18 +86,17 @@ export default function SectionInsertModal({
                 <div className="p-5">
                     {isUploading ? (
                         <div className="py-12 flex flex-col items-center justify-center">
-                            <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-3" />
+                            <Loader2 className="h-10 w-10 text-gray-900 animate-spin mb-3" />
                             <p className="text-sm text-gray-600">アップロード中...</p>
                         </div>
                     ) : (
                         <>
                             {/* ドラッグ＆ドロップエリア */}
                             <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
-                                    dragOver
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                                }`}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${dragOver
+                                        ? 'border-gray-900 bg-gray-50'
+                                        : 'border-gray-300 hover:border-gray-500 hover:bg-gray-50'
+                                    }`}
                                 onDragOver={(e) => {
                                     e.preventDefault();
                                     setDragOver(true);

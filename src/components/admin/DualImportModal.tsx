@@ -98,12 +98,13 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
-                            <Monitor className="w-5 h-5 text-blue-600" />
+                            <Monitor className="w-5 h-5 text-gray-900" />
                             <span className="text-gray-400">+</span>
-                            <Smartphone className="w-4 h-4 text-purple-600" />
+                            <Smartphone className="w-4 h-4 text-gray-900" />
                         </div>
                         <h2 className="text-lg font-bold text-gray-900">
                             デュアルスクリーンショット
@@ -136,7 +137,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     placeholder="https://example.com"
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none transition-all"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && url.trim()) {
                                             handleCapture();
@@ -147,14 +148,14 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
 
                             <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
                                 <div className="flex-1 flex items-center gap-3 text-sm text-gray-600">
-                                    <Monitor className="w-8 h-8 text-blue-500" />
+                                    <Monitor className="w-8 h-8 text-gray-900" />
                                     <div>
                                         <div className="font-medium">デスクトップ</div>
                                         <div className="text-gray-400">1280 x 800</div>
                                     </div>
                                 </div>
                                 <div className="flex-1 flex items-center gap-3 text-sm text-gray-600">
-                                    <Smartphone className="w-8 h-8 text-purple-500" />
+                                    <Smartphone className="w-8 h-8 text-gray-900" />
                                     <div>
                                         <div className="font-medium">モバイル</div>
                                         <div className="text-gray-400">375 x 812</div>
@@ -165,7 +166,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                             <button
                                 onClick={handleCapture}
                                 disabled={!url.trim()}
-                                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-3 px-4 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 <Download className="w-5 h-5" />
                                 両方を同時に取り込む
@@ -175,7 +176,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
 
                     {step === 'capturing' && (
                         <div className="py-12 text-center">
-                            <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
+                            <Loader2 className="w-12 h-12 animate-spin text-gray-900 mx-auto mb-4" />
                             <p className="text-lg font-medium text-gray-700 mb-2">
                                 スクリーンショットを取得中...
                             </p>
@@ -188,7 +189,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                     {step === 'preview' && result && (
                         <div className="space-y-6">
                             <div className="text-center">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full mb-4">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-900 rounded-full mb-4">
                                     <Check className="w-4 h-4" />
                                     取得完了
                                 </div>
@@ -198,7 +199,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                                 {/* Desktop Preview */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
-                                        <Monitor className="w-5 h-5 text-blue-600" />
+                                        <Monitor className="w-5 h-5 text-gray-900" />
                                         <span className="font-medium text-gray-700">デスクトップ</span>
                                         <span className="text-sm text-gray-400">
                                             ({result.desktop.length} セグメント)
@@ -219,7 +220,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                                 {/* Mobile Preview */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
-                                        <Smartphone className="w-5 h-5 text-purple-600" />
+                                        <Smartphone className="w-5 h-5 text-gray-900" />
                                         <span className="font-medium text-gray-700">モバイル</span>
                                         <span className="text-sm text-gray-400">
                                             ({result.mobile.length} セグメント)
@@ -252,7 +253,7 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                                 </button>
                                 <button
                                     onClick={handleConfirmImport}
-                                    className="flex-1 py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-3 px-4 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Check className="w-5 h-5" />
                                     この内容で進む
@@ -285,6 +286,6 @@ export function DualImportModal({ onClose, onImport }: DualImportModalProps) {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -128,7 +128,7 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
 
         // カットライン（上）
         const upperCutY = margin * scale;
-        ctx.strokeStyle = '#ef4444';
+        ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]);
         ctx.beginPath();
@@ -144,20 +144,20 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
         ctx.stroke();
 
         // カット領域を薄く塗る
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         ctx.fillRect(0, upperCutY, containerWidth, (upper + lower) * scale);
 
         // ラベル
         ctx.setLineDash([]);
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = '#000000';
         ctx.fillText(`↓ ${upper}px カット`, 8, upperCutY + 16);
         ctx.fillText(`↑ ${lower}px カット`, 8, lowerCutY - 6);
 
         // 生成される高さ
         ctx.fillStyle = '#fff';
         ctx.fillRect(containerWidth / 2 - 50, (displayUpperHeight - 10) * scale, 100, 20);
-        ctx.fillStyle = '#7c3aed';
+        ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
         ctx.fillText(`生成: ${upper + lower}px`, containerWidth / 2, (displayUpperHeight + 4) * scale);
         ctx.textAlign = 'left';
@@ -242,7 +242,7 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                         } else if (data.type === 'error') {
                             throw new Error(data.error);
                         }
-                    } catch {}
+                    } catch { }
                 }
             }
 
@@ -270,13 +270,13 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                 {/* 処理中 */}
                 {isProcessing ? (
                     <div className="p-8 flex flex-col items-center justify-center">
-                        <Loader2 className="h-10 w-10 text-purple-600 animate-spin mb-4" />
+                        <Loader2 className="h-10 w-10 text-gray-900 animate-spin mb-4" />
                         <p className="text-sm font-medium text-gray-700">{progress.message}</p>
                         {progress.total > 0 && (
                             <div className="w-full max-w-xs mt-4">
                                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-purple-600 transition-all"
+                                        className="h-full bg-black transition-all"
                                         style={{ width: `${(progress.current / progress.total) * 100}%` }}
                                     />
                                 </div>
@@ -338,7 +338,7 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                                             step="10"
                                             value={currentCut.upper}
                                             onChange={(e) => updateCut('upper', Number(e.target.value))}
-                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                         />
                                         <span className="text-sm font-bold text-gray-700 w-14 text-right">
                                             {currentCut.upper}px
@@ -358,7 +358,7 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                                             step="10"
                                             value={currentCut.lower}
                                             onChange={(e) => updateCut('lower', Number(e.target.value))}
-                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                         />
                                         <span className="text-sm font-bold text-gray-700 w-14 text-right">
                                             {currentCut.lower}px
@@ -368,8 +368,8 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                             </div>
 
                             {/* 生成サイズ表示 */}
-                            <div className="text-center py-2 bg-purple-50 rounded-lg">
-                                <span className="text-sm text-purple-700">
+                            <div className="text-center py-2 bg-gray-100 rounded-lg">
+                                <span className="text-sm text-gray-900">
                                     生成される画像: <strong>{currentCut.upper + currentCut.lower}px</strong>
                                 </span>
                             </div>
@@ -419,7 +419,7 @@ export function BoundaryDesignModal({ boundaries, onClose, onSuccess }: Props) {
                             <button
                                 onClick={handleExecute}
                                 disabled={boundaries.some((_, i) => cutAmounts[i].upper + cutAmounts[i].lower < 10)}
-                                className="px-5 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 <Scissors className="h-4 w-4" />
                                 {boundaries.length > 1 ? `${boundaries.length}箇所を修正` : '修正を実行'}

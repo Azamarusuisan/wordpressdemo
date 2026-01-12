@@ -214,7 +214,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                 <div className="flex items-center justify-between px-5 py-4 border-b bg-white">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            <Wand2 className="h-5 w-5 text-purple-600" />
+                            <Wand2 className="h-5 w-5 text-gray-900" />
                             デザイン統一
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -236,7 +236,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                             <div className="mb-4">
                                 <h3 className="text-sm font-bold text-gray-700 mb-2">修正対象セクション</h3>
                                 {targetSection?.image?.filePath && (
-                                    <div className="border-2 border-red-300 rounded-lg overflow-hidden">
+                                    <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
                                         <div className="max-h-48 overflow-y-auto">
                                             <img
                                                 src={targetSection.image.filePath}
@@ -244,7 +244,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                                 className="w-full h-auto"
                                             />
                                         </div>
-                                        <div className="bg-red-50 px-3 py-1.5 text-xs text-red-700 font-medium">
+                                        <div className="bg-gray-100 px-3 py-1.5 text-xs text-gray-900 font-medium">
                                             このセクションのデザインを修正します
                                         </div>
                                     </div>
@@ -258,11 +258,10 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                         <button
                                             key={section.id}
                                             onClick={() => setReferenceSectionId(section.id)}
-                                            className={`border-2 rounded-lg overflow-hidden transition-all ${
-                                                referenceSectionId === section.id
-                                                    ? 'border-purple-500 ring-2 ring-purple-200'
+                                            className={`border-2 rounded-lg overflow-hidden transition-all ${referenceSectionId === section.id
+                                                    ? 'border-gray-900 ring-2 ring-gray-200'
                                                     : 'border-gray-200 hover:border-gray-300'
-                                            }`}
+                                                }`}
                                         >
                                             {section.image?.filePath && (
                                                 <div className="max-h-40 overflow-y-auto">
@@ -273,11 +272,10 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                                     />
                                                 </div>
                                             )}
-                                            <div className={`px-3 py-1.5 text-xs font-medium ${
-                                                referenceSectionId === section.id
-                                                    ? 'bg-purple-50 text-purple-700'
+                                            <div className={`px-3 py-1.5 text-xs font-medium ${referenceSectionId === section.id
+                                                    ? 'bg-gray-100 text-gray-900'
                                                     : 'bg-gray-50 text-gray-600'
-                                            }`}>
+                                                }`}>
                                                 セクション {section.order + 1}
                                                 {referenceSectionId === section.id && (
                                                     <Check className="inline h-3 w-3 ml-1" />
@@ -317,22 +315,20 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                             <div className="flex items-center gap-2 mb-3">
                                 <button
                                     onClick={() => setTool('select')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                        tool === 'select'
-                                            ? 'bg-purple-100 text-purple-700'
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${tool === 'select'
+                                            ? 'bg-gray-200 text-gray-900'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                 >
                                     <MousePointer2 className="h-4 w-4" />
                                     選択
                                 </button>
                                 <button
                                     onClick={() => setTool('erase')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                        tool === 'erase'
-                                            ? 'bg-red-100 text-red-700'
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${tool === 'erase'
+                                            ? 'bg-gray-200 text-gray-900'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                 >
                                     <Eraser className="h-4 w-4" />
                                     消す
@@ -351,16 +347,16 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
 
                             {/* キャンバス */}
                             <div ref={containerRef} className="bg-gray-100 rounded-lg p-4">
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                                    <p className="text-xs font-bold text-amber-800 mb-1">⚠️ 重要：1つずつ選択</p>
-                                    <p className="text-xs text-amber-700">
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                                    <p className="text-xs font-bold text-gray-900 mb-1">⚠️ 重要：1つずつ選択</p>
+                                    <p className="text-xs text-gray-600">
                                         <strong>1回の実行で1箇所だけ</strong>選択してください。
                                         複数箇所を同時に選択すると結果が崩れます。
                                     </p>
                                 </div>
                                 {masks.length > 1 && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                                        <p className="text-xs font-bold text-red-800">
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                                        <p className="text-xs font-bold text-gray-900">
                                             ⛔ {masks.length}箇所選択中 - 1箇所だけにしてください
                                         </p>
                                     </div>
@@ -388,7 +384,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                     value={additionalPrompt}
                                     onChange={(e) => setAdditionalPrompt(e.target.value)}
                                     placeholder="例: バッジを緑色にする、アイコンのスタイルを揃える"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
                                 />
                                 <p className="text-[10px] text-gray-400 mt-1">
                                     具体的に指示すると精度が上がります（例：「Merit 1と同じ緑のバッジにする」）
@@ -400,7 +396,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                     {/* 処理中 */}
                     {step === 'processing' && (
                         <div className="p-12 flex flex-col items-center justify-center">
-                            <Loader2 className="h-12 w-12 text-purple-600 animate-spin mb-4" />
+                            <Loader2 className="h-12 w-12 text-gray-900 animate-spin mb-4" />
                             <p className="text-sm font-medium text-gray-700">デザインを統一中...</p>
                             <p className="text-xs text-gray-500 mt-2">AIが参照デザインに合わせて修正しています</p>
                         </div>
@@ -412,14 +408,14 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                     <div className="px-5 py-4 border-t bg-gray-50">
                         {/* API課金費用の表示（draw-maskステップ時） */}
                         {step === 'draw-mask' && masks.length === 1 && (
-                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-amber-600" />
-                                    <span className="text-xs font-bold text-amber-800">
+                                    <DollarSign className="h-4 w-4 text-gray-600" />
+                                    <span className="text-xs font-bold text-gray-900">
                                         この作業のAPI課金費用: 約${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(2)}
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-amber-600 mt-1 ml-6">
+                                <p className="text-[10px] text-gray-600 mt-1 ml-6">
                                     画像1枚 × $0.04（Gemini 3 Pro Image）
                                 </p>
                             </div>
@@ -444,7 +440,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                 <button
                                     onClick={() => setStep('draw-mask')}
                                     disabled={!referenceSectionId}
-                                    className="flex items-center gap-1 px-5 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-1 px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     次へ
                                     <ChevronRight className="h-4 w-4" />
@@ -455,7 +451,7 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                                 <button
                                     onClick={handleExecute}
                                     disabled={masks.length === 0 || masks.length > 1}
-                                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Wand2 className="h-4 w-4" />
                                     {masks.length > 1 ? '1箇所だけ選択してください' : 'デザイン統一を実行'}

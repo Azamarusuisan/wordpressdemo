@@ -85,9 +85,9 @@ export default function MobileOptimizeModal({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-blue-50">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-lg">
+                        <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center shadow-lg">
                             <Smartphone className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -104,13 +104,13 @@ export default function MobileOptimizeModal({
                 <div className="flex-1 overflow-y-auto p-6">
                     {isOptimizing ? (
                         <div className="flex flex-col items-center justify-center py-16">
-                            <RefreshCw className="h-12 w-12 text-sky-500 animate-spin mb-4" />
+                            <RefreshCw className="h-12 w-12 text-gray-900 animate-spin mb-4" />
                             <p className="text-lg font-bold text-gray-900 mb-2">
                                 最適化中... {progress.current}/{progress.total}
                             </p>
                             <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-sky-500 transition-all"
+                                    className="h-full bg-black transition-all"
                                     style={{ width: `${(progress.current / progress.total) * 100}%` }}
                                 />
                             </div>
@@ -128,7 +128,7 @@ export default function MobileOptimizeModal({
                                             className={clsx(
                                                 "p-3 rounded-xl border-2 text-left transition-all",
                                                 strategy === s.value
-                                                    ? "border-sky-500 bg-sky-50"
+                                                    ? "border-gray-900 bg-gray-50"
                                                     : "border-gray-200 hover:border-gray-300"
                                             )}
                                         >
@@ -153,7 +153,7 @@ export default function MobileOptimizeModal({
                                             className={clsx(
                                                 "relative rounded-lg overflow-hidden border-2 transition-all",
                                                 selectedSections.has(String(section.id))
-                                                    ? "border-sky-500 ring-2 ring-sky-200"
+                                                    ? "border-gray-900 ring-2 ring-gray-200"
                                                     : "border-gray-200 hover:border-gray-300"
                                             )}
                                         >
@@ -173,7 +173,7 @@ export default function MobileOptimizeModal({
                                                 )}
                                             </div>
                                             {selectedSections.has(String(section.id)) && (
-                                                <div className="absolute top-1 right-1 h-5 w-5 bg-sky-500 rounded-full flex items-center justify-center">
+                                                <div className="absolute top-1 right-1 h-5 w-5 bg-black rounded-full flex items-center justify-center">
                                                     <Check className="h-3 w-3 text-white" />
                                                 </div>
                                             )}
@@ -190,21 +190,21 @@ export default function MobileOptimizeModal({
                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
                         {/* API課金費用の表示（AI再生成の場合のみ） */}
                         {strategy === 'regenerate' && selectedSections.size > 0 && (
-                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-amber-600" />
-                                    <span className="text-xs font-bold text-amber-800">
+                                    <DollarSign className="h-4 w-4 text-gray-600" />
+                                    <span className="text-xs font-bold text-gray-900">
                                         この作業のAPI課金費用: 約${(selectedSections.size * GEMINI_PRICING['gemini-3-pro-image-preview'].perImage).toFixed(2)}
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-amber-600 mt-1 ml-6">
+                                <p className="text-[10px] text-gray-600 mt-1 ml-6">
                                     {selectedSections.size}件 × $0.04（Gemini 3 Pro Image）
                                 </p>
                             </div>
                         )}
                         {strategy !== 'regenerate' && selectedSections.size > 0 && (
-                            <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-xs text-green-700">
+                            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <p className="text-xs text-gray-700">
                                     この方法はAPIコスト無料です（ローカル処理）
                                 </p>
                             </div>
@@ -216,7 +216,7 @@ export default function MobileOptimizeModal({
                             <button
                                 onClick={handleOptimize}
                                 disabled={selectedSections.size === 0}
-                                className="px-6 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white text-sm font-bold rounded-lg hover:from-sky-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                                className="px-6 py-2 bg-black text-white text-sm font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                             >
                                 <Sparkles className="h-4 w-4" />
                                 モバイル版を生成
