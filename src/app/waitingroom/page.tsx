@@ -453,31 +453,26 @@ export default function WaitingRoomPage() {
                                                                 type="button"
                                                                 variant={formData.selectedPlan === plan.id ? 'amber' : 'outline'}
                                                                 className={cn(
-                                                                    "w-full flex-col h-auto py-3 px-2",
+                                                                    "w-full flex-col h-auto py-2.5 px-1.5 relative",
                                                                     plan.highlight && formData.selectedPlan !== plan.id && "border-amber-300 bg-amber-50/50"
                                                                 )}
                                                                 onClick={() => setFormData({ ...formData, selectedPlan: plan.id as 'pro' | 'business' | 'enterprise' })}
                                                             >
-                                                                <plan.icon className="w-4 h-4 mb-1" />
+                                                                {plan.discount && (
+                                                                    <span className="absolute -top-2 -right-1 bg-red-500 text-white px-1 py-0.5 rounded text-[8px] font-bold">
+                                                                        {plan.discount}
+                                                                    </span>
+                                                                )}
                                                                 <span className="text-xs font-bold">{plan.name}</span>
-                                                                <span className="text-[10px] text-gray-500">{plan.price}</span>
+                                                                <span className="text-[10px] text-gray-500 font-medium">{plan.price}/月</span>
+                                                                <span className="text-[9px] text-amber-600 font-bold mt-0.5">{plan.tokens}トークン</span>
                                                             </Button>
                                                         ))}
                                                     </div>
                                                     {formData.selectedPlan && (
-                                                        <div className="text-xs mt-1.5 flex items-center gap-2">
-                                                            <span className="font-medium text-amber-600">
-                                                                月間 {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.tokens}トークン
-                                                            </span>
-                                                            <span className="text-gray-400">
-                                                                ({PLAN_DATA.find(p => p.id === formData.selectedPlan)?.tokenNote})
-                                                            </span>
-                                                            {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.discount && (
-                                                                <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                                                    {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.discount}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.tokenNote}作成可能
+                                                        </p>
                                                     )}
                                                 </div>
 
@@ -813,8 +808,9 @@ export default function WaitingRoomPage() {
                     </div>
 
                     {/* Plans Grid */}
+                    <h3 className="text-2xl md:text-3xl font-black text-gray-900 mb-6 md:mb-8">料金プラン</h3>
                     <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-0 md:pb-0 md:mx-0 md:px-0 bg-transparent md:bg-white md:border-2 md:border-black md:divide-x-2 divide-black scrollbar-hide">
-                        {PLAN_DATA.map((plan) => (
+                        {[PLAN_DATA[1], PLAN_DATA[0], PLAN_DATA[2]].map((plan) => (
                             <div
                                 key={plan.id}
                                 className={cn(
