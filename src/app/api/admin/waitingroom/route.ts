@@ -112,7 +112,7 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
 
-        const validPlans = ['free', 'poc', 'pro', 'expert'];
+        const validPlans = ['free', 'poc', 'pro', 'business', 'enterprise'];
         if (plan && !validPlans.includes(plan)) {
             return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
         }

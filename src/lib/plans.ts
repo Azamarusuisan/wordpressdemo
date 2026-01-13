@@ -3,7 +3,7 @@
  * クレジットベースのAPI使用量管理
  */
 
-export type PlanType = 'free' | 'pro' | 'expert' | 'enterprise';
+export type PlanType = 'free' | 'pro' | 'business' | 'enterprise';
 
 export interface PlanLimits {
   // 最大ページ数
@@ -46,6 +46,7 @@ export interface Plan {
 export const USD_TO_JPY_RATE = 150;
 
 export const PLANS: Record<PlanType, Plan> = {
+  // 無料プラン（レガシー、新規登録は非推奨）
   free: {
     id: 'free',
     name: 'Free',
@@ -75,13 +76,39 @@ export const PLANS: Record<PlanType, Plan> = {
     id: 'pro',
     name: 'Pro',
     description: 'スタートアップ・個人事業主向け',
-    priceJpy: 10000,
-    includedCreditUsd: 16.67, // 2,500円分 (25%)
+    priceJpy: 20000,
+    includedCreditUsd: 33.33, // ¥5,000分 (25%)
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro',
-    priceDisplay: '¥10,000/月',
+    priceDisplay: '¥20,000/月',
     limits: {
-      maxPages: 50,
-      maxStorageMB: 10000,
+      maxPages: 30,
+      maxStorageMB: 5000,
+      canUpscale4K: false,
+      canRestyle: false,
+      canExport: true,
+      canGenerateVideo: false,
+      canSetApiKey: false, // 有料プランは自社APIを使用
+      prioritySupport: false,
+    },
+    features: [
+      '最大30ページ',
+      '月間クレジット ¥5,000分',
+      '画像生成',
+      'インペイント編集',
+      'HTMLエクスポート',
+    ],
+  },
+  business: {
+    id: 'business',
+    name: 'Business',
+    description: '成長企業・制作会社向け',
+    priceJpy: 40000,
+    includedCreditUsd: 66.67, // ¥10,000分 (25%)
+    stripePriceId: process.env.STRIPE_PRICE_BUSINESS || 'price_business',
+    priceDisplay: '¥40,000/月',
+    limits: {
+      maxPages: 100,
+      maxStorageMB: 20000,
       canUpscale4K: true,
       canRestyle: true,
       canExport: true,
@@ -90,44 +117,19 @@ export const PLANS: Record<PlanType, Plan> = {
       prioritySupport: false,
     },
     features: [
-      'AI画像生成',
+      '最大100ページ',
+      '月間クレジット ¥10,000分',
+      'Pro全機能',
       '4Kアップスケール',
       'リスタイル機能',
-      'エクスポート機能',
-      '月間APIクレジット $16.67分',
-    ],
-  },
-  expert: {
-    id: 'expert',
-    name: 'Expert',
-    description: '代理店・中規模ビジネス向け',
-    priceJpy: 30000,
-    includedCreditUsd: 50.0, // 7,500円分 (25%)
-    stripePriceId: process.env.STRIPE_PRICE_EXPERT || 'price_expert',
-    priceDisplay: '¥30,000/月',
-    limits: {
-      maxPages: 200,
-      maxStorageMB: 50000,
-      canUpscale4K: true,
-      canRestyle: true,
-      canExport: true,
-      canGenerateVideo: true,
-      canSetApiKey: false, // 有料プランは自社APIを使用
-      prioritySupport: true,
-    },
-    features: [
-      'Pro全機能',
-      '動画生成',
-      '優先サポート',
-      '月間APIクレジット $50分',
     ],
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    description: '大規模・エンタープライズ向け',
+    description: '代理店・大規模ビジネス向け',
     priceJpy: 100000,
-    includedCreditUsd: 166.67, // 25,000円分 (25%)
+    includedCreditUsd: 166.67, // ¥25,000分 (25%)
     stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise',
     priceDisplay: '¥100,000/月',
     limits: {
@@ -141,11 +143,11 @@ export const PLANS: Record<PlanType, Plan> = {
       prioritySupport: true,
     },
     features: [
-      'Expert全機能',
-      '無制限ページ・ストレージ',
-      '専任サポート',
-      'カスタム連携',
-      '月間APIクレジット $166.67分',
+      '無制限ページ',
+      '月間クレジット ¥25,000分',
+      'Business全機能',
+      '動画生成',
+      '優先サポート',
     ],
   },
 };

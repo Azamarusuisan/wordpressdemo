@@ -115,7 +115,7 @@ const FAQ_DATA = [
     },
     {
         question: 'LP1つ作成するのにどのくらいクレジットが必要ですか？',
-        answer: 'シンプルなLP（5〜6セクション、画像3〜5枚生成）で約$0.10〜$0.20（約15〜30円）、本格的なLP（10セクション以上、画像10枚以上）で約$0.30〜$0.80（約45〜120円）が目安です。Proプラン（月$16.67）なら、月に50〜150ページ程度のLPを作成できます。',
+        answer: 'シンプルなLP（5〜6セクション、画像3〜5枚生成）で約1,000〜1,500円、本格的なLP（10セクション以上、画像10枚以上）で約1,500〜2,500円が目安です。使用する機能や生成回数によって変動します。',
     },
     {
         question: 'どのような画像を生成できますか？',
@@ -135,68 +135,67 @@ const FAQ_DATA = [
     },
     {
         question: 'サポートはありますか？',
-        answer: 'メールサポート（team@zettai.co.jp）をご利用いただけます。Expertプラン以上では優先サポートが適用され、より迅速な対応が可能です。',
+        answer: 'メールサポート（team@zettai.co.jp）をご利用いただけます。Enterpriseプランでは優先サポートが適用され、より迅速な対応が可能です。',
     },
 ];
 
 // Plan data
 const PLAN_DATA = [
     {
-        id: 'free',
-        name: 'Free',
-        price: '¥0',
+        id: 'pro',
+        name: 'Pro',
+        price: '¥20,000',
         period: '/月',
-        credit: '0',
-        creditNote: '※自分のAPIキーが必要',
-        description: 'まずは試してみたい方に',
+        credit: '¥5,000',
+        creditNote: '約3〜4LP分',
+        description: 'スタートアップ・個人事業主に',
         icon: User,
         features: [
-            '最大10ページ',
-            '画像生成（自分のAPIキー）',
+            '最大30ページ',
+            '月間クレジット ¥5,000分',
+            '画像生成',
+            'インペイント編集',
             'HTMLエクスポート',
         ],
         limitations: [
-            '4Kアップスケール不可',
-            'リスタイル不可',
             '動画生成不可',
         ],
         highlight: false,
         gradient: 'from-gray-100 to-gray-50',
     },
     {
-        id: 'pro',
-        name: 'Pro',
-        price: '¥10,000',
+        id: 'business',
+        name: 'Business',
+        price: '¥40,000',
         period: '/月',
-        credit: '$16.67',
-        creditNote: '約50〜150LP分',
-        description: 'スタートアップ・個人事業主に',
+        credit: '¥10,000',
+        creditNote: '約6〜7LP分',
+        description: '成長企業・制作会社に',
         icon: Zap,
         features: [
-            '最大50ページ',
-            '月間クレジット $16.67分',
-            '画像生成',
+            '最大100ページ',
+            '月間クレジット ¥10,000分',
+            'Pro全機能',
             '4Kアップスケール',
             'リスタイル機能',
-            'HTMLエクスポート',
         ],
         limitations: [],
         highlight: true,
         gradient: 'from-amber-500 to-orange-500',
     },
     {
-        id: 'expert',
-        name: 'Expert',
-        price: '¥30,000',
+        id: 'enterprise',
+        name: 'Enterprise',
+        price: '¥100,000',
         period: '/月',
-        credit: '$50',
-        creditNote: '約150〜500LP分',
-        description: '代理店・中規模ビジネスに',
+        credit: '¥25,000',
+        creditNote: '約16〜17LP分',
+        description: '代理店・大規模ビジネスに',
         icon: Building2,
         features: [
-            '最大200ページ',
-            '月間クレジット $50分',
-            'Pro全機能',
+            '無制限ページ',
+            '月間クレジット ¥25,000分',
+            'Business全機能',
             '動画生成',
             '優先サポート',
         ],
@@ -208,11 +207,11 @@ const PLAN_DATA = [
 
 // Credit usage data
 const CREDIT_USAGE = [
-    { action: '画像生成', cost: '約3〜6円', icon: Image },
-    { action: 'インペイント', cost: '約3〜6円', icon: Wand2 },
-    { action: 'リスタイル', cost: '約3〜6円', icon: Palette },
-    { action: '動画生成', cost: '約53円/秒', icon: Video },
-    { action: 'URL取り込み', cost: '〜1円', icon: Globe },
+    { action: '画像生成', cost: '約150〜200円', icon: Image },
+    { action: 'インペイント', cost: '約100〜150円', icon: Wand2 },
+    { action: 'リスタイル', cost: '約200〜300円', icon: Palette },
+    { action: '動画生成', cost: '約50〜100円/秒', icon: Video },
+    { action: 'URL取り込み', cost: '約50〜100円', icon: Globe },
 ];
 
 export default function WaitingRoomPage() {
@@ -406,7 +405,7 @@ export default function WaitingRoomPage() {
                                                         <p className="text-xl font-bold text-amber-600">¥20,000<span className="text-sm font-normal text-gray-500">/月</span></p>
                                                     </div>
                                                     <div className="text-right text-xs text-gray-600">
-                                                        <p>初月無料</p>
+                                                        <p>初期費用無料</p>
                                                         <p>全機能利用可</p>
                                                     </div>
                                                 </div>
@@ -607,8 +606,8 @@ export default function WaitingRoomPage() {
                         </p>
                     </motion.div>
 
-                    {/* Mobile: Horizontal Scroll, Desktop: Grid */}
-                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-6 md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
+                    {/* Swiss/Brutalist Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border-2 border-black bg-white">
                         {FEATURES.map((feature, index) => (
                             <motion.div
                                 key={feature.title}
@@ -616,26 +615,17 @@ export default function WaitingRoomPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.05 }}
-                                className="min-w-[280px] snap-center flex-shrink-0 md:min-w-0"
+                                className="group p-6 md:p-8 border-b-2 border-black last:border-b-0 md:last:border-b-2 lg:last:border-b-0 lg:border-b-0 md:border-r-2 md:even:border-r-0 lg:even:border-r-2 lg:last:border-r-0 hover:bg-black hover:text-white transition-colors duration-300"
                             >
-                                <Card className="h-full hover:shadow-lg transition-all duration-300 group border-0 bg-white">
-                                    <CardHeader className="p-6">
-                                        <div className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white transition-transform group-hover:scale-110",
-                                            feature.color
-                                        )}>
-                                            <feature.icon className="w-6 h-6" />
-                                        </div>
-                                        <CardTitle className="text-lg group-hover:text-amber-600 transition-colors">
-                                            {feature.title}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="p-6 pt-0">
-                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                            {feature.description}
-                                        </p>
-                                    </CardContent>
-                                </Card>
+                                <div className="mb-6">
+                                    <feature.icon className="w-8 h-8 text-black group-hover:text-amber-500 transition-colors" strokeWidth={1.5} />
+                                </div>
+                                <h3 className="text-xl font-black tracking-tight mb-3 group-hover:text-amber-500 transition-colors">
+                                    {feature.title}
+                                </h3>
+                                <p className="text-sm font-bold text-gray-500 group-hover:text-gray-400 leading-relaxed">
+                                    {feature.description}
+                                </p>
                             </motion.div>
                         ))}
                     </div>
@@ -727,9 +717,9 @@ export default function WaitingRoomPage() {
                                 <h3 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">LP制作コストの革命</h3>
                                 <div className="flex flex-wrap items-baseline gap-2 md:gap-4 mb-6 md:mb-8">
                                     <span className="text-7xl md:text-9xl font-black tracking-tighter text-black leading-none">
-                                        ¥15
+                                        ¥1,500
                                     </span>
-                                    <span className="text-xl md:text-3xl font-bold text-gray-500">〜 ¥120 / 1LP</span>
+                                    <span className="text-xl md:text-3xl font-bold text-gray-500">〜 / 1LP</span>
                                 </div>
                                 <p className="text-base md:text-xl text-gray-600 font-bold leading-relaxed">
                                     従来の制作フローにおける<span className="inline-block">「固定費」を撤廃。</span><br className="hidden md:block" />
@@ -742,27 +732,27 @@ export default function WaitingRoomPage() {
                                     Breakdown (Estimate)
                                 </h4>
                                 <div className="space-y-4 md:space-y-6">
-                                    <div className="flex justify-between items-center text-sm md:text-lg font-bold">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm md:text-lg font-bold gap-1 md:gap-0">
                                         <span className="flex items-center gap-3">
                                             <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
                                                 <Image className="w-4 h-4" />
                                             </span>
                                             画像生成 (x5)
                                         </span>
-                                        <span className="font-mono text-lg md:text-xl">¥15 - ¥30</span>
+                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">¥750 - ¥1,000</span>
                                     </div>
-                                    <div className="flex justify-between items-center text-sm md:text-lg font-bold">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm md:text-lg font-bold gap-1 md:gap-0">
                                         <span className="flex items-center gap-3">
                                             <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
                                                 <Wand2 className="w-4 h-4" />
                                             </span>
                                             インペイント (x3)
                                         </span>
-                                        <span className="font-mono text-lg md:text-xl">¥9 - ¥18</span>
+                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">¥300 - ¥450</span>
                                     </div>
-                                    <div className="pt-6 mt-6 border-t-2 border-gray-200 flex justify-between items-center">
+                                    <div className="pt-6 mt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-0">
                                         <span className="font-black text-lg md:text-xl text-gray-900">ESTIMATED TOTAL</span>
-                                        <span className="font-mono text-2xl md:text-3xl font-black text-amber-600 bg-amber-100 px-2">¥24 - ¥48</span>
+                                        <span className="font-mono text-2xl md:text-3xl font-black text-amber-600 bg-amber-100 px-2">¥1,050 - ¥1,450</span>
                                     </div>
                                 </div>
                             </div>
@@ -937,7 +927,7 @@ export default function WaitingRoomPage() {
                             もっとクリエイティブに。
                         </h2>
                         <p className="text-gray-400 mb-10 max-w-xl mx-auto text-lg">
-                            PoCプランは初月無料でお試しいただけます。
+                            PoCプランは初期費用無料でお試しいただけます。
                             <br />
                             まずは順番待ちリストにご登録ください。
                         </p>

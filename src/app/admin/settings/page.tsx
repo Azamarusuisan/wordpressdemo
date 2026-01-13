@@ -150,24 +150,24 @@ export default function SettingsPage() {
     const isFreePlan = currentPlan === 'free';
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-            <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
+        <div className="min-h-screen bg-gray-50/50">
+            <div className="max-w-5xl mx-auto px-6 py-12 pb-32">
                 {/* ヘッダー */}
-                <div className="mb-8 flex justify-between items-start">
+                <div className="mb-10 flex justify-between items-start">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">設定</h1>
-                        <p className="text-gray-500 mt-1">アカウントとプランを管理します</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">設定</h1>
+                        <p className="text-gray-500 mt-1 text-sm">アカウントとプランの管理</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         {user && (
-                            <div className="text-right mr-4">
-                                <p className="text-sm text-gray-500">ログイン中</p>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-400 font-medium">ログイン中</p>
                                 <p className="text-sm font-medium text-gray-900">{user.email}</p>
                             </div>
                         )}
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-all"
+                            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                         >
                             <LogOut className="h-4 w-4" />
                             ログアウト
@@ -176,45 +176,37 @@ export default function SettingsPage() {
                 </div>
 
                 {/* プランステータスカード */}
-                <div className={`mb-8 rounded-2xl p-6 ${
-                    isFreePlan
-                        ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-200'
-                        : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                }`}>
+                <div className="mb-10 rounded-xl border border-gray-200 bg-white p-8">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${isFreePlan ? 'bg-white' : 'bg-white/20'}`}>
-                                <Crown className={`h-8 w-8 ${isFreePlan ? 'text-gray-600' : 'text-white'}`} />
+                        <div className="flex items-center gap-6">
+                            <div className="p-4 rounded-full bg-gray-50 border border-gray-100">
+                                <Crown className="h-6 w-6 text-gray-900" />
                             </div>
                             <div>
-                                <div className="flex items-center gap-2">
-                                    <h2 className={`text-2xl font-bold ${isFreePlan ? 'text-gray-900' : 'text-white'}`}>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-xl font-bold tracking-tight text-gray-900">
                                         {planInfo.name}プラン
                                     </h2>
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
-                                        isFreePlan ? 'bg-gray-200 text-gray-600' : 'bg-white/20 text-white'
-                                    }`}>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                                         {planInfo.priceDisplay}
                                     </span>
                                 </div>
-                                <p className={`mt-1 ${isFreePlan ? 'text-gray-500' : 'text-white/80'}`}>
+                                <p className="mt-1.5 text-sm text-gray-500 font-medium">
                                     {isFreePlan
-                                        ? '自分のAPIキーで無料利用中'
+                                        ? 'APIキーを設定して利用中'
                                         : `クレジット残高: $${creditBalance?.toFixed(4) || '0.0000'}`
                                     }
                                 </p>
                             </div>
                         </div>
-                        {isFreePlan && (
-                            <button className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg hover:scale-105 transition-all">
-                                <Rocket className="h-5 w-5" />
-                                有料プランにアップグレード
-                                <ArrowUpRight className="h-4 w-4" />
+                        {isFreePlan ? (
+                            <button className="flex items-center gap-2 bg-gray-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm">
+                                <Rocket className="h-4 w-4" />
+                                アップグレード
                             </button>
-                        )}
-                        {!isFreePlan && (
-                            <button className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-xl font-medium transition-all">
-                                <CreditCard className="h-5 w-5" />
+                        ) : (
+                            <button className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+                                <CreditCard className="h-4 w-4" />
                                 クレジット購入
                             </button>
                         )}
@@ -222,7 +214,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* タブナビゲーション */}
-                <div className="flex gap-2 mb-6 bg-gray-100 p-1.5 rounded-xl">
+                <div className="flex gap-1 mb-8 border-b border-gray-100 pb-1">
                     <TabButton
                         active={activeTab === 'plan'}
                         onClick={() => setActiveTab('plan')}
@@ -257,29 +249,31 @@ export default function SettingsPage() {
                 </div>
 
                 {/* タブコンテンツ */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {/* プランタブ */}
                     {activeTab === 'plan' && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {/* 現在のプランの機能 */}
-                            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">現在のプランの機能</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {planInfo.features.map((feature, index) => (
-                                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                                            <span className="text-gray-700">{feature}</span>
-                                        </div>
-                                    ))}
+                            <section>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-4 tracking-tight">現在のプランの機能</h3>
+                                <div className="rounded-xl border border-gray-200 bg-white p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {planInfo.features.map((feature, index) => (
+                                            <div key={index} className="flex items-center gap-3">
+                                                <CheckCircle className="h-5 w-5 text-gray-900 flex-shrink-0" />
+                                                <span className="text-sm text-gray-600 font-medium">{feature}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            </section>
 
                             {/* プラン比較 */}
                             {isFreePlan && (
-                                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <Star className="h-6 w-6 text-amber-500" />
-                                        <h3 className="text-lg font-semibold text-gray-900">有料プランの特典</h3>
+                                <section>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Star className="h-4 w-4 text-gray-900" />
+                                        <h3 className="text-sm font-semibold text-gray-900 tracking-tight">プラン一覧</h3>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <PlanCard
@@ -301,97 +295,107 @@ export default function SettingsPage() {
                                             highlighted={false}
                                         />
                                     </div>
-                                </div>
+                                </section>
                             )}
 
                             {/* クレジット情報（有料プランのみ） */}
                             {!isFreePlan && (
-                                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">クレジット残高</h3>
-                                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                        <div>
-                                            <p className="text-3xl font-bold text-purple-600">
-                                                ${creditBalance?.toFixed(4) || '0.0000'}
-                                            </p>
-                                            <p className="text-sm text-gray-500 mt-1">利用可能なクレジット</p>
+                                <section>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-4 tracking-tight">クレジット管理</h3>
+                                    <div className="rounded-xl border border-gray-200 bg-white p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-3xl font-bold text-gray-900 tracking-tight">
+                                                        ${creditBalance?.toFixed(4) || '0.0000'}
+                                                    </span>
+                                                    <span className="text-sm text-gray-500 font-medium">USD</span>
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-1 align-middle flex items-center gap-1">
+                                                    <Sparkles className="h-3 w-3" />
+                                                    現在のクレジット残高
+                                                </p>
+                                            </div>
+                                            <button className="flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+                                                <Zap className="h-4 w-4" />
+                                                チャージする
+                                            </button>
                                         </div>
-                                        <button className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-purple-700 transition-all">
-                                            <Zap className="h-5 w-5" />
-                                            クレジット追加
-                                        </button>
                                     </div>
-                                </div>
+                                </section>
                             )}
                         </div>
                     )}
 
                     {/* APIキータブ（Freeプランのみ） */}
                     {activeTab === 'apikey' && canSetApiKey && (
-                        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2.5 bg-purple-100 rounded-xl">
-                                    <Sparkles className="h-6 w-6 text-purple-600" />
+                        <div className="rounded-xl border border-gray-200 bg-white p-8">
+                            <div className="flex items-start gap-4 mb-8">
+                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <Sparkles className="h-5 w-5 text-gray-900" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Google AI APIキー</h3>
-                                    <p className="text-sm text-gray-500">AI機能を使用するために必要です</p>
+                                    <h3 className="text-base font-bold text-gray-900">Google AI APIキー</h3>
+                                    <p className="text-sm text-gray-500 mt-1">AI機能を使用するために必要です</p>
                                 </div>
                             </div>
 
                             {/* ステータス表示 */}
                             {hasApiKey ? (
-                                <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
-                                    <CheckCircle className="h-6 w-6 text-green-600" />
+                                <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg mb-8">
+                                    <CheckCircle className="h-5 w-5 text-gray-900" />
                                     <div>
-                                        <p className="font-medium text-green-800">APIキー設定済み</p>
-                                        <p className="text-sm text-green-600">AI機能が利用可能です</p>
+                                        <p className="text-sm font-bold text-gray-900">APIキー設定済み</p>
+                                        <p className="text-xs text-gray-600">AI機能が利用可能です</p>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-6">
-                                    <AlertCircle className="h-6 w-6 text-amber-600" />
+                                <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg mb-8">
+                                    <AlertCircle className="h-5 w-5 text-gray-900" />
                                     <div>
-                                        <p className="font-medium text-amber-800">APIキーが必要です</p>
-                                        <p className="text-sm text-amber-600">下記の手順でAPIキーを取得してください</p>
+                                        <p className="text-sm font-bold text-gray-900">APIキーが必要です</p>
+                                        <p className="text-xs text-gray-600">下記の手順でAPIキーを取得してください</p>
                                     </div>
                                 </div>
                             )}
 
                             {/* APIキー入力 */}
-                            <div className="mb-6">
+                            <div className="mb-8">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     {hasApiKey ? 'APIキーを更新' : 'APIキーを入力'}
                                 </label>
-                                <input
-                                    type="password"
-                                    value={googleApiKey}
-                                    placeholder="AIzaSy..."
-                                    onChange={e => setGoogleApiKey(e.target.value)}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-mono"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="password"
+                                        value={googleApiKey}
+                                        placeholder="AIzaSy..."
+                                        onChange={e => setGoogleApiKey(e.target.value)}
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all font-mono text-gray-900 placeholder:text-gray-400"
+                                    />
+                                </div>
                             </div>
 
                             {/* 取得手順 */}
-                            <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                                <h4 className="font-semibold text-gray-900 mb-4">APIキーの取得方法</h4>
-                                <div className="space-y-3">
+                            <div className="rounded-lg p-6 border border-gray-200 border-dashed">
+                                <h4 className="text-sm font-bold text-gray-900 mb-4">APIキーの取得方法</h4>
+                                <div className="space-y-4">
                                     <Step number={1}>
                                         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
-                                           className="text-purple-600 font-medium hover:underline inline-flex items-center gap-1">
-                                            Google AI Studio <ArrowUpRight className="h-4 w-4" />
+                                            className="text-gray-900 underline decoration-gray-300 underline-offset-4 hover:decoration-gray-900 transition-all inline-flex items-center gap-1 font-medium">
+                                            Google AI Studio <ArrowUpRight className="h-3 w-3" />
                                         </a>
                                         にアクセス
                                     </Step>
                                     <Step number={2}>Googleアカウントでログイン</Step>
                                     <Step number={3}>「Get API Key」→「Create API key」をクリック</Step>
-                                    <Step number={4}>生成されたキー（AIzaSy...）をコピーして上に貼り付け</Step>
+                                    <Step number={4}>生成されたキー（AIzaSy...）をコピーして貼り付け</Step>
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <p className="text-sm text-gray-500">
-                                        <span className="font-medium text-amber-600">注意:</span> 無料枠には制限があります。安定利用には
+                                <div className="mt-6 pt-4 border-t border-gray-200 border-dashed">
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        <span className="font-bold text-gray-900">注意:</span> 無料枠には制限があります。安定して利用するには
                                         <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener noreferrer"
-                                           className="font-medium text-gray-700 hover:text-purple-600 ml-1">請求設定</a>
-                                        を有効にしてください。
+                                            className="font-medium text-gray-900 hover:text-gray-700 ml-1 underline decoration-gray-300 underline-offset-2">請求設定</a>
+                                        を有効にすることをお勧めします。
                                     </p>
                                 </div>
                             </div>
@@ -400,12 +404,15 @@ export default function SettingsPage() {
 
                     {/* 一般設定タブ */}
                     {activeTab === 'general' && (
-                        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2.5 bg-blue-100 rounded-xl">
-                                    <Globe className="h-6 w-6 text-blue-600" />
+                        <div className="rounded-xl border border-gray-200 bg-white p-8">
+                            <div className="flex items-start gap-4 mb-8">
+                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <Globe className="h-5 w-5 text-gray-900" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-900">一般設定</h3>
+                                <div>
+                                    <h3 className="text-base font-bold text-gray-900">一般設定</h3>
+                                    <p className="text-sm text-gray-500 mt-1">サイトの基本情報を設定します</p>
+                                </div>
                             </div>
 
                             <div>
@@ -414,7 +421,7 @@ export default function SettingsPage() {
                                     type="text"
                                     value={config.siteName}
                                     onChange={e => setConfig({ ...config, siteName: e.target.value })}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all text-gray-900"
                                 />
                             </div>
                         </div>
@@ -422,18 +429,18 @@ export default function SettingsPage() {
 
                     {/* GitHub連携タブ */}
                     {activeTab === 'github' && (
-                        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2.5 bg-gray-100 rounded-xl">
-                                    <Github className="h-6 w-6 text-gray-800" />
+                        <div className="rounded-xl border border-gray-200 bg-white p-8">
+                            <div className="flex items-start gap-4 mb-8">
+                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <Github className="h-5 w-5 text-gray-900" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">GitHub連携</h3>
-                                    <p className="text-sm text-gray-500">GitHubリポジトリへの自動デプロイ設定</p>
+                                    <h3 className="text-base font-bold text-gray-900">GitHub連携</h3>
+                                    <p className="text-sm text-gray-500 mt-1">リポジトリへの自動デプロイ設定</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">パーソナルアクセストークン</label>
                                     <input
@@ -441,17 +448,20 @@ export default function SettingsPage() {
                                         value={config.github?.token || ''}
                                         placeholder="ghp_..."
                                         onChange={e => setConfig({ ...config, github: { ...config.github, token: e.target.value } })}
-                                        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all font-mono"
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all font-mono text-gray-900"
                                     />
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Repoスコープ権限が必要です
+                                    </p>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">オーナー / 組織</label>
                                         <input
                                             type="text"
                                             value={config.github?.owner || ''}
                                             onChange={e => setConfig({ ...config, github: { ...config.github, owner: e.target.value } })}
-                                            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all text-gray-900"
                                         />
                                     </div>
                                     <div>
@@ -460,7 +470,7 @@ export default function SettingsPage() {
                                             type="text"
                                             value={config.github?.repo || ''}
                                             onChange={e => setConfig({ ...config, github: { ...config.github, repo: e.target.value } })}
-                                            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all text-gray-900"
                                         />
                                     </div>
                                 </div>
@@ -470,22 +480,22 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 保存ボタン（フローティング） */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-200 p-4 z-50">
-                    <div className="max-w-6xl mx-auto flex justify-between items-center">
-                        <p className="text-sm text-gray-500">
+                <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200 p-4 z-50">
+                    <div className="max-w-5xl mx-auto flex justify-between items-center">
+                        <p className="text-sm text-gray-500 font-medium">
                             {isSaving ? '保存中...' : saveStatus === 'success' ? '保存完了' : '変更を保存してください'}
                         </p>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-all disabled:opacity-50"
+                            className="flex items-center gap-2 bg-gray-900 text-white px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-all disabled:opacity-50 shadow-sm"
                         >
                             {isSaving ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                             ) : saveStatus === 'success' ? (
-                                <CheckCircle className="h-5 w-5" />
+                                <CheckCircle className="h-4 w-4" />
                             ) : (
-                                <Save className="h-5 w-5" />
+                                <Save className="h-4 w-4" />
                             )}
                             変更を保存
                         </button>
@@ -496,7 +506,7 @@ export default function SettingsPage() {
     );
 }
 
-// タブボタンコンポーネント
+// タブボタンコンポーネント (Clean Style)
 function TabButton({
     children,
     active,
@@ -513,22 +523,21 @@ function TabButton({
     return (
         <button
             onClick={onClick}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all relative ${
-                active
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all relative ${active
+                    ? 'text-gray-900 bg-gray-100'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                }`}
         >
             {icon}
             {children}
             {badge && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
             )}
         </button>
     );
 }
 
-// プランカードコンポーネント
+// プランカードコンポーネント (Flat Style)
 function PlanCard({
     name,
     price,
@@ -541,45 +550,49 @@ function PlanCard({
     highlighted: boolean;
 }) {
     return (
-        <div className={`p-5 rounded-xl border-2 transition-all ${
-            highlighted
-                ? 'border-purple-500 bg-purple-50 scale-105'
+        <div className={`p-6 rounded-xl border transition-all h-full flex flex-col ${highlighted
+                ? 'border-gray-900 bg-gray-50 shadow-sm relative'
                 : 'border-gray-200 bg-white hover:border-gray-300'
-        }`}>
+            }`}>
             {highlighted && (
-                <span className="inline-block text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded-full mb-3">
-                    おすすめ
-                </span>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="inline-block text-[10px] uppercase tracking-wider font-bold text-white bg-gray-900 px-3 py-1 rounded-full">
+                        Popular
+                    </span>
+                </div>
             )}
-            <h4 className="text-xl font-bold text-gray-900">{name}</h4>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{price}<span className="text-sm font-normal text-gray-500">/月</span></p>
-            <ul className="mt-4 space-y-2">
+            <div className="mb-4">
+                <h4 className="text-lg font-bold text-gray-900 tracking-tight">{name}</h4>
+                <p className="text-2xl font-bold text-gray-900 mt-2 tracking-tight">{price}<span className="text-sm font-normal text-gray-500 ml-1">/月</span></p>
+            </div>
+
+            <ul className="space-y-3 mb-8 flex-grow">
                 {features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        {feature}
+                    <li key={index} className="flex items-start gap-3 text-sm text-gray-600">
+                        <CheckCircle className="h-4 w-4 text-gray-900 flex-shrink-0 mt-0.5" />
+                        <span className="leading-snug">{feature}</span>
                     </li>
                 ))}
             </ul>
-            <button className={`w-full mt-4 py-2.5 rounded-lg font-medium transition-all ${
-                highlighted
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}>
+
+            <button className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${highlighted
+                    ? 'bg-gray-900 text-white hover:bg-gray-800'
+                    : 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50'
+                }`}>
                 選択する
             </button>
         </div>
     );
 }
 
-// ステップコンポーネント
+// ステップコンポーネント (Clean Style)
 function Step({ number, children }: { number: number; children: React.ReactNode }) {
     return (
-        <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
+        <div className="flex items-start gap-4">
+            <span className="flex-shrink-0 w-6 h-6 bg-gray-100 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold border border-gray-200">
                 {number}
             </span>
-            <span className="text-gray-600 pt-0.5">{children}</span>
+            <span className="text-gray-600 text-sm pt-0.5 font-medium leading-relaxed">{children}</span>
         </div>
     );
 }
