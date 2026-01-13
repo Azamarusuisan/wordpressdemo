@@ -110,12 +110,12 @@ const FAQ_DATA = [
         answer: 'LP Builderは高機能なランディングページ作成ツールです。既存LPのURLを入力して取り込み、画像生成やインペイント編集で自由にカスタマイズできます。コーディング不要で、誰でも簡単に高品質なLPを作成できます。',
     },
     {
-        question: 'クレジットとは何ですか？',
-        answer: 'クレジットは各種機能を使用するための通貨です。画像生成、インペイント編集、リスタイルなどの処理にクレジットが消費されます。月額プランには毎月クレジットが付与され、追加購入も可能です。',
+        question: 'トークンとは何ですか？',
+        answer: 'トークンはLP Builderの独自ポイントです。画像生成、インペイント編集、リスタイルなどの処理にトークンが消費されます。月額プランには毎月トークンが付与され、上位プランほど1トークンあたりの単価がお得になります。',
     },
     {
-        question: 'LP1つ作成するのにどのくらいクレジットが必要ですか？',
-        answer: 'シンプルなLP（5〜6セクション、画像3〜5枚生成）で約1,000〜1,500円、本格的なLP（10セクション以上、画像10枚以上）で約1,500〜2,500円が目安です。使用する機能や生成回数によって変動します。',
+        question: 'LP1つ作成するのにどのくらいトークンが必要ですか？',
+        answer: 'シンプルなLP（5〜6セクション、画像3〜5枚生成）で約8,000〜10,000トークン、本格的なLP（10セクション以上、画像10枚以上）で約15,000〜20,000トークンが目安です。使用する機能や生成回数によって変動します。',
     },
     {
         question: 'どのような画像を生成できますか？',
@@ -146,13 +146,15 @@ const PLAN_DATA = [
         name: 'Pro',
         price: '¥20,000',
         period: '/月',
-        credit: '¥5,000',
-        creditNote: '約3〜4LP分',
+        tokens: '50,000',
+        tokensNum: 50000,
+        tokenNote: '約4〜6LP分',
+        tokenPerYen: '0.4円/トークン',
         description: 'スタートアップ・個人事業主に',
         icon: User,
         features: [
             '最大30ページ',
-            '月間クレジット ¥5,000分',
+            '月間 50,000トークン',
             '画像生成',
             'インペイント編集',
             'HTMLエクスポート',
@@ -168,13 +170,15 @@ const PLAN_DATA = [
         name: 'Business',
         price: '¥40,000',
         period: '/月',
-        credit: '¥10,000',
-        creditNote: '約6〜7LP分',
+        tokens: '150,000',
+        tokensNum: 150000,
+        tokenNote: '約12〜18LP分',
+        tokenPerYen: '0.27円/トークン',
         description: '成長企業・制作会社に',
         icon: Zap,
         features: [
             '最大100ページ',
-            '月間クレジット ¥10,000分',
+            '月間 150,000トークン',
             'Pro全機能',
             '4Kアップスケール',
             'リスタイル機能',
@@ -188,13 +192,15 @@ const PLAN_DATA = [
         name: 'Enterprise',
         price: '¥100,000',
         period: '/月',
-        credit: '¥25,000',
-        creditNote: '約16〜17LP分',
+        tokens: '500,000',
+        tokensNum: 500000,
+        tokenNote: '約40〜60LP分',
+        tokenPerYen: '0.2円/トークン',
         description: '代理店・大規模ビジネスに',
         icon: Building2,
         features: [
             '無制限ページ',
-            '月間クレジット ¥25,000分',
+            '月間 500,000トークン',
             'Business全機能',
             '動画生成',
             '優先サポート',
@@ -205,13 +211,13 @@ const PLAN_DATA = [
     },
 ];
 
-// Credit usage data
-const CREDIT_USAGE = [
-    { action: '画像生成', cost: '約150〜200円', icon: Image },
-    { action: 'インペイント', cost: '約100〜150円', icon: Wand2 },
-    { action: 'リスタイル', cost: '約200〜300円', icon: Palette },
-    { action: '動画生成', cost: '約50〜100円/秒', icon: Video },
-    { action: 'URL取り込み', cost: '約50〜100円', icon: Globe },
+// Token usage data
+const TOKEN_USAGE = [
+    { action: '画像生成', cost: '約1,000〜1,500', icon: Image },
+    { action: 'インペイント', cost: '約500〜800', icon: Wand2 },
+    { action: 'リスタイル', cost: '約1,500〜2,000', icon: Palette },
+    { action: '動画生成', cost: '約300〜500/秒', icon: Video },
+    { action: 'URL取り込み', cost: '約300〜500', icon: Globe },
 ];
 
 export default function WaitingRoomPage() {
@@ -399,16 +405,15 @@ export default function WaitingRoomPage() {
                                     {step === 1 ? (
                                         <div>
                                             {/* Plan Info Banner */}
-                                            <div className="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <div className="mb-5 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
                                                 <div className="flex items-center gap-2 text-sm">
                                                     <Sparkles className="w-4 h-4 text-amber-500" />
                                                     <span className="text-gray-700">
-                                                        <span className="font-bold">Pro</span>（¥20,000/月）〜
-                                                        <span className="font-bold">Enterprise</span>（¥100,000/月）
+                                                        <span className="font-bold">5万</span>〜<span className="font-bold">50万</span>トークン/月
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-1.5">
-                                                    初期費用無料・すべてのプランで主要機能をご利用いただけます
+                                                    上位プランほど1トークンあたりがお得
                                                 </p>
                                             </div>
 
@@ -460,9 +465,12 @@ export default function WaitingRoomPage() {
                                                         ))}
                                                     </div>
                                                     {formData.selectedPlan && (
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            月間クレジット: {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.credit}分
-                                                        </p>
+                                                        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                                            <p className="font-medium text-amber-600">
+                                                                月間 {PLAN_DATA.find(p => p.id === formData.selectedPlan)?.tokens} トークン
+                                                            </p>
+                                                            <p>（{PLAN_DATA.find(p => p.id === formData.selectedPlan)?.tokenNote}）</p>
+                                                        </div>
                                                     )}
                                                 </div>
 
@@ -741,24 +749,24 @@ export default function WaitingRoomPage() {
                         <div className="grid lg:grid-cols-2 gap-12 md:gap-20 items-center">
                             <div>
                                 <div className="inline-block bg-black text-white text-xs md:text-sm font-black px-4 py-2 mb-6 md:mb-8 uppercase tracking-widest">
-                                    Cost Performance
+                                    Token System
                                 </div>
-                                <h3 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">LP制作コストの革命</h3>
+                                <h3 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">シンプルなトークン制</h3>
                                 <div className="flex flex-wrap items-baseline gap-2 md:gap-4 mb-6 md:mb-8">
-                                    <span className="text-7xl md:text-9xl font-black tracking-tighter text-black leading-none">
-                                        ¥1,500
+                                    <span className="text-5xl md:text-8xl font-black tracking-tighter text-black leading-none">
+                                        8,000
                                     </span>
-                                    <span className="text-xl md:text-3xl font-bold text-gray-500">〜 / 1LP</span>
+                                    <span className="text-xl md:text-3xl font-bold text-gray-500">トークン〜 / 1LP</span>
                                 </div>
                                 <p className="text-base md:text-xl text-gray-600 font-bold leading-relaxed">
-                                    従来の制作フローにおける<span className="inline-block">「固定費」を撤廃。</span><br className="hidden md:block" />
-                                    <span className="inline-block">AIによる自動化で、</span><span className="inline-block">圧倒的なコスト効率を実現しました。</span>
+                                    使った分だけ消費する<span className="inline-block">シンプルな従量制。</span><br className="hidden md:block" />
+                                    <span className="inline-block">上位プランほど</span><span className="inline-block text-amber-600">1トークンあたりがお得に。</span>
                                 </p>
                             </div>
 
                             <div className="border-2 border-black bg-gray-50 p-6 md:p-10">
                                 <h4 className="text-sm md:text-base font-black text-gray-900 uppercase tracking-wider mb-6 md:mb-8 border-b-2 border-black pb-4">
-                                    Breakdown (Estimate)
+                                    LP1つあたりの目安
                                 </h4>
                                 <div className="space-y-4 md:space-y-6">
                                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm md:text-lg font-bold gap-1 md:gap-0">
@@ -768,7 +776,7 @@ export default function WaitingRoomPage() {
                                             </span>
                                             画像生成 (x5)
                                         </span>
-                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">¥750 - ¥1,000</span>
+                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">5,000〜7,500</span>
                                     </div>
                                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm md:text-lg font-bold gap-1 md:gap-0">
                                         <span className="flex items-center gap-3">
@@ -777,11 +785,20 @@ export default function WaitingRoomPage() {
                                             </span>
                                             インペイント (x3)
                                         </span>
-                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">¥300 - ¥450</span>
+                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">1,500〜2,400</span>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-sm md:text-lg font-bold gap-1 md:gap-0">
+                                        <span className="flex items-center gap-3">
+                                            <span className="w-8 h-8 bg-black text-white flex items-center justify-center rounded-none">
+                                                <Globe className="w-4 h-4" />
+                                            </span>
+                                            URL取り込み
+                                        </span>
+                                        <span className="font-mono text-lg md:text-xl pl-11 md:pl-0">300〜500</span>
                                     </div>
                                     <div className="pt-6 mt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-0">
-                                        <span className="font-black text-lg md:text-xl text-gray-900">ESTIMATED TOTAL</span>
-                                        <span className="font-mono text-2xl md:text-3xl font-black text-amber-600 bg-amber-100 px-2">¥1,050 - ¥1,450</span>
+                                        <span className="font-black text-lg md:text-xl text-gray-900">TOTAL</span>
+                                        <span className="font-mono text-2xl md:text-3xl font-black text-amber-600 bg-amber-100 px-2">約 8,000〜12,000</span>
                                     </div>
                                 </div>
                             </div>
@@ -808,8 +825,8 @@ export default function WaitingRoomPage() {
                                     </div>
 
                                     <div className="mb-8 md:mb-10 inline-flex items-center gap-2 text-xs md:text-sm font-bold font-mono text-black bg-white border-2 border-black px-3 md:px-4 py-2">
-                                        <CreditCard className="w-4 h-4" />
-                                        CREDIT: {plan.credit}
+                                        <Sparkles className="w-4 h-4" />
+                                        {plan.tokens} TOKENS
                                     </div>
 
                                     <ul className="space-y-4 md:space-y-5 mb-8 md:mb-12">
@@ -846,17 +863,17 @@ export default function WaitingRoomPage() {
                         ))}
                     </div>
 
-                    {/* Credit Usage */}
+                    {/* Token Usage */}
                     <div className="max-w-5xl mx-auto mt-20 md:mt-32">
                         <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-8">
                             <div>
-                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Credit Consumption</h3>
-                                <p className="text-sm font-bold text-gray-500 mt-2">各機能のクレジット消費一覧</p>
+                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Token Consumption</h3>
+                                <p className="text-sm font-bold text-gray-500 mt-2">各機能のトークン消費目安</p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 border-2 border-black bg-black gap-0.5">
-                            {CREDIT_USAGE.map((item, index) => (
+                            {TOKEN_USAGE.map((item, index) => (
                                 <div
                                     key={item.action}
                                     className="bg-white p-4 md:p-6 flex flex-col justify-between h-full hover:bg-amber-50 transition-colors"

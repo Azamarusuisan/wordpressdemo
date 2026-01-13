@@ -42,9 +42,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 const PLAN_OPTIONS = [
-    { value: 'pro', label: 'Pro', description: '¥20,000/月（月間クレジット ¥5,000分）' },
-    { value: 'business', label: 'Business', description: '¥40,000/月（月間クレジット ¥10,000分）' },
-    { value: 'enterprise', label: 'Enterprise', description: '¥100,000/月（月間クレジット ¥25,000分）' },
+    { value: 'pro', label: 'Pro', description: '¥20,000/月（50,000トークン）' },
+    { value: 'business', label: 'Business', description: '¥40,000/月（150,000トークン）' },
+    { value: 'enterprise', label: 'Enterprise', description: '¥100,000/月（500,000トークン）' },
 ];
 
 export default function WaitingRoomPage() {
