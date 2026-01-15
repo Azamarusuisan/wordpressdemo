@@ -96,6 +96,11 @@ export async function getUserPlan(userId: string): Promise<string> {
   return settings?.plan || 'free';
 }
 
+// 開発者アカウント（クレジット無制限）
+const DEVELOPER_EMAILS = [
+  'renrenfujiwara@gmail.com',
+];
+
 /**
  * AI生成が可能かチェック（クレジットベース）
  * @param estimatedCostUsd 推定コスト（USD）。指定しない場合はデフォルト値を使用
@@ -104,7 +109,21 @@ export async function checkGenerationLimit(
   userId: string,
   estimatedCostUsd?: number
 ): Promise<UsageLimitCheck> {
-  const planId = await getUserPlan(userId);
+  // 開発者アカウントチェック
+  const userSettings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { plan: true, email: true },
+  });
+
+  // 開発者アカウントはクレジット無制限
+  if (userSettings?.email && DEVELOPER_EMAILS.includes(userSettings.email)) {
+    return {
+      allowed: true,
+      skipCreditConsumption: true,
+    };
+  }
+
+  const planId = userSettings?.plan || 'free';
 
   // サブスク必須チェック（starterプランなど廃止されたプラン）
   if (requiresSubscription(planId)) {
