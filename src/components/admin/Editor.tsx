@@ -18,6 +18,8 @@ import ColorPaletteModal from '@/components/admin/ColorPaletteModal';
 import MobileOptimizeModal from '@/components/admin/MobileOptimizeModal';
 import VideoInsertModal from '@/components/admin/VideoInsertModal';
 import TutorialModal from '@/components/admin/TutorialModal';
+import LPCompareModal from '@/components/admin/LPCompareModal';
+import LPComparePanel from '@/components/admin/LPComparePanel';
 import SectionInsertModal from '@/components/admin/SectionInsertModal';
 import SectionCropModal from '@/components/admin/SectionCropModal';
 import OverlayEditorModal from '@/components/admin/OverlayEditorModal';
@@ -199,6 +201,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     // 動画挿入モーダル
     const [showVideoModal, setShowVideoModal] = useState(false);
     const [showTutorialModal, setShowTutorialModal] = useState(false);
+    const [showLPCompareModal, setShowLPCompareModal] = useState(false);
+    const [showLPComparePanel, setShowLPComparePanel] = useState(false);
 
     // セクション挿入モーダル
     const [showInsertModal, setShowInsertModal] = useState(false);
@@ -1829,7 +1833,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 pr-[360px]">
+        <div className={clsx("min-h-screen bg-gray-100 transition-all", showLPComparePanel ? "pr-[680px]" : "pr-[360px]")}>
             {/* フローティングツールバー（必須機能のみ） */}
             <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl px-4 py-2.5 border border-gray-200" style={{ transform: 'translateX(calc(-50% - 180px))' }}>
                 {/* HD高画質化 */}
@@ -3786,6 +3790,22 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     </div>
                                 </div>
                             </div>
+
+                            {/* LP比較 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white opacity-60">
+                                <div className="p-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-7 w-7 rounded bg-gray-100 flex items-center justify-center text-gray-400"><Layers className="h-3.5 w-3.5" /></div>
+                                        <div className="text-left flex-1">
+                                            <h4 className="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                                                LP比較
+                                                <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">準備中</span>
+                                            </h4>
+                                            <p className="text-[10px] text-gray-400">複数LPを並べていいとこ取り</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* もっと魅力的にする */}
@@ -5325,6 +5345,43 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
             <TutorialModal
                 isOpen={showTutorialModal}
                 onClose={() => setShowTutorialModal(false)}
+            />
+
+            {/* LP比較モーダル */}
+            <LPCompareModal
+                isOpen={showLPCompareModal}
+                onClose={() => setShowLPCompareModal(false)}
+                currentPageId={pageId ? parseInt(pageId) : 0}
+                currentSections={sections.map((s, idx) => ({
+                    id: typeof s.id === 'string' ? parseInt(s.id) : s.id,
+                    image_url: s.image?.filePath || '',
+                    display_order: idx,
+                }))}
+                onApplySelection={async (selectedBlocks) => {
+                    // 選択されたブロックで新しいセクション構成を作成
+                    toast.success(`${selectedBlocks.length}個のブロックを選択しました`);
+                    // TODO: 実際にセクションを入れ替える処理
+                }}
+            />
+
+            {/* LP比較パネル（サイドパネル） */}
+            <LPComparePanel
+                isOpen={showLPComparePanel}
+                onClose={() => setShowLPComparePanel(false)}
+                currentPageId={pageId ? parseInt(pageId) : 0}
+                onSelectBlock={async (sectionId, imageUrl, fromLpId) => {
+                    // 選択されたブロックを現在のLPに挿入
+                    const newSection = {
+                        id: `imported-${Date.now()}`,
+                        role: 'imported',
+                        order: sections.length,
+                        imageId: null,
+                        image: { filePath: imageUrl },
+                        config: { importedFrom: fromLpId, originalSectionId: sectionId }
+                    };
+                    setSections(prev => [...prev, newSection]);
+                    toast.success('ブロックを取り込みました');
+                }}
             />
 
             {/* セクションクロップモーダル */}
