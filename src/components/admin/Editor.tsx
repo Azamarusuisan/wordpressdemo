@@ -1378,6 +1378,35 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         }
     };
 
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+    const handleExportPdf = async () => {
+        if (pageId === 'new') {
+            toast.error('PDFエクスポートする前にページを保存してください。');
+            return;
+        }
+        setIsExportingPdf(true);
+        try {
+            const res = await fetch(`/api/pages/${pageId}/export-pdf`);
+            if (!res.ok) throw new Error('PDFエクスポートに失敗しました。');
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${initialSlug || 'lp'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success('PDFをダウンロードしました');
+        } catch (e) {
+            toast.error('PDFエクスポート中にエラーが発生しました。');
+        } finally {
+            setIsExportingPdf(false);
+        }
+    };
+
     const handleSave = async (sectionsToSave = sections) => {
         setIsSaving(true);
         try {
@@ -3500,6 +3529,19 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             >
                                 <Download className="h-3.5 w-3.5 text-gray-400" />
                                 ZIP出力
+                            </button>
+                            {/* PDF出力 */}
+                            <button
+                                onClick={handleExportPdf}
+                                disabled={isExportingPdf}
+                                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-white text-gray-600 text-xs font-medium border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isExportingPdf ? (
+                                    <Loader2 className="h-3.5 w-3.5 text-gray-400 animate-spin" />
+                                ) : (
+                                    <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                )}
+                                PDF出力
                             </button>
                         </div>
                         {/* 表示切替 */}
