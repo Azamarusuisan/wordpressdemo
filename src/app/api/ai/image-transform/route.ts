@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { checkImageGenerationLimit, recordApiUsage } from '@/lib/usage';
+import { logGeneration } from '@/lib/generation-logger';
 import { supabase } from '@/lib/supabase';
 
 // OCR用システムプロンプト（元画像用）
@@ -211,9 +212,22 @@ ${i === slideCount - 1 && slideCount > 1 ? `【${slideCount}枚目】まとめ�
             return NextResponse.json({ error: 'Failed to generate images' }, { status: 500 });
         }
 
-        // クレジット消費を記録
-        if (!limitCheck.skipCreditConsumption) {
-            await recordApiUsage(user.id, 'gemini-3-pro-image-preview', results.length);
+        // ログ記録とクレジット消費
+        const logResult = await logGeneration({
+            userId: user.id,
+            type: 'image',
+            endpoint: '/api/ai/image-transform',
+            model: 'gemini-3-pro-image-preview',
+            inputPrompt: mode === 'thumbnail' ? 'Thumbnail transformation' : `Document transformation (${slideCount} slides)`,
+            imageCount: results.length,
+            status: 'succeeded',
+        });
+
+        if (logResult && !limitCheck.skipCreditConsumption) {
+            await recordApiUsage(user.id, logResult.id, logResult.estimatedCost, {
+                model: 'gemini-3-pro-image-preview',
+                imageCount: results.length,
+            });
         }
 
         // 画像をSupabaseにアップロードして永続化
