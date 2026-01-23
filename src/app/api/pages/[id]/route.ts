@@ -53,18 +53,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             id: page.id,
             title: page.title,
             slug: page.slug,
-            sections: page.sections.map(s => ({
-                id: s.id.toString(),
-                role: s.role,
-                order: s.order,
-                imageId: s.imageId,
-                mobileImageId: s.mobileImageId,
-                image: s.image,
-                mobileImage: s.mobileImage,
-                config: s.config,
-                boundaryOffsetTop: s.boundaryOffsetTop || 0,
-                boundaryOffsetBottom: s.boundaryOffsetBottom || 0,
-            }))
+            sections: page.sections.map(s => {
+                let config = null;
+                try { if (s.config) config = JSON.parse(s.config); } catch { }
+                return {
+                    id: s.id.toString(),
+                    role: s.role,
+                    order: s.order,
+                    imageId: s.imageId,
+                    mobileImageId: s.mobileImageId,
+                    image: s.image,
+                    mobileImage: s.mobileImage,
+                    config,
+                    boundaryOffsetTop: s.boundaryOffsetTop || 0,
+                    boundaryOffsetBottom: s.boundaryOffsetBottom || 0,
+                };
+            })
         });
     } catch (error) {
         console.error('Failed to fetch page:', error);

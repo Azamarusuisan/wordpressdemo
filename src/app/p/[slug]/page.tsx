@@ -8,6 +8,8 @@ import { InteractiveAreaOverlay } from '@/components/public/InteractiveAreaOverl
 import { VideoPlayer } from '@/components/public/VideoPlayer';
 import { OverlayElements } from '@/components/public/OverlayElements';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
     const page = await prisma.page.findUnique({ where: { slug: params.slug }, select: { title: true } });
     if (!page) return { title: 'Not Found' };
