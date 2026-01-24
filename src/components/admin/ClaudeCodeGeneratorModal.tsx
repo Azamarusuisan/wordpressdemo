@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ArrowLeft, Copy, Check, Eye, Code2, ArrowRight, Plus, Trash2, ChevronDown, Monitor, Smartphone, Sparkles } from 'lucide-react';
+import { X, ArrowLeft, Copy, Check, Eye, Code2, ArrowRight, Plus, Trash2, ChevronDown, Monitor, Smartphone, Sparkles, Globe, ArrowUpRight, ExternalLink, Loader2 } from 'lucide-react';
 import { TEMPLATES } from '@/lib/claude-templates';
 import type { FormField, DesignContext } from '@/lib/claude-templates';
 import toast from 'react-hot-toast';
@@ -22,7 +22,16 @@ interface ClaudeCodeGeneratorModalProps {
   onInsertHtml: (html: string, insertIndex: number, meta: { templateType: string; prompt: string }) => void | Promise<void>;
 }
 
-type Step = 'template' | 'fields' | 'prompt' | 'generating' | 'preview' | 'insert';
+type Step = 'template' | 'fields' | 'prompt' | 'generating' | 'preview' | 'insert' | 'deploy';
+
+interface DeploymentInfo {
+  id: number;
+  serviceName: string;
+  status: string;
+  siteUrl?: string;
+  githubRepoUrl?: string;
+  errorMessage?: string;
+}
 
 interface LogEntry {
   time: string;
@@ -139,6 +148,10 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
   const [editingFieldOptions, setEditingFieldOptions] = useState<string | null>(null);
   const [newOptionText, setNewOptionText] = useState('');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [deployServiceName, setDeployServiceName] = useState('');
+  const [deploying, setDeploying] = useState(false);
+  const [deployment, setDeployment] = useState<DeploymentInfo | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (logContainerRef.current) {
@@ -268,6 +281,75 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
     onClose();
   };
 
+  // Deploy functions
+  const handleDeploy = async () => {
+    if (!deployServiceName.trim()) {
+      toast.error('サイト名を入力してください');
+      return;
+    }
+
+    setDeploying(true);
+    try {
+      const response = await fetch('/api/deploy/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: generatedHtml,
+          serviceName: deployServiceName.trim(),
+          templateType: selectedTemplate,
+          prompt,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.message || 'デプロイに失敗しました');
+        setDeploying(false);
+        return;
+      }
+
+      setDeployment(data.deployment);
+      pollDeployStatus(data.deployment.id);
+    } catch (error) {
+      toast.error('接続エラー');
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const pollDeployStatus = (deploymentId: number) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/deploy/${deploymentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDeployment(prev => prev ? { ...prev, ...data } : data);
+
+          if (data.status === 'live' || data.status === 'failed') {
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+            if (data.status === 'live') {
+              toast.success('デプロイ完了！');
+            }
+          }
+        }
+      } catch (error) {}
+    }, 5000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Form field management
   const addField = () => {
     setFormFields(prev => [
@@ -328,6 +410,7 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
     }
     else if (step === 'preview') setStep('prompt');
     else if (step === 'insert') setStep('preview');
+    else if (step === 'deploy') setStep('preview');
   };
 
   const stepIndex = allSteps.indexOf(step);
@@ -338,7 +421,7 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            {(step === 'fields' || step === 'prompt' || step === 'preview' || step === 'insert') && (
+            {(step === 'fields' || step === 'prompt' || step === 'preview' || step === 'insert' || step === 'deploy') && (
               <button onClick={goBack} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                 <ArrowLeft className="h-4 w-4 text-gray-400" />
               </button>
@@ -852,6 +935,178 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
               </div>
             </div>
           )}
+
+          {/* Deploy to Render */}
+          {step === 'deploy' && (
+            <div className="p-6">
+              <div className="mb-5">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                    <Globe className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Renderにデプロイ</h3>
+                    <p className="text-sm text-gray-500">生成したHTMLをWebサイトとして公開</p>
+                  </div>
+                </div>
+              </div>
+
+              {!deployment ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">
+                      サイト名
+                    </label>
+                    <input
+                      type="text"
+                      value={deployServiceName}
+                      onChange={(e) => setDeployServiceName(e.target.value.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase())}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-300 transition-all placeholder:text-gray-400"
+                      placeholder="my-landing-page"
+                      disabled={deploying}
+                      autoFocus
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1.5">
+                      英数字とハイフンのみ使用可能。RenderのURLに使用されます。
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <h4 className="text-xs font-semibold text-gray-500 mb-2">デプロイ内容</h4>
+                    <div className="space-y-1.5 text-xs text-gray-600">
+                      <div className="flex justify-between">
+                        <span>テンプレート</span>
+                        <span className="font-medium text-gray-800">{currentTemplate?.name || selectedTemplate}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>HTMLサイズ</span>
+                        <span className="font-mono text-gray-800">{(generatedHtml.length / 1024).toFixed(1)} KB</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>ホスティング</span>
+                        <span className="font-medium text-gray-800">Render (Free)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleDeploy}
+                    disabled={deploying || !deployServiceName.trim()}
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                  >
+                    {deploying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        デプロイ中...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUpRight className="h-4 w-4" />
+                        デプロイ実行
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Status card */}
+                  <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-semibold text-gray-800">{deployment.serviceName}</span>
+                      {deployment.status === 'building' && (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full animate-pulse">
+                          BUILDING
+                        </span>
+                      )}
+                      {deployment.status === 'live' && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          LIVE
+                        </span>
+                      )}
+                      {deployment.status === 'failed' && (
+                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                          FAILED
+                        </span>
+                      )}
+                      {deployment.status !== 'building' && deployment.status !== 'live' && deployment.status !== 'failed' && (
+                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          PENDING
+                        </span>
+                      )}
+                    </div>
+
+                    {deployment.status === 'building' && (
+                      <div className="space-y-2">
+                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                        </div>
+                        <p className="text-xs text-gray-500">ビルド中...（通常1〜3分）</p>
+                      </div>
+                    )}
+
+                    {deployment.status === 'live' && deployment.siteUrl && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-emerald-100">
+                          <span className="h-2 w-2 bg-emerald-400 rounded-full" />
+                          <a
+                            href={deployment.siteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-emerald-700 hover:text-emerald-900 font-medium truncate flex-1 transition-colors"
+                          >
+                            {deployment.siteUrl}
+                          </a>
+                          <a
+                            href={deployment.siteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 text-emerald-600" />
+                          </a>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(deployment.siteUrl!);
+                            toast.success('URLをコピーしました');
+                          }}
+                          className="w-full py-2.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <Copy className="h-3 w-3" />
+                          URLをコピー
+                        </button>
+                      </div>
+                    )}
+
+                    {deployment.status === 'failed' && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-red-600">
+                          {deployment.errorMessage || 'デプロイに失敗しました'}
+                        </p>
+                        <button
+                          onClick={() => { setDeployment(null); setDeploying(false); }}
+                          className="text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                        >
+                          再試行
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {deployment.githubRepoUrl && (
+                    <a
+                      href={deployment.githubRepoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs text-gray-400 hover:text-gray-600 transition-colors truncate"
+                    >
+                      GitHub: {deployment.githubRepoUrl}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -863,13 +1118,22 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
             >
               再生成
             </button>
-            <button
-              onClick={() => setStep('insert')}
-              className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
-            >
-              LPに配置
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setDeployment(null); setStep('deploy'); }}
+                className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center gap-2 shadow-sm"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                デプロイ
+              </button>
+              <button
+                onClick={() => setStep('insert')}
+                className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
+              >
+                LPに配置
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>
