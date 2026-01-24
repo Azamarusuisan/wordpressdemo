@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import crypto from 'crypto';
 
 // Redirect user to GitHub OAuth authorization page
 export async function GET(request: NextRequest) {
@@ -18,12 +19,26 @@ export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const redirectUri = `${baseUrl}/api/auth/github/callback`;
 
+  // Generate cryptographically random state token for CSRF protection
+  const stateToken = crypto.randomBytes(32).toString('hex');
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     scope: 'repo',
-    state: user.id,
+    state: stateToken,
   });
 
-  return NextResponse.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+  const response = NextResponse.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+
+  // Store state and user ID in a secure HttpOnly cookie (expires in 10 minutes)
+  response.cookies.set('github_oauth_state', JSON.stringify({ state: stateToken, userId: user.id }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 600, // 10 minutes
+    path: '/',
+  });
+
+  return response;
 }

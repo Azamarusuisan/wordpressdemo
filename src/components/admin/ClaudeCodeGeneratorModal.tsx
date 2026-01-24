@@ -152,6 +152,7 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
   const [deploying, setDeploying] = useState(false);
   const [deployment, setDeployment] = useState<DeploymentInfo | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [deploySettingsReady, setDeploySettingsReady] = useState<boolean | null>(null); // null = loading
 
   useEffect(() => {
     if (logContainerRef.current) {
@@ -348,6 +349,24 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
         clearInterval(pollIntervalRef.current);
       }
     };
+  }, []);
+
+  // Check deploy settings on mount
+  useEffect(() => {
+    const checkDeploySettings = async () => {
+      try {
+        const res = await fetch('/api/user/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setDeploySettingsReady(!!data.hasRenderApiKey && !!data.hasGithubToken);
+        } else {
+          setDeploySettingsReady(false);
+        }
+      } catch {
+        setDeploySettingsReady(false);
+      }
+    };
+    checkDeploySettings();
   }, []);
 
   // Form field management
@@ -951,7 +970,26 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
                 </div>
               </div>
 
-              {!deployment ? (
+              {deploySettingsReady === false ? (
+                <div className="space-y-4">
+                  <div className="p-5 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <Globe className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800 mb-1">デプロイ設定が必要です</p>
+                        <p className="text-xs text-gray-500 mb-3">GitHub連携とRender APIキーを設定してください。</p>
+                        <a
+                          href="/admin/settings"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors"
+                        >
+                          設定画面を開く
+                          <ArrowRight className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : !deployment ? (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">
@@ -1119,13 +1157,25 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
               再生成
             </button>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setDeployment(null); setStep('deploy'); }}
-                className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center gap-2 shadow-sm"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                デプロイ
-              </button>
+              {deploySettingsReady === false ? (
+                <a
+                  href="/admin/settings"
+                  className="px-4 py-2.5 bg-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-300 transition-all flex items-center gap-2"
+                  title="設定画面でデプロイ設定を完了してください"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  設定が必要
+                </a>
+              ) : (
+                <button
+                  onClick={() => { setDeployment(null); setStep('deploy'); }}
+                  disabled={deploySettingsReady === null}
+                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-sm font-medium hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  デプロイ
+                </button>
+              )}
               <button
                 onClick={() => setStep('insert')}
                 className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"

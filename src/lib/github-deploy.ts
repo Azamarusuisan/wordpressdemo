@@ -158,3 +158,21 @@ export async function createDeployRepo(
     htmlUrl: repo.html_url,
   };
 }
+
+// Delete a GitHub repository (used for cleanup on deploy failure)
+export async function deleteGithubRepo(
+  repoName: string,
+  credentials: DeployCredentials
+): Promise<void> {
+  const { githubToken, githubOwner } = credentials;
+  const headers = getGithubHeaders(githubToken);
+
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${githubOwner}/${repoName}`,
+    { method: 'DELETE', headers }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`GitHub repo deletion failed: ${response.status}`);
+  }
+}

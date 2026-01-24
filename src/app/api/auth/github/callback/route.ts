@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
+import { encrypt } from '@/lib/encryption';
 
 // Handle GitHub OAuth callback
 export async function GET(request: NextRequest) {
@@ -21,8 +22,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/admin/settings?error=no_code`);
   }
 
-  // Verify state matches user ID
-  if (state !== user.id) {
+  // Verify CSRF state from cookie
+  const stateCookie = request.cookies.get('github_oauth_state')?.value;
+  if (!stateCookie) {
+    return NextResponse.redirect(`${baseUrl}/admin/settings?error=invalid_state`);
+  }
+
+  let storedState: { state: string; userId: string };
+  try {
+    storedState = JSON.parse(stateCookie);
+  } catch {
+    return NextResponse.redirect(`${baseUrl}/admin/settings?error=invalid_state`);
+  }
+
+  // Verify state token matches and user ID matches
+  if (!state || state !== storedState.state || storedState.userId !== user.id) {
     return NextResponse.redirect(`${baseUrl}/admin/settings?error=invalid_state`);
   }
 
@@ -71,23 +85,29 @@ export async function GET(request: NextRequest) {
 
     const githubUser = await userResponse.json();
 
+    // Encrypt token before saving
+    const encryptedToken = encrypt(accessToken);
+
     // Save token and username to user settings
     await prisma.userSettings.upsert({
       where: { userId: user.id },
       update: {
-        githubToken: accessToken,
+        githubToken: encryptedToken,
         githubDeployOwner: githubUser.login,
       },
       create: {
         userId: user.id,
         email: user.email || null,
         plan: 'free',
-        githubToken: accessToken,
+        githubToken: encryptedToken,
         githubDeployOwner: githubUser.login,
       },
     });
 
-    return NextResponse.redirect(`${baseUrl}/admin/settings?github=connected`);
+    // Clear the state cookie
+    const response = NextResponse.redirect(`${baseUrl}/admin/settings?github=connected`);
+    response.cookies.delete('github_oauth_state');
+    return response;
   } catch (error) {
     console.error('GitHub OAuth callback error:', error);
     return NextResponse.redirect(`${baseUrl}/admin/settings?error=callback_failed`);

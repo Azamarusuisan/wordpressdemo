@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { getPlan, isFreePlan } from '@/lib/plans';
+import { encrypt } from '@/lib/encryption';
 
 // ユーザー設定を取得（なければ自動作成）
 async function getOrCreateUserSettings(userId: string, email: string | null) {
@@ -82,16 +83,19 @@ export async function POST(request: NextRequest) {
     };
 
     if (googleApiKey !== undefined) {
-        updateData.googleApiKey = googleApiKey || null;
-        createData.googleApiKey = googleApiKey || null;
+        const val = googleApiKey ? encrypt(googleApiKey) : null;
+        updateData.googleApiKey = val;
+        createData.googleApiKey = val;
     }
     if (renderApiKey !== undefined) {
-        updateData.renderApiKey = renderApiKey || null;
-        createData.renderApiKey = renderApiKey || null;
+        const val = renderApiKey ? encrypt(renderApiKey) : null;
+        updateData.renderApiKey = val;
+        createData.renderApiKey = val;
     }
     if (githubToken !== undefined) {
-        updateData.githubToken = githubToken || null;
-        createData.githubToken = githubToken || null;
+        const val = githubToken ? encrypt(githubToken) : null;
+        updateData.githubToken = val;
+        createData.githubToken = val;
     }
     if (githubDeployOwner !== undefined) {
         updateData.githubDeployOwner = githubDeployOwner || null;

@@ -606,18 +606,42 @@ function SettingsPage() {
                                 </div>
                             </div>
 
+                            {/* Important: Render-GitHub connection */}
+                            <div className="mt-8 p-5 rounded-xl border border-amber-200 bg-amber-50/50">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900 mb-2">初回セットアップ: RenderとGitHubの接続</h4>
+                                        <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                                            RenderからGitHubリポジトリにアクセスするため、Render DashboardでGitHubアカウントを接続する必要があります（初回のみ）。
+                                        </p>
+                                        <ol className="text-xs text-gray-600 space-y-1.5 list-decimal list-inside">
+                                            <li>
+                                                <a href="https://dashboard.render.com/select-repo?type=static" target="_blank" rel="noopener noreferrer"
+                                                    className="text-gray-900 underline decoration-gray-300 underline-offset-4 hover:decoration-gray-900 transition-all font-medium inline-flex items-center gap-1">
+                                                    Render Dashboard <ArrowUpRight className="h-3 w-3 inline" />
+                                                </a>
+                                                にアクセス
+                                            </li>
+                                            <li>「Connect GitHub」をクリックしてGitHubアカウントを連携</li>
+                                            <li>連携完了後、このページに戻って設定を完了</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* How it works */}
-                            <div className="mt-8 rounded-lg p-6 border border-gray-200 border-dashed">
+                            <div className="mt-6 rounded-lg p-6 border border-gray-200 border-dashed">
                                 <h4 className="text-sm font-bold text-gray-900 mb-4">デプロイの流れ</h4>
                                 <div className="space-y-4">
-                                    <Step number={1}>上記の2つを設定（初回のみ）</Step>
+                                    <Step number={1}>上記の設定を完了（初回のみ）</Step>
                                     <Step number={2}>AI Code Generatorでコードを生成</Step>
                                     <Step number={3}>「デプロイ」ボタンを1クリック</Step>
                                     <Step number={4}>自動でGitHub→Render→公開URL取得</Step>
                                 </div>
                                 <div className="mt-6 pt-4 border-t border-gray-200 border-dashed">
                                     <p className="text-xs text-gray-500 leading-relaxed">
-                                        <span className="font-bold text-gray-900">Note:</span> Render Static Siteは無料で利用可能。GitHubリポジトリはPublicで自動作成されます。
+                                        <span className="font-bold text-gray-900">Note:</span> Render Static Siteは無料で利用可能。GitHubリポジトリはPublicで自動作成されます。APIキーは暗号化して保存されます。
                                     </p>
                                 </div>
                             </div>

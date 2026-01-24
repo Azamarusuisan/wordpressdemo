@@ -26,7 +26,7 @@ import OverlayEditorModal from '@/components/admin/OverlayEditorModal';
 import ThumbnailTransformModal from '@/components/admin/ThumbnailTransformModal';
 import DocumentTransformModal from '@/components/admin/DocumentTransformModal';
 import ClaudeCodeGeneratorModal from '@/components/admin/ClaudeCodeGeneratorModal';
-import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2 } from 'lucide-react';
+import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2, Sparkles } from 'lucide-react';
 import type { ClickableArea } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -3420,19 +3420,49 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     </div>
 
                     {/* フッター情報 */}
-                    <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-center gap-4 py-4 bg-gradient-to-t from-gray-900 to-transparent">
-                        <span className="text-gray-400 text-sm">
-                            {sections.filter(s => s.image?.filePath).length} セクション
-                        </span>
-                        <span className="text-gray-600">•</span>
-                        <span className="text-gray-400 text-sm">
-                            {viewMode === 'desktop' ? '最大幅: 1440px' : '幅: 390px'}
-                        </span>
-                        <span className="text-gray-600">•</span>
-                        <span className="text-gray-400 text-sm">
-                            ESC キーで閉じる
-                        </span>
-                    </div>
+                    {viewMode === 'mobile' ? (
+                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 p-1.5 bg-gray-900/90 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4">
+                            <div className="flex items-center gap-2 pl-3 pr-4 border-r border-white/20">
+                                <Smartphone className="h-4 w-4 text-white" />
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-bold leading-none">Mobile Preview</span>
+                                    <span className="text-[9px] text-gray-400 leading-none mt-0.5">390px</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowMobileOptimizeModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 hover:bg-white/20 rounded-xl transition-all group"
+                            >
+                                <Sparkles className="h-4 w-4 text-yellow-400 group-hover:scale-110 transition-transform" />
+                                <span className="text-xs font-bold">一括最適化</span>
+                            </button>
+
+                            <div className="w-px h-6 bg-white/20 mx-1" />
+
+                            <button
+                                onClick={() => setViewMode('desktop')}
+                                className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white/70 hover:text-white"
+                                title="デスクトップに戻る"
+                            >
+                                <Monitor className="h-4 w-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-center gap-4 py-4 bg-gradient-to-t from-gray-900 to-transparent pointer-events-none">
+                            <span className="text-gray-400 text-sm">
+                                {sections.filter(s => s.image?.filePath).length} セクション
+                            </span>
+                            <span className="text-gray-600">•</span>
+                            <span className="text-gray-400 text-sm">
+                                最大幅: 1440px
+                            </span>
+                            <span className="text-gray-600">•</span>
+                            <span className="text-gray-400 text-sm">
+                                ESC キーで閉じる
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 

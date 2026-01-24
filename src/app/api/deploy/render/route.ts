@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
-import { createDeployRepo } from '@/lib/github-deploy';
+import { createDeployRepo, deleteGithubRepo } from '@/lib/github-deploy';
 import { createStaticSite } from '@/lib/render-api';
+import { decrypt } from '@/lib/encryption';
+
+// Simple in-memory rate limiter: max 5 deploys per user per 10 minutes
+const deployRateMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const timestamps = deployRateMap.get(userId) || [];
+  const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT_MAX) return false;
+  recent.push(now);
+  deployRateMap.set(userId, recent);
+  return true;
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -10,6 +26,14 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Rate limit check
+  if (!checkRateLimit(user.id)) {
+    return NextResponse.json(
+      { error: 'レート制限', message: 'デプロイ頻度が高すぎます。10分間に最大5回までです。' },
+      { status: 429 }
+    );
   }
 
   // Fetch user's deploy credentials from DB
@@ -53,19 +77,35 @@ export async function POST(request: NextRequest) {
   // Create unique repo name with timestamp
   const repoName = `lp-${sanitizedName}-${Date.now()}`;
 
+  // Decrypt credentials
+  const githubToken = decrypt(userSettings.githubToken);
+  const githubOwner = userSettings.githubDeployOwner;
+  const renderApiKey = decrypt(userSettings.renderApiKey);
+
   try {
     // 1. Create GitHub repository with the generated HTML (public/index.html)
     const { repoUrl, htmlUrl } = await createDeployRepo(repoName, html, {
-      githubToken: userSettings.githubToken,
-      githubOwner: userSettings.githubDeployOwner,
+      githubToken,
+      githubOwner,
     });
 
     // 2. Create Render Static Site pointing to the GitHub repo
-    const renderService = await createStaticSite({
-      name: sanitizedName,
-      repoUrl: repoUrl,
-      apiKey: userSettings.renderApiKey,
-    });
+    let renderService;
+    try {
+      renderService = await createStaticSite({
+        name: sanitizedName,
+        repoUrl: repoUrl,
+        apiKey: renderApiKey,
+      });
+    } catch (renderError: any) {
+      // Cleanup: delete the orphaned GitHub repo
+      try {
+        await deleteGithubRepo(repoName, { githubToken, githubOwner });
+      } catch (cleanupError) {
+        console.error('Failed to cleanup orphaned GitHub repo:', cleanupError);
+      }
+      throw renderError;
+    }
 
     // 3. Save deployment record
     const deployment = await prisma.deployment.create({

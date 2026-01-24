@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { getServiceStatus, deleteService } from '@/lib/render-api';
+import { decrypt } from '@/lib/encryption';
 
 export async function GET(
   request: NextRequest,
@@ -59,7 +60,8 @@ export async function GET(
   // Poll Render API for current status
   if (deployment.renderServiceId) {
     try {
-      const { status, url } = await getServiceStatus(deployment.renderServiceId, userSettings.renderApiKey);
+      const apiKey = decrypt(userSettings.renderApiKey);
+      const { status, url } = await getServiceStatus(deployment.renderServiceId, apiKey);
 
       // Update DB if status changed
       if (status !== deployment.status || (url && !deployment.siteUrl)) {
@@ -133,7 +135,8 @@ export async function DELETE(
   // Delete Render service if exists
   if (deployment.renderServiceId && userSettings?.renderApiKey) {
     try {
-      await deleteService(deployment.renderServiceId, userSettings.renderApiKey);
+      const apiKey = decrypt(userSettings.renderApiKey);
+      await deleteService(deployment.renderServiceId, apiKey);
     } catch (error) {
       console.error('Failed to delete Render service:', error);
     }
