@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Globe, Loader2, ExternalLink, Copy, ArrowRight, Check, Rocket, Github, Server, FileCode, AlertCircle, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 interface DeploymentInfo {
@@ -31,6 +32,7 @@ const DEPLOY_STEPS = [
 const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5分でタイムアウト
 
 export default function PageDeployModal({ pageId, pageTitle, onClose }: PageDeployModalProps) {
+  const router = useRouter();
   const [serviceName, setServiceName] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [deployment, setDeployment] = useState<DeploymentInfo | null>(null);
@@ -260,13 +262,16 @@ export default function PageDeployModal({ pageId, pageTitle, onClose }: PageDepl
                 </div>
               </div>
 
-              <a
-                href="/admin/settings"
+              <button
+                onClick={() => {
+                  onClose();
+                  router.push('/admin/settings?tab=deploy');
+                }}
                 className="flex items-center justify-center gap-2 w-full py-3 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors"
               >
                 設定画面へ移動
                 <ArrowRight className="h-4 w-4" />
-              </a>
+              </button>
             </div>
           )}
 

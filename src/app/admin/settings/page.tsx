@@ -77,8 +77,13 @@ function SettingsPage() {
     const [hasRenderApiKey, setHasRenderApiKey] = useState(false);
     const [hasGithubToken, setHasGithubToken] = useState(false);
 
-    // Handle OAuth callback params
+    // Handle query params (tab, OAuth callback)
     useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab === 'deploy' || tab === 'plan' || tab === 'apikey' || tab === 'general' || tab === 'github') {
+            setActiveTab(tab);
+        }
+
         const githubStatus = searchParams.get('github');
         const error = searchParams.get('error');
         if (githubStatus === 'connected') {
