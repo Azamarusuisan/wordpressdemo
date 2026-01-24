@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { createDeployRepo } from '@/lib/github-deploy';
-import { createWebService } from '@/lib/render-api';
+import { createStaticSite } from '@/lib/render-api';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -10,6 +10,20 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Check required environment variables
+  if (!process.env.RENDER_API_KEY) {
+    return NextResponse.json(
+      { error: 'Server configuration error', message: 'RENDER_API_KEY is not configured' },
+      { status: 500 }
+    );
+  }
+  if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_DEPLOY_OWNER) {
+    return NextResponse.json(
+      { error: 'Server configuration error', message: 'GitHub deploy credentials are not configured' },
+      { status: 500 }
+    );
   }
 
   const body = await request.json();
@@ -22,17 +36,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Sanitize service name for use as repo name
-  const repoName = `lp-${serviceName.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()}-${Date.now()}`;
+  // Validate service name format
+  const sanitizedName = serviceName.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+  if (sanitizedName.length < 3) {
+    return NextResponse.json(
+      { error: 'Service name must be at least 3 characters' },
+      { status: 400 }
+    );
+  }
+
+  // Create unique repo name with timestamp
+  const repoName = `lp-${sanitizedName}-${Date.now()}`;
 
   try {
-    // 1. Create GitHub repository with the generated HTML
+    // 1. Create GitHub repository with the generated HTML (public/index.html)
     const { repoUrl, htmlUrl } = await createDeployRepo(repoName, html);
 
-    // 2. Create Render web service pointing to the GitHub repo
-    const renderService = await createWebService({
-      name: serviceName,
-      repoUrl,
+    // 2. Create Render Static Site pointing to the GitHub repo
+    // Use htmlUrl (https://github.com/owner/repo) format for Render
+    const renderService = await createStaticSite({
+      name: sanitizedName,
+      repoUrl: repoUrl,
     });
 
     // 3. Save deployment record
@@ -40,7 +64,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         pageId: pageId || null,
-        serviceName,
+        serviceName: sanitizedName,
         renderServiceId: renderService.id,
         status: 'building',
         generatedHtml: html,
@@ -61,19 +85,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    // Save failed deployment
-    await prisma.deployment.create({
-      data: {
-        userId: user.id,
-        pageId: pageId || null,
-        serviceName,
-        status: 'failed',
-        generatedHtml: html,
-        templateType: templateType || null,
-        prompt: prompt || null,
-        errorMessage: error.message,
-      },
-    });
+    console.error('Deployment error:', error);
+
+    // Save failed deployment record
+    try {
+      await prisma.deployment.create({
+        data: {
+          userId: user.id,
+          pageId: pageId || null,
+          serviceName: sanitizedName,
+          status: 'failed',
+          generatedHtml: html,
+          templateType: templateType || null,
+          prompt: prompt || null,
+          errorMessage: error.message?.substring(0, 500),
+        },
+      });
+    } catch (dbError) {
+      console.error('Failed to save deployment error record:', dbError);
+    }
 
     return NextResponse.json(
       { error: 'Deployment failed', message: error.message },

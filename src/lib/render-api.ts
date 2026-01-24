@@ -11,7 +11,7 @@ function getRenderHeaders(): HeadersInit {
   };
 }
 
-export interface CreateWebServiceParams {
+export interface CreateStaticSiteParams {
   name: string;
   repoUrl: string;
   branch?: string;
@@ -26,27 +26,44 @@ export interface RenderService {
   };
 }
 
-export async function createWebService(params: CreateWebServiceParams): Promise<RenderService> {
+// Fetch the Render account owner ID (required for service creation)
+async function getOwnerId(): Promise<string> {
+  const response = await fetch(`${RENDER_API_BASE}/owners?limit=1`, {
+    method: 'GET',
+    headers: getRenderHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to fetch Render owner: ${response.status} - ${errorBody}`);
+  }
+
+  const owners = await response.json();
+  if (!owners || owners.length === 0) {
+    throw new Error('No Render owner found for this API key');
+  }
+
+  return owners[0].owner.id;
+}
+
+// Create a Static Site on Render (free tier)
+export async function createStaticSite(params: CreateStaticSiteParams): Promise<RenderService> {
   const { name, repoUrl, branch = 'main' } = params;
+
+  const ownerId = await getOwnerId();
 
   const response = await fetch(`${RENDER_API_BASE}/services`, {
     method: 'POST',
     headers: getRenderHeaders(),
     body: JSON.stringify({
-      type: 'web_service',
+      type: 'static_site',
       name,
+      ownerId,
       repo: repoUrl,
       autoDeploy: 'yes',
       branch,
       serviceDetails: {
-        runtime: 'node',
-        buildCommand: 'npm install',
-        startCommand: 'node server.js',
-        plan: 'free',
-        envSpecificDetails: {
-          buildCommand: 'npm install',
-          startCommand: 'node server.js',
-        },
+        publishPath: './public',
       },
     }),
   });
@@ -60,9 +77,14 @@ export async function createWebService(params: CreateWebServiceParams): Promise<
   return {
     id: data.service.id,
     name: data.service.name,
-    status: data.service.suspended === 'suspended' ? 'suspended' : 'deploying',
+    status: 'building',
     serviceDetails: data.service.serviceDetails,
   };
+}
+
+// Legacy alias for backward compatibility
+export async function createWebService(params: CreateStaticSiteParams): Promise<RenderService> {
+  return createStaticSite(params);
 }
 
 export async function getServiceStatus(serviceId: string): Promise<{ status: string; url?: string }> {
@@ -88,12 +110,13 @@ export async function getServiceStatus(serviceId: string): Promise<{ status: str
     const deploys = await deploysResponse.json();
     if (deploys.length > 0) {
       const latestDeploy = deploys[0].deploy;
-      deployStatus = latestDeploy.status; // build_in_progress | update_in_progress | live | deactivated | build_failed | update_failed | canceled | pre_deploy_in_progress | pre_deploy_failed
+      deployStatus = latestDeploy.status;
     }
   }
 
+  // Static sites use serviceDetails.url for the URL
   const url = data.serviceDetails?.url
-    ? `https://${data.serviceDetails.url}`
+    ? (data.serviceDetails.url.startsWith('http') ? data.serviceDetails.url : `https://${data.serviceDetails.url}`)
     : undefined;
 
   let status: string;
@@ -114,6 +137,7 @@ export async function triggerDeploy(serviceId: string): Promise<void> {
   const response = await fetch(`${RENDER_API_BASE}/services/${serviceId}/deploys`, {
     method: 'POST',
     headers: getRenderHeaders(),
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) {
@@ -127,7 +151,7 @@ export async function deleteService(serviceId: string): Promise<void> {
     headers: getRenderHeaders(),
   });
 
-  if (!response.ok) {
+  if (!response.ok && response.status !== 404) {
     throw new Error(`Render API error: ${response.status}`);
   }
 }

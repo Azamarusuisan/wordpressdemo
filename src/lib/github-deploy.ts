@@ -20,42 +20,6 @@ function getOwner(): string {
   return owner;
 }
 
-interface FileContent {
-  path: string;
-  content: string;
-}
-
-function generateServerJs(): string {
-  return `const express = require('express');
-const path = require('path');
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(\`Server running on port \${PORT}\`);
-});
-`;
-}
-
-function generatePackageJson(name: string): string {
-  return JSON.stringify({
-    name,
-    version: '1.0.0',
-    scripts: {
-      start: 'node server.js',
-    },
-    dependencies: {
-      express: '^4.18.2',
-    },
-  }, null, 2);
-}
-
 export interface CreateDeployRepoResult {
   repoUrl: string;
   htmlUrl: string;
@@ -74,7 +38,7 @@ export async function createDeployRepo(
     headers,
     body: JSON.stringify({
       name: repoName,
-      description: 'Auto-deployed from LP Builder',
+      description: 'Static site deployed from LP Builder',
       private: false,
       auto_init: true,
     }),
@@ -111,41 +75,26 @@ export async function createDeployRepo(
   const commitData = await commitResponse.json();
   const baseTreeSha = commitData.tree.sha;
 
-  // 4. Create blobs for each file
-  const files: FileContent[] = [
-    { path: 'public/index.html', content: htmlContent },
-    { path: 'server.js', content: generateServerJs() },
-    { path: 'package.json', content: generatePackageJson(repoName) },
-  ];
-
-  const treeItems = [];
-  for (const file of files) {
-    const blobResponse = await fetch(
-      `${GITHUB_API_BASE}/repos/${owner}/${repoName}/git/blobs`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content: file.content,
-          encoding: 'utf-8',
-        }),
-      }
-    );
-
-    if (!blobResponse.ok) {
-      throw new Error(`Failed to create blob for ${file.path}`);
+  // 4. Create blob for index.html in public/ directory (Render static site publishPath)
+  const blobResponse = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repoName}/git/blobs`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        content: htmlContent,
+        encoding: 'utf-8',
+      }),
     }
+  );
 
-    const blobData = await blobResponse.json();
-    treeItems.push({
-      path: file.path,
-      mode: '100644',
-      type: 'blob',
-      sha: blobData.sha,
-    });
+  if (!blobResponse.ok) {
+    throw new Error('Failed to create blob for index.html');
   }
 
-  // 5. Create tree
+  const blobData = await blobResponse.json();
+
+  // 5. Create tree with public/index.html
   const treeResponse = await fetch(
     `${GITHUB_API_BASE}/repos/${owner}/${repoName}/git/trees`,
     {
@@ -153,7 +102,14 @@ export async function createDeployRepo(
       headers,
       body: JSON.stringify({
         base_tree: baseTreeSha,
-        tree: treeItems,
+        tree: [
+          {
+            path: 'public/index.html',
+            mode: '100644',
+            type: 'blob',
+            sha: blobData.sha,
+          },
+        ],
       }),
     }
   );
@@ -171,7 +127,7 @@ export async function createDeployRepo(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        message: 'Initial deployment from LP Builder',
+        message: 'Deploy static site from LP Builder',
         tree: treeData.sha,
         parents: [latestCommitSha],
       }),
