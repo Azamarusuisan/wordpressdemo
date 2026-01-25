@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay, MousePointer } from 'lucide-react';
+import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay, MousePointer, Search, Bot } from 'lucide-react';
 import { GeminiGeneratorModal } from '@/components/lp-builder/GeminiGeneratorModal';
+import { SEOLLMOOptimizer } from '@/components/lp-builder/SEOLLMOOptimizer';
 import { SortableSection } from '@/components/lp-builder/SortableSection';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
 import { SECTION_TEMPLATES, SectionTemplate } from '@/components/lp-builder/constants';
@@ -93,6 +94,7 @@ export default function LPBuilderPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+    const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
     const [buttonEditorSectionId, setButtonEditorSectionId] = useState<string | null>(null);
 
     const sensors = useSensors(
@@ -434,6 +436,15 @@ export default function LPBuilderPage() {
                             </a>
                         )}
                         <button
+                            onClick={() => setIsSEOModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-600 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-purple-100 hover:border-blue-300 transition-all"
+                            title="SEO / LLMO Optimization"
+                        >
+                            <Search className="h-3 w-3 text-blue-600" />
+                            <Bot className="h-3 w-3 text-purple-600" />
+                            <span className="hidden lg:inline">SEO/LLMO</span>
+                        </button>
+                        <button
                             onClick={() => {
                                 // Save sections to localStorage and open preview in new tab
                                 localStorage.setItem('lp-builder-preview', JSON.stringify({ sections }));
@@ -671,6 +682,16 @@ export default function LPBuilderPage() {
                 isOpen={isGeminiModalOpen}
                 onClose={() => setIsGeminiModalOpen(false)}
                 onGenerated={handleGeminiGenerated}
+            />
+
+            {/* SEO/LLMO Optimizer Modal - ステルス対策 */}
+            <SEOLLMOOptimizer
+                isOpen={isSEOModalOpen}
+                onClose={() => setIsSEOModalOpen(false)}
+                pageId={currentPageId}
+                onSaved={() => {
+                    toast.success('ステルスSEO/LLMO対策を保存しました');
+                }}
             />
 
             {/* Button Editor Modal */}

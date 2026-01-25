@@ -24,7 +24,10 @@ export type GenerationType =
   | 'text-fix'
   | 'upscale'
   | 'video-generate'
-  | 'claude-generate';
+  | 'claude-generate'
+  | 'seo-analysis'
+  | 'llmo-analysis'
+  | 'seo-llmo-combined';
 
 export interface LogGenerationParams {
   userId?: string | null;

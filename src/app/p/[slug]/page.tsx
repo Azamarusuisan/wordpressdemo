@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ClickableArea } from '@/types';
+import type { Metadata } from 'next';
 import { ContactForm } from '@/components/public/ContactForm';
 import { InteractiveAreaOverlay } from '@/components/public/InteractiveAreaOverlay';
 import { VideoPlayer } from '@/components/public/VideoPlayer';
@@ -10,10 +11,87 @@ import { OverlayElements } from '@/components/public/OverlayElements';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-    const page = await prisma.page.findUnique({ where: { slug: params.slug }, select: { title: true } });
+// SEOデータの型定義
+interface SEOData {
+    seo?: {
+        title?: string;
+        description?: string;
+        primaryKeyword?: string;
+        secondaryKeywords?: string[];
+        h1?: string;
+        urlSlug?: string;
+    };
+    llmo?: {
+        targetQuestions?: string[];
+        summaryForAI?: string;
+        keyFacts?: string[];
+        faqItems?: Array<{ q: string; a: string }>;
+    };
+    structuredData?: {
+        schemaType?: string;
+        jsonLd?: Record<string, unknown>;
+    };
+    metadata?: {
+        title?: string;
+        description?: string;
+        ogTitle?: string;
+        ogDescription?: string;
+    };
+    keywords?: {
+        primary?: string;
+        secondary?: string[];
+    };
+}
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+    const page = await prisma.page.findUnique({
+        where: { slug: params.slug },
+        select: { title: true, seoData: true }
+    });
     if (!page) return { title: 'Not Found' };
-    return { title: page.title };
+
+    // SEOデータをパース
+    let seoData: SEOData = {};
+    try {
+        if (page.seoData) {
+            seoData = JSON.parse(page.seoData);
+        }
+    } catch { }
+
+    // SEOメタデータを構築
+    const seo = seoData.seo || {};
+    const meta = seoData.metadata || {};
+    const keywords = seoData.keywords || {};
+
+    const title = seo.title || meta.title || page.title;
+    const description = seo.description || meta.description || '';
+    const keywordsList = [
+        seo.primaryKeyword || keywords.primary,
+        ...(seo.secondaryKeywords || keywords.secondary || [])
+    ].filter(Boolean).join(', ');
+
+    return {
+        title,
+        description,
+        keywords: keywordsList || undefined,
+        openGraph: {
+            title: meta.ogTitle || title,
+            description: meta.ogDescription || description,
+            type: 'website',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: meta.ogTitle || title,
+            description: meta.ogDescription || description,
+        },
+        robots: {
+            index: true,
+            follow: true,
+        },
+        alternates: {
+            canonical: `/${params.slug}`,
+        },
+    };
 }
 
 export default async function PublicPage({ params }: { params: { slug: string } }) {
@@ -34,6 +112,55 @@ export default async function PublicPage({ params }: { params: { slug: string } 
     });
 
     if (!page) return notFound();
+
+    // SEO/LLMOデータをパース
+    let seoData: SEOData = {};
+    try {
+        if (page.seoData) {
+            seoData = JSON.parse(page.seoData);
+        }
+    } catch { }
+
+    // 構造化データを生成
+    const generateStructuredData = () => {
+        const structuredDataList: Record<string, unknown>[] = [];
+
+        // カスタム構造化データがあれば使用
+        if (seoData.structuredData?.jsonLd) {
+            structuredDataList.push(seoData.structuredData.jsonLd);
+        }
+
+        // FAQ構造化データを自動生成
+        if (seoData.llmo?.faqItems && seoData.llmo.faqItems.length > 0) {
+            structuredDataList.push({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": seoData.llmo.faqItems.map(faq => ({
+                    "@type": "Question",
+                    "name": faq.q,
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": faq.a
+                    }
+                }))
+            });
+        }
+
+        // WebPage構造化データ
+        const seo = seoData.seo || {};
+        const meta = seoData.metadata || {};
+        structuredDataList.push({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": seo.title || meta.title || page.title,
+            "description": seo.description || meta.description || '',
+            "url": `${process.env.NEXT_PUBLIC_APP_URL || ''}/p/${params.slug}`
+        });
+
+        return structuredDataList;
+    };
+
+    const structuredDataList = generateStructuredData();
 
     // Parse Configs & Global Navigation Integration (Safe access for runtime sync issues)
     let globalNavValue: any = null;
@@ -72,6 +199,44 @@ export default async function PublicPage({ params }: { params: { slug: string } 
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
+            {/* ステルスSEO/LLMO: 構造化データ (JSON-LD) */}
+            {structuredDataList.map((data, index) => (
+                <script
+                    key={`structured-data-${index}`}
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+                />
+            ))}
+
+            {/* ステルスLLMO: AI検索エンジン向け非表示コンテンツ */}
+            {seoData.llmo && (
+                <div className="sr-only" aria-hidden="true">
+                    {/* AI要約文 */}
+                    {seoData.llmo.summaryForAI && (
+                        <p data-llmo="summary">{seoData.llmo.summaryForAI}</p>
+                    )}
+                    {/* キーファクト */}
+                    {seoData.llmo.keyFacts && seoData.llmo.keyFacts.length > 0 && (
+                        <ul data-llmo="key-facts">
+                            {seoData.llmo.keyFacts.map((fact, i) => (
+                                <li key={i}>{fact}</li>
+                            ))}
+                        </ul>
+                    )}
+                    {/* ターゲット質問と回答 */}
+                    {seoData.llmo.faqItems && seoData.llmo.faqItems.length > 0 && (
+                        <dl data-llmo="faq">
+                            {seoData.llmo.faqItems.map((faq, i) => (
+                                <div key={i}>
+                                    <dt>{faq.q}</dt>
+                                    <dd>{faq.a}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    )}
+                </div>
+            )}
+
             {/* Dynamic Header */}
             <header className={`${headerConfig.sticky ? 'sticky top-0' : 'relative'} z-50 flex h-16 items-center justify-between bg-white/90 px-4 shadow-sm backdrop-blur-md md:px-8`}>
                 <div className="text-xl font-bold text-gray-900">

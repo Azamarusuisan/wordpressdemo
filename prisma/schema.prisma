@@ -26,6 +26,7 @@ model Page {
   formConfig       String
   isFavorite       Boolean       @default(false)
   designDefinition String?
+  seoData          String?       @db.Text // SEO/LLMOステルス対策データ（JSON）
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   sections         PageSection[]
