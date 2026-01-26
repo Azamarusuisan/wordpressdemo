@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Globe, Loader2, X, Layout, Monitor, Smartphone, Copy, Palette, Download, RefreshCw, Settings } from 'lucide-react';
+import { Plus, Globe, Loader2, X, Layout, Monitor, Smartphone, Copy, Palette, Download, RefreshCw, Settings, PenTool, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { TextBasedLPGenerator } from '@/components/lp-builder/TextBasedLPGenerator';
 
 // スタイル定義
 const STYLE_OPTIONS = [
@@ -51,6 +52,46 @@ export function PagesHeader() {
     const [layoutOption, setLayoutOption] = useState('keep');
     const [customPrompt, setCustomPrompt] = useState('');
     const [progress, setProgress] = useState<ImportProgress | null>(null);
+    const [isTextLPModalOpen, setIsTextLPModalOpen] = useState(false);
+
+    // テキストベースLP生成完了時のハンドラ
+    const handleTextLPGenerated = async (sections: any[], meta?: { duration: number, estimatedCost: number }) => {
+        try {
+            // セクションをページとして保存
+            const sectionsPayload = sections.map((s: any, idx: number) => ({
+                role: s.type || (idx === 0 ? 'hero' : 'other'),
+                imageId: s.imageId || null,
+                config: JSON.stringify({
+                    type: s.type,
+                    name: s.name,
+                    properties: s.properties,
+                }),
+            }));
+
+            const pageRes = await fetch('/api/pages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: `AI Generated LP - ${new Date().toLocaleDateString('ja-JP')}`,
+                    sections: sectionsPayload,
+                }),
+            });
+            const pageData = await pageRes.json();
+
+            if (meta) {
+                toast.success(`${sections.length}セクションを生成しました（${(meta.duration / 1000).toFixed(1)}秒）`);
+            } else {
+                toast.success(`${sections.length}セクションを生成しました`);
+            }
+
+            setIsTextLPModalOpen(false);
+            setShowSelection(false);
+            router.push(`/admin/pages/${pageData.id}`);
+        } catch (error: any) {
+            console.error('Failed to create page from generated LP:', error);
+            toast.error('ページの作成に失敗しました');
+        }
+    };
 
     const handleImport = async () => {
         if (!importUrl) return;
@@ -310,31 +351,62 @@ export function PagesHeader() {
                             </div>
 
                             {mode === 'select' ? (
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <button
-                                        onClick={() => router.push('/admin/pages/new')}
-                                        className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50"
-                                    >
-                                        <div className="mb-4 rounded-md bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                            <Layout className="h-6 w-6" />
-                                        </div>
-                                        <h3 className="text-base font-bold text-foreground mb-1"><span>あらゆる画像を編集できます</span></h3>
-                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                            <span>画像をアップロードして、AIで自由に編集・加工できます。</span>
-                                        </p>
-                                    </button>
+                                <div className="space-y-4">
+                                    {/* メインの選択肢 */}
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <button
+                                            onClick={() => router.push('/admin/pages/new')}
+                                            className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50"
+                                        >
+                                            <div className="mb-4 rounded-md bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                <Layout className="h-6 w-6" />
+                                            </div>
+                                            <h3 className="text-base font-bold text-foreground mb-1"><span>あらゆる画像を編集できます</span></h3>
+                                            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                                                <span>画像をアップロードして、AIで自由に編集・加工できます。</span>
+                                            </p>
+                                        </button>
 
+                                        <button
+                                            onClick={() => setMode('import')}
+                                            className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50"
+                                        >
+                                            <div className="mb-4 rounded-md bg-secondary p-3 text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                                                <Globe className="h-6 w-6" />
+                                            </div>
+                                            <h3 className="text-base font-bold text-foreground mb-1"><span>クイックインポート</span></h3>
+                                            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                                                <span>LPを作成する場合はこちらがおすすめです。</span>
+                                            </p>
+                                        </button>
+                                    </div>
+
+                                    {/* テキストベースLP作成（フル幅） */}
                                     <button
-                                        onClick={() => setMode('import')}
-                                        className="group flex flex-col items-start rounded-lg border border-border p-6 text-left transition-all hover:border-primary hover:bg-surface-50"
+                                        onClick={() => {
+                                            setShowSelection(false);
+                                            setIsTextLPModalOpen(true);
+                                        }}
+                                        className="group w-full flex items-center gap-4 rounded-lg border-2 border-dashed border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6 text-left transition-all hover:border-green-400 hover:from-green-100 hover:to-emerald-100"
                                     >
-                                        <div className="mb-4 rounded-md bg-secondary p-3 text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                            <Globe className="h-6 w-6" />
+                                        <div className="rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 p-3.5 text-white shadow-lg shadow-green-500/20 group-hover:shadow-green-500/40 transition-all">
+                                            <PenTool className="h-6 w-6" />
                                         </div>
-                                        <h3 className="text-base font-bold text-foreground mb-1"><span>クイックインポート</span></h3>
-                                        <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                            <span>LPを作成する場合はこちらがおすすめです。</span>
-                                        </p>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-base font-bold text-gray-900">テキストからLPを作成</h3>
+                                                <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">
+                                                    New
+                                                </span>
+                                            </div>
+                                            <p className="text-xs font-medium text-gray-600 leading-relaxed">
+                                                商材情報を入力するだけで、AIが最適なLPを自動生成します。<br />
+                                                <span className="text-green-600 font-semibold">スクリーンショット不要・ゼロから作成</span>
+                                            </p>
+                                        </div>
+                                        <div className="text-green-500 group-hover:translate-x-1 transition-transform">
+                                            <Sparkles className="h-5 w-5" />
+                                        </div>
                                     </button>
                                 </div>
                             ) : (
@@ -636,6 +708,13 @@ export function PagesHeader() {
                 <span className="hidden xs:inline">新規ページ作成</span>
                 <span className="xs:hidden">新規</span>
             </button>
+
+            {/* テキストベースLP作成モーダル */}
+            <TextBasedLPGenerator
+                isOpen={isTextLPModalOpen}
+                onClose={() => setIsTextLPModalOpen(false)}
+                onGenerated={handleTextLPGenerated}
+            />
 
         </>
     );
