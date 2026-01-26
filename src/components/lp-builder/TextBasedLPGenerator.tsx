@@ -10,8 +10,9 @@ import {
     Sparkles, X, AlertCircle, Loader2, DollarSign,
     ChevronRight, ChevronLeft, Check, Building2, Users,
     Target, Zap, MessageSquare, Award, HelpCircle, Lightbulb,
-    FileText, Palette
+    FileText, Palette, Wand2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { GEMINI_PRICING } from '@/lib/ai-costs';
 
 // Enhanced schema for deep product understanding
@@ -118,6 +119,7 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [aiSuggestLoading, setAiSuggestLoading] = useState<string | null>(null);
 
     const {
         register,
@@ -125,6 +127,8 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
         control,
         watch,
         trigger,
+        setValue,
+        getValues,
         formState: { errors },
     } = useForm<TextBasedLPData>({
         resolver: zodResolver(textBasedLPSchema),
@@ -169,6 +173,82 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
     const handleBack = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
+        }
+    };
+
+    // AI提案機能
+    const handleAiSuggest = async (type: 'benefits' | 'usp' | 'socialProof' | 'guarantees' | 'all') => {
+        setAiSuggestLoading(type);
+        setError(null);
+
+        try {
+            const values = getValues();
+
+            // 必要な情報が揃っているかチェック
+            if (!values.businessName || !values.productDescription || !values.targetAudience || !values.painPoints) {
+                toast.error('基本情報・商品情報・ターゲット情報を先に入力してください');
+                setAiSuggestLoading(null);
+                return;
+            }
+
+            const response = await fetch('/api/ai/suggest-benefits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    businessName: values.businessName,
+                    industry: values.industry,
+                    businessType: values.businessType,
+                    productName: values.productName,
+                    productDescription: values.productDescription,
+                    productCategory: values.productCategory,
+                    priceInfo: values.priceInfo,
+                    deliveryMethod: values.deliveryMethod,
+                    targetAudience: values.targetAudience,
+                    targetAge: values.targetAge,
+                    targetGender: values.targetGender,
+                    targetOccupation: values.targetOccupation,
+                    painPoints: values.painPoints,
+                    desiredOutcome: values.desiredOutcome,
+                    generateType: type,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'AI提案の生成に失敗しました');
+            }
+
+            if (result.success && result.suggestions) {
+                // 提案を各フィールドに設定
+                if (type === 'all' || type === 'benefits') {
+                    if (result.suggestions.benefits?.length > 0) {
+                        setValue('mainBenefits', result.suggestions.benefits.map((b: string) => `・${b}`).join('\n'));
+                    }
+                }
+                if (type === 'all' || type === 'usp') {
+                    if (result.suggestions.usp?.length > 0) {
+                        setValue('uniqueSellingPoints', result.suggestions.usp.map((u: string) => `・${u}`).join('\n'));
+                    }
+                }
+                if (type === 'all' || type === 'socialProof') {
+                    if (result.suggestions.socialProof?.length > 0) {
+                        setValue('socialProof', result.suggestions.socialProof.map((s: string) => `・${s}`).join('\n'));
+                    }
+                }
+                if (type === 'all' || type === 'guarantees') {
+                    if (result.suggestions.guarantees?.length > 0) {
+                        setValue('guarantees', result.suggestions.guarantees.join('、'));
+                    }
+                }
+
+                toast.success(type === 'all' ? '全項目の提案を生成しました' : '提案を生成しました');
+            }
+        } catch (err: any) {
+            console.error('AI suggest error:', err);
+            toast.error(err.message || 'AI提案の生成に失敗しました');
+        } finally {
+            setAiSuggestLoading(null);
         }
     };
 
@@ -491,10 +571,58 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
             case 4:
                 return (
                     <div className="space-y-6 animate-fadeIn">
+                        {/* AI一括提案ボタン */}
+                        <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg text-white">
+                                        <Wand2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">AIが提案</h4>
+                                        <p className="text-[10px] text-gray-500">商材情報から自動でコピーを生成</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiSuggest('all')}
+                                    disabled={aiSuggestLoading !== null}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-bold rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-500/20"
+                                >
+                                    {aiSuggestLoading === 'all' ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            生成中...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-4 w-4" />
+                                            全項目を提案
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
                         <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                主なメリット・ベネフィット <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    主なメリット・ベネフィット <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiSuggest('benefits')}
+                                    disabled={aiSuggestLoading !== null}
+                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 disabled:opacity-50 transition-all"
+                                >
+                                    {aiSuggestLoading === 'benefits' ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="h-3 w-3" />
+                                    )}
+                                    AIが提案
+                                </button>
+                            </div>
                             <textarea
                                 {...register('mainBenefits')}
                                 rows={4}
@@ -507,9 +635,24 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                独自の強み・差別化ポイント (USP) <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    独自の強み・差別化ポイント (USP) <span className="text-red-500">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiSuggest('usp')}
+                                    disabled={aiSuggestLoading !== null}
+                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 disabled:opacity-50 transition-all"
+                                >
+                                    {aiSuggestLoading === 'usp' ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="h-3 w-3" />
+                                    )}
+                                    AIが提案
+                                </button>
+                            </div>
                             <textarea
                                 {...register('uniqueSellingPoints')}
                                 rows={4}
@@ -522,9 +665,24 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                社会的証明（実績・お客様の声など）
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    社会的証明（実績・お客様の声など）
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiSuggest('socialProof')}
+                                    disabled={aiSuggestLoading !== null}
+                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 disabled:opacity-50 transition-all"
+                                >
+                                    {aiSuggestLoading === 'socialProof' ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="h-3 w-3" />
+                                    )}
+                                    AIが提案
+                                </button>
+                            </div>
                             <textarea
                                 {...register('socialProof')}
                                 rows={3}
@@ -534,15 +692,35 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                         </div>
 
                         <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                保証・安心要素
-                            </label>
-                            <input
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                    保証・安心要素
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAiSuggest('guarantees')}
+                                    disabled={aiSuggestLoading !== null}
+                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 disabled:opacity-50 transition-all"
+                                >
+                                    {aiSuggestLoading === 'guarantees' ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="h-3 w-3" />
+                                    )}
+                                    AIが提案
+                                </button>
+                            </div>
+                            <textarea
                                 {...register('guarantees')}
-                                className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm"
+                                rows={2}
+                                className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm resize-none"
                                 placeholder="例: 30日間返金保証、無料トライアル、24時間サポート"
                             />
                         </div>
+
+                        <p className="text-[10px] text-gray-400 text-center mt-2">
+                            ※ AIの提案は参考情報です。実際の内容に合わせて編集してください。
+                        </p>
                     </div>
                 );
 
