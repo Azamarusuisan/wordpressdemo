@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay, MousePointer, Search, Bot } from 'lucide-react';
+import { Save, Eye, Plus, X, FolderOpen, FileText, ChevronDown, Sparkles, Layout, Settings, Type, ExternalLink, Box, Trash2, Clock, MonitorPlay, MousePointer, Search, Bot, Image, PenTool } from 'lucide-react';
 import { GeminiGeneratorModal } from '@/components/lp-builder/GeminiGeneratorModal';
+import { TextBasedLPGenerator } from '@/components/lp-builder/TextBasedLPGenerator';
 import { SEOLLMOOptimizer } from '@/components/lp-builder/SEOLLMOOptimizer';
 import { SortableSection } from '@/components/lp-builder/SortableSection';
 import { ImageInpaintEditor } from '@/components/lp-builder/ImageInpaintEditor';
@@ -94,6 +95,8 @@ export default function LPBuilderPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+    const [isTextBasedModalOpen, setIsTextBasedModalOpen] = useState(false);
+    const [showGeneratorSelector, setShowGeneratorSelector] = useState(false);
     const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
     const [buttonEditorSectionId, setButtonEditorSectionId] = useState<string | null>(null);
 
@@ -330,9 +333,9 @@ export default function LPBuilderPage() {
                     </div>
                 </div>
 
-                <div className="p-4">
+                <div className="p-4 relative">
                     <button
-                        onClick={() => setIsGeminiModalOpen(true)}
+                        onClick={() => setShowGeneratorSelector(!showGeneratorSelector)}
                         className="group w-full relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-px shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 hover:scale-[1.02]"
                     >
                         <div className="relative flex items-center justify-between rounded-[11px] bg-black/10 px-4 py-3 backdrop-blur-sm transition-all group-hover:bg-transparent">
@@ -345,8 +348,57 @@ export default function LPBuilderPage() {
                                     <div className="text-sm font-bold text-white">Generate Page</div>
                                 </div>
                             </div>
+                            <ChevronDown className={`h-4 w-4 text-white/70 transition-transform ${showGeneratorSelector ? 'rotate-180' : ''}`} />
                         </div>
                     </button>
+
+                    {/* Generator Mode Selector Dropdown */}
+                    {showGeneratorSelector && (
+                        <div className="absolute left-4 right-4 top-full mt-2 bg-white rounded-xl shadow-2xl shadow-black/10 border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="p-2">
+                                <button
+                                    onClick={() => {
+                                        setIsGeminiModalOpen(true);
+                                        setShowGeneratorSelector(false);
+                                    }}
+                                    className="w-full flex items-start gap-3 rounded-lg p-3 hover:bg-indigo-50 transition-all text-left group"
+                                >
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200 transition-colors shrink-0">
+                                        <Image className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-bold text-gray-900">参考サイトから作成</div>
+                                        <div className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">
+                                            スクリーンショットをアップロードして<br />デザインを参考にLP作成
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <div className="h-px bg-gray-100 my-1" />
+
+                                <button
+                                    onClick={() => {
+                                        setIsTextBasedModalOpen(true);
+                                        setShowGeneratorSelector(false);
+                                    }}
+                                    className="w-full flex items-start gap-3 rounded-lg p-3 hover:bg-green-50 transition-all text-left group"
+                                >
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-green-600 group-hover:bg-green-200 transition-colors shrink-0">
+                                        <PenTool className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-bold text-gray-900">テキストから作成</div>
+                                        <div className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">
+                                            商材情報を入力して<br />ゼロからLP作成
+                                        </div>
+                                        <span className="inline-block mt-1.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded-full uppercase tracking-wider">
+                                            New
+                                        </span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -484,16 +536,25 @@ export default function LPBuilderPage() {
                                         <Layout className="w-8 h-8 text-gray-400 group-hover:text-indigo-500 transition-colors" />
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900 mb-3 tracking-tight relative z-10">Start Building</h3>
-                                    <p className="text-sm text-gray-500 leading-relaxed mb-8 relative z-10 font-medium">
-                                        Your canvas is empty. Use the AI generator or drag components from the left sidebar.
+                                    <p className="text-sm text-gray-500 leading-relaxed mb-6 relative z-10 font-medium">
+                                        AIジェネレーターを使って自動生成、<br />または左のコンポーネントをドラッグ
                                     </p>
-                                    <button
-                                        onClick={() => setIsGeminiModalOpen(true)}
-                                        className="w-full flex items-center justify-center gap-2 bg-black text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-gray-800 transition-all"
-                                    >
-                                        <Sparkles className="w-4 h-4" />
-                                        Auto-Generate
-                                    </button>
+                                    <div className="space-y-2 relative z-10">
+                                        <button
+                                            onClick={() => setIsGeminiModalOpen(true)}
+                                            className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all"
+                                        >
+                                            <Image className="w-4 h-4" />
+                                            参考サイトから作成
+                                        </button>
+                                        <button
+                                            onClick={() => setIsTextBasedModalOpen(true)}
+                                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition-all"
+                                        >
+                                            <PenTool className="w-4 h-4" />
+                                            テキストから作成
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -677,10 +738,17 @@ export default function LPBuilderPage() {
                 )}
             </div>
 
-            {/* Gemini Modal */}
+            {/* Gemini Modal - Screenshot Based */}
             <GeminiGeneratorModal
                 isOpen={isGeminiModalOpen}
                 onClose={() => setIsGeminiModalOpen(false)}
+                onGenerated={handleGeminiGenerated}
+            />
+
+            {/* Text-Based LP Generator Modal */}
+            <TextBasedLPGenerator
+                isOpen={isTextBasedModalOpen}
+                onClose={() => setIsTextBasedModalOpen(false)}
                 onGenerated={handleGeminiGenerated}
             />
 

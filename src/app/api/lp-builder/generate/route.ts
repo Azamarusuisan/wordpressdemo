@@ -238,6 +238,32 @@ async function generateSectionImage(
 `;
     }
 
+    // Image style from designDefinition (can include imageStyle from text-based mode)
+    if (designDefinition?.imageStyle) {
+        const styleInstructions: Record<string, string> = {
+            photo: 'フォトリアルな写真風の表現。リアルな質感、自然な照明、写実的なディテール。',
+            illustration: '親しみやすいイラスト風。ベクター風のクリーンなライン、フラットデザイン的要素。',
+            abstract: '抽象的でアーティスティックな表現。グラデーション、シェイプ、パターンを活用。',
+            minimal: 'ミニマルでシンプルな背景。余白を大切に、控えめな装飾。',
+            dynamic: 'ダイナミックで躍動感のある表現。斜めのライン、動きのある構図、エネルギッシュ。',
+        };
+
+        if (styleInstructions[designDefinition.imageStyle]) {
+            designInstruction += `
+【画像スタイル指定】
+${styleInstructions[designDefinition.imageStyle]}
+`;
+        }
+    }
+
+    // Color preference from designDefinition
+    if (designDefinition?.colorPreference) {
+        designInstruction += `
+【カラー指定】
+${designDefinition.colorPreference}を基調とした配色で生成してください。
+`;
+    }
+
     // リトライループ
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -489,6 +515,93 @@ export async function POST(req: NextRequest) {
         const enrichedInfo = enrichBusinessInfo(businessInfo);
         prompt = fillPromptTemplate(FULL_LP_PROMPT, enrichedInfo);
 
+        // Enhanced Context Injection (for text-based mode)
+        const enhancedContext = body.enhancedContext;
+        if (enhancedContext && typeof enhancedContext === 'object') {
+            const contextDetails = [];
+
+            if (enhancedContext.businessType) {
+                contextDetails.push(`- ビジネスモデル: ${enhancedContext.businessType}`);
+            }
+            if (enhancedContext.productName) {
+                contextDetails.push(`- 商品・サービス名: ${enhancedContext.productName}`);
+            }
+            if (enhancedContext.productCategory) {
+                contextDetails.push(`- カテゴリ: ${enhancedContext.productCategory}`);
+            }
+            if (enhancedContext.deliveryMethod) {
+                contextDetails.push(`- 提供方法: ${enhancedContext.deliveryMethod}`);
+            }
+            if (enhancedContext.targetAge) {
+                contextDetails.push(`- ターゲット年齢層: ${enhancedContext.targetAge}`);
+            }
+            if (enhancedContext.targetGender) {
+                contextDetails.push(`- ターゲット性別: ${enhancedContext.targetGender}`);
+            }
+            if (enhancedContext.targetOccupation) {
+                contextDetails.push(`- ターゲット職業: ${enhancedContext.targetOccupation}`);
+            }
+            if (enhancedContext.targetIncome) {
+                contextDetails.push(`- ターゲット収入層: ${enhancedContext.targetIncome}`);
+            }
+            if (enhancedContext.painPoints) {
+                contextDetails.push(`- ターゲットの課題・悩み: ${enhancedContext.painPoints}`);
+            }
+            if (enhancedContext.desiredOutcome) {
+                contextDetails.push(`- ターゲットの理想状態: ${enhancedContext.desiredOutcome}`);
+            }
+            if (enhancedContext.socialProof) {
+                contextDetails.push(`- 社会的証明・実績: ${enhancedContext.socialProof}`);
+            }
+            if (enhancedContext.guarantees) {
+                contextDetails.push(`- 保証・安心要素: ${enhancedContext.guarantees}`);
+            }
+            if (enhancedContext.conversionGoal) {
+                const goalLabels: Record<string, string> = {
+                    inquiry: 'お問い合わせ獲得',
+                    purchase: '商品購入',
+                    signup: '会員登録',
+                    download: '資料ダウンロード',
+                    consultation: '無料相談予約',
+                    trial: '無料体験申込',
+                };
+                contextDetails.push(`- コンバージョン目標: ${goalLabels[enhancedContext.conversionGoal] || enhancedContext.conversionGoal}`);
+            }
+            if (enhancedContext.ctaText) {
+                contextDetails.push(`- CTAボタンテキスト: 「${enhancedContext.ctaText}」`);
+            }
+            if (enhancedContext.urgencyElement) {
+                contextDetails.push(`- 緊急性要素: ${enhancedContext.urgencyElement}`);
+            }
+            if (enhancedContext.colorPreference) {
+                contextDetails.push(`- カラー指定: ${enhancedContext.colorPreference}`);
+            }
+            if (enhancedContext.imageStyle) {
+                const styleLabels: Record<string, string> = {
+                    photo: 'フォトリアル（写真風）',
+                    illustration: 'イラスト風',
+                    abstract: '抽象的・アート',
+                    minimal: 'ミニマル・シンプル',
+                    dynamic: 'ダイナミック・躍動感',
+                };
+                contextDetails.push(`- 画像スタイル: ${styleLabels[enhancedContext.imageStyle] || enhancedContext.imageStyle}`);
+            }
+
+            if (contextDetails.length > 0) {
+                prompt += `\n\n【追加コンテキスト（テキストベース作成モード）】
+以下の詳細情報を活用して、よりターゲットに刺さるLPを生成してください：
+
+${contextDetails.join('\n')}
+
+特に以下を重視してください：
+1. ターゲットの課題・悩みに寄り添ったコピー
+2. 理想の状態への変化を具体的に描写
+3. コンバージョン目標に最適化されたCTA設計
+4. 緊急性要素がある場合は効果的に配置
+`;
+            }
+        }
+
         // Design Definition Injection (with safe property access)
         const designDefinition = body.designDefinition;
         if (designDefinition && typeof designDefinition === 'object') {
@@ -608,6 +721,13 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
                 seamReference = await extractSeamStrip(previousImageBase64, 0.2);
             }
 
+            // Merge designDefinition with enhancedContext for text-based mode
+            const mergedDesignDefinition = {
+                ...body.designDefinition,
+                ...(body.enhancedContext?.imageStyle && { imageStyle: body.enhancedContext.imageStyle }),
+                ...(body.enhancedContext?.colorPreference && { colorPreference: body.enhancedContext.colorPreference }),
+            };
+
             const result = await generateSectionImage(
                 section.type,
                 businessInfo,
@@ -616,7 +736,7 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
                 3, // maxRetries
                 styleAnchorBase64 || undefined,  // Style Anchor（色・質感の基準）
                 seamReference,                    // Seam Reference（境界接続用）
-                body.designDefinition             // デザイン定義
+                mergedDesignDefinition            // デザイン定義（enhancedContextとマージ）
             );
 
             sectionsWithImages.push({
