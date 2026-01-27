@@ -27,7 +27,8 @@ import ThumbnailTransformModal from '@/components/admin/ThumbnailTransformModal'
 import DocumentTransformModal from '@/components/admin/DocumentTransformModal';
 import ClaudeCodeGeneratorModal from '@/components/admin/ClaudeCodeGeneratorModal';
 import PageDeployModal from '@/components/admin/PageDeployModal';
-import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2, Sparkles, Globe, Rocket, ArrowRight } from 'lucide-react';
+import { SEOLLMOOptimizer } from '@/components/lp-builder/SEOLLMOOptimizer';
+import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2, Sparkles, Globe, Rocket, ArrowRight, Search, TrendingUp } from 'lucide-react';
 import {
   EditorMenuSection,
   EditorMenuItem,
@@ -173,6 +174,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         claude: { title: 'claude-codegen', keywords: ['AI', 'コード', '生成', 'Claude'] },
         undo: { title: '操作をやり直す', keywords: ['戻す', '履歴', 'undo'] },
         regenerate: { title: 'まとめて作り直す', keywords: ['再生成', 'AI', 'リジェネ'] },
+        seo: { title: 'SEO/LLMO対策', keywords: ['SEO', 'LLMO', '検索', '最適化', 'ChatGPT', 'Claude', 'メタ'] },
+        deploy: { title: 'ページを公開', keywords: ['デプロイ', '公開', 'Render', 'ホスティング'] },
     };
 
     const isMenuItemVisible = (itemKey: string) => {
@@ -266,6 +269,9 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // ページデプロイモーダル
     const [showPageDeployModal, setShowPageDeployModal] = useState(false);
+
+    // SEO/LLMO最適化モーダル
+    const [showSeoLlmoModal, setShowSeoLlmoModal] = useState(false);
 
     // セクション挿入モーダル
     const [showInsertModal, setShowInsertModal] = useState(false);
@@ -4126,6 +4132,55 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         )}
                     </EditorMenuSection>
                     )}
+
+                    {/* 公開・最適化 */}
+                    {isSectionVisible(['seo', 'deploy']) && (
+                    <EditorMenuSection title="公開・最適化" color="violet">
+                        {/* SEO/LLMO最適化 */}
+                        {isMenuItemVisible('seo') && (
+                        <EditorMenuItem
+                            icon={<Search className="h-3.5 w-3.5" />}
+                            title="SEO/LLMO対策"
+                            description="検索・対話エンジン最適化"
+                            tooltip="Google検索とAI対話エンジン（ChatGPT, Claude等）向けにページを最適化します"
+                            badge={<EditorBadge variant="premium">PRO</EditorBadge>}
+                            action={
+                                <EditorActionButton
+                                    onClick={() => setShowSeoLlmoModal(true)}
+                                    variant="secondary"
+                                >
+                                    最適化する
+                                </EditorActionButton>
+                            }
+                        />
+                        )}
+
+                        {/* デプロイ */}
+                        {isMenuItemVisible('deploy') && (
+                        <EditorMenuItem
+                            icon={<Rocket className="h-3.5 w-3.5" />}
+                            title="ページを公開"
+                            description="Render等にデプロイ"
+                            tooltip="Renderなどのホスティングサービスに公開します"
+                            badge={<EditorBadge variant="premium">PRO</EditorBadge>}
+                            action={
+                                <EditorActionButton
+                                    onClick={() => {
+                                        if (pageId === 'new') {
+                                            toast.error('デプロイする前にページを保存してください。');
+                                            return;
+                                        }
+                                        setShowPageDeployModal(true);
+                                    }}
+                                    variant="primary"
+                                >
+                                    公開する
+                                </EditorActionButton>
+                            }
+                        />
+                        )}
+                    </EditorMenuSection>
+                    )}
                 </div>
             </div>
 
@@ -5786,6 +5841,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     pageId={pageId}
                     pageTitle={initialSlug || 'my-page'}
                     onClose={() => setShowPageDeployModal(false)}
+                />
+            )}
+
+            {showSeoLlmoModal && (
+                <SEOLLMOOptimizer
+                    isOpen={showSeoLlmoModal}
+                    onClose={() => setShowSeoLlmoModal(false)}
+                    pageId={pageId !== 'new' ? Number(pageId) : null}
+                    currentScreenshot={sections.length > 0 ? sections[0].image?.filePath : undefined}
                 />
             )}
 
