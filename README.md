@@ -2,6 +2,8 @@
 
 AI駆動のランディングページ自動生成ツール。Next.js 14、Tailwind CSS、Supabase、Google Gemini AIを活用した、プロフェッショナルなLP制作プラットフォームです。
 
+> 🚀 **初めての方へ**: [5分で理解するクイックスタート](./QUICKSTART.md) | 📚 **公開したい方へ**: [中学生でもできる！デプロイガイド](./DEPLOYMENT.md)
+
 ## 主な機能
 
 ### 🚀 AI LP自動生成
@@ -286,18 +288,19 @@ src/
 
 ## 本番デプロイ (Render)
 
-⚠️ **初回セットアップは必ずGUIから**: [DEPLOYMENT.md](./DEPLOYMENT.md) の手順に従ってください
+📚 **[中学生でもできる！デプロイガイド](./DEPLOYMENT.md)** を読んでください
 
-### デプロイ手順概要
+### かんたん3ステップ
 
-1. **初回**: Render Dashboardで手動セットアップ（環境変数をGUIで設定）
-2. **以降**: 自動デプロイ（Render Auto-Deploy または GitHub Actions）
+1. **Renderに登録** - GitHubアカウントで無料登録
+2. **設定を入力** - 環境変数（パスワードなど）を画面から入力
+3. **公開ボタンを押す** - 5～10分でアプリが世界中に公開される！
 
-**📖 詳細ガイド**: [DEPLOYMENT.md](./DEPLOYMENT.md)
-- ✅ 初回セットアップの正しい手順（新規ユーザー必読）
-- ✅ 環境変数の設定方法（GUI）
-- ✅ Render Auto-Deploy vs GitHub Actions
-- ✅ トラブルシューティング
+**📖 詳しい手順**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- ✅ 画像付きで一つ一つ説明
+- ✅ 専門用語は全て解説
+- ✅ よくある失敗と解決方法
+- ✅ チェックリスト付き
 
 ### ビルドコマンド
 ```bash
