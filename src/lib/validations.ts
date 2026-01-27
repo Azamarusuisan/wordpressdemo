@@ -146,6 +146,88 @@ export const navigationConfigSchema = z.object({
 
 export type NavigationConfigInput = z.infer<typeof navigationConfigSchema>;
 
+// AI Suggest Benefits Request Schema
+export const suggestBenefitsSchema = z.object({
+    // 基本情報
+    businessName: z.string().min(1, '会社名は必須です'),
+    industry: z.string().min(1, '業種は必須です'),
+    businessType: z.string().min(1, 'ビジネスモデルは必須です'),
+    // 商品情報
+    productName: z.string().min(1, '商品名は必須です'),
+    productDescription: z.string().min(10, '商品説明は10文字以上で入力してください'),
+    productCategory: z.string().min(1, 'カテゴリは必須です'),
+    priceInfo: z.string().optional(),
+    deliveryMethod: z.string().optional(),
+    // ターゲット情報
+    targetAudience: z.string().min(5, 'ターゲット層は5文字以上で入力してください'),
+    targetAge: z.string().optional(),
+    targetGender: z.string().optional(),
+    targetOccupation: z.string().optional(),
+    painPoints: z.string().min(10, '課題・悩みは10文字以上で入力してください'),
+    desiredOutcome: z.string().min(10, '理想の状態は10文字以上で入力してください'),
+    // 生成対象
+    generateType: z.enum(['benefits', 'usp', 'socialProof', 'guarantees', 'all']),
+});
+
+export type SuggestBenefitsInput = z.infer<typeof suggestBenefitsSchema>;
+
+// Enhanced Context Schema (Text-based LP Generation)
+export const enhancedContextSchema = z.object({
+    // Product/Service details
+    productName: z.string().optional(),
+    productDescription: z.string().optional(),
+    productCategory: z.string().optional(),
+    businessType: z.string().optional(),
+    priceInfo: z.string().optional(),
+    deliveryMethod: z.string().optional(),
+    // Target audience
+    targetAudience: z.string().optional(),
+    targetAge: z.string().optional(),
+    targetGender: z.string().optional(),
+    targetOccupation: z.string().optional(),
+    targetIncome: z.string().optional(),
+    // Core messaging
+    painPoints: z.string().optional(),
+    desiredOutcome: z.string().optional(),
+    mainBenefits: z.string().optional(),
+    uniqueSellingPoints: z.string().optional(),
+    socialProof: z.string().optional(),
+    guarantees: z.string().optional(),
+    // CTA and urgency
+    conversionGoal: z.enum(['inquiry', 'purchase', 'signup', 'download', 'consultation', 'trial']).optional(),
+    ctaText: z.string().optional(),
+    urgencyElement: z.string().optional(),
+    // Design preferences
+    colorPreference: z.string().optional(),
+    imageStyle: z.enum(['photo', 'illustration', 'abstract', 'minimal', 'dynamic']).optional(),
+}).optional();
+
+export type EnhancedContextInput = z.infer<typeof enhancedContextSchema>;
+
+// Design Definition Schema
+export const designDefinitionSchema = z.object({
+    vibe: z.string().optional(),
+    description: z.string().optional(),
+    colorPalette: z.object({
+        primary: z.string().optional(),
+        secondary: z.string().optional(),
+        accent: z.string().optional(),
+        background: z.string().optional(),
+    }).optional(),
+    typography: z.object({
+        style: z.string().optional(),
+        mood: z.string().optional(),
+    }).optional(),
+    layout: z.object({
+        style: z.string().optional(),
+        density: z.string().optional(),
+    }).optional(),
+    imageStyle: z.enum(['photo', 'illustration', 'abstract', 'minimal', 'dynamic']).optional(),
+    colorPreference: z.string().optional(),
+}).optional();
+
+export type DesignDefinitionInput = z.infer<typeof designDefinitionSchema>;
+
 // ========================================
 // Validation Helper
 // ========================================

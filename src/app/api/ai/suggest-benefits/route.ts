@@ -2,30 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
+import { suggestBenefitsSchema, validateRequest } from '@/lib/validations';
 
 const MODEL = 'gemini-2.0-flash';
-
-interface SuggestRequest {
-    // 基本情報
-    businessName: string;
-    industry: string;
-    businessType: string;
-    // 商品情報
-    productName: string;
-    productDescription: string;
-    productCategory: string;
-    priceInfo?: string;
-    deliveryMethod?: string;
-    // ターゲット情報
-    targetAudience: string;
-    targetAge?: string;
-    targetGender?: string;
-    targetOccupation?: string;
-    painPoints: string;
-    desiredOutcome: string;
-    // 生成対象
-    generateType: 'benefits' | 'usp' | 'socialProof' | 'guarantees' | 'all';
-}
 
 export async function POST(req: NextRequest) {
     const supabase = await createClient();
@@ -36,7 +15,18 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const body: SuggestRequest = await req.json();
+        const body = await req.json();
+
+        // Validate request body
+        const validation = validateRequest(suggestBenefitsSchema, body);
+        if (!validation.success) {
+            const firstError = validation.details[0];
+            return NextResponse.json({
+                error: firstError.message || 'Validation failed',
+                details: validation.details
+            }, { status: 400 });
+        }
+
         const {
             businessName,
             industry,
@@ -53,7 +43,7 @@ export async function POST(req: NextRequest) {
             painPoints,
             desiredOutcome,
             generateType,
-        } = body;
+        } = validation.data;
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
         if (!GOOGLE_API_KEY) {
@@ -231,8 +221,25 @@ ${prompt}
 
     } catch (error: any) {
         console.error('AI suggest error:', error);
+
+        // ユーザーフレンドリーなエラーメッセージを生成
+        let userMessage = 'AI提案の生成中にエラーが発生しました。';
+
+        if (error.message?.includes('API key')) {
+            userMessage = 'APIキーに問題があります。設定画面でAPIキーを確認してください。';
+        } else if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
+            userMessage = 'API利用上限に達しました。しばらく待ってから再試行してください。';
+        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+            userMessage = 'ネットワークエラーが発生しました。接続を確認して再試行してください。';
+        } else if (error.message?.includes('timeout')) {
+            userMessage = '処理がタイムアウトしました。もう一度お試しください。';
+        } else {
+            userMessage = 'AI提案の生成中に予期せぬエラーが発生しました。入力内容を確認して再試行してください。';
+        }
+
         return NextResponse.json({
-            error: error.message || 'Failed to generate suggestions'
+            error: userMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         }, { status: 500 });
     }
 }

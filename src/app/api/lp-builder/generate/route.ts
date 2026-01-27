@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
-import { businessInfoSchema, validateRequest } from '@/lib/validations';
+import { businessInfoSchema, enhancedContextSchema, designDefinitionSchema, validateRequest } from '@/lib/validations';
 
 // ============================================
 // モデル定数（停止・名称変更に対応しやすくする）
@@ -702,9 +702,29 @@ function guidelineToPrompt(guideline: DesignGuideline): string {
 // Base64文字列のバリデーション
 function isValidBase64(str: string): boolean {
     if (!str || typeof str !== 'string') return false;
-    // Base64の基本的なパターンチェック
+
+    // 最低限の長さチェック（画像なら数KB以上のはず）
+    if (str.length < 100) return false;
+
+    // Base64の基本的なパターンチェック（パディング考慮）
     const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-    return base64Regex.test(str) && str.length > 100; // 最低限の長さも確認
+    if (!base64Regex.test(str)) return false;
+
+    // 長さが4の倍数であるべき（パディング後）
+    if (str.length % 4 !== 0) {
+        // パディングがない場合もあるので、パディング追加して再チェック
+        const paddedLength = str.length + (4 - (str.length % 4));
+        if (paddedLength % 4 !== 0) return false;
+    }
+
+    // 実際にデコードしてみる（try-catchで安全に）
+    try {
+        const decoded = Buffer.from(str, 'base64');
+        // デコード後のサイズが妥当か（最低1KB以上）
+        return decoded.length > 1024;
+    } catch {
+        return false;
+    }
 }
 
 // RGB配列をHEXカラーに変換
@@ -1082,10 +1102,37 @@ export async function POST(req: NextRequest) {
         // Validate business info
         const validation = validateRequest(businessInfoSchema, businessInfo);
         if (!validation.success) {
+            const firstError = validation.details[0];
             return NextResponse.json({
-                error: validation.error,
+                error: firstError.message || 'Validation failed',
                 details: validation.details
             }, { status: 400 });
+        }
+
+        // Validate enhanced context (for text-based mode)
+        let enhancedContext = body.enhancedContext;
+        if (enhancedContext) {
+            const contextValidation = validateRequest(enhancedContextSchema, enhancedContext);
+            if (!contextValidation.success) {
+                log.warn('Enhanced context validation failed, using partial data');
+                // 警告のみ、処理は続行（オプショナルなため）
+                enhancedContext = contextValidation.success ? contextValidation.data : undefined;
+            } else {
+                enhancedContext = contextValidation.data;
+            }
+        }
+
+        // Validate design definition
+        let designDefinition = body.designDefinition;
+        if (designDefinition) {
+            const designValidation = validateRequest(designDefinitionSchema, designDefinition);
+            if (!designValidation.success) {
+                log.warn('Design definition validation failed, using partial data');
+                // 警告のみ、処理は続行（オプショナルなため）
+                designDefinition = designValidation.success ? designValidation.data : undefined;
+            } else {
+                designDefinition = designValidation.data;
+            }
         }
 
         const GOOGLE_API_KEY = await getGoogleApiKeyForUser(user.id);
@@ -1094,9 +1141,6 @@ export async function POST(req: NextRequest) {
                 error: 'Google API key is not configured. 設定画面でAPIキーを設定してください。'
             }, { status: 500 });
         }
-
-        // Enhanced Context Extraction (for text-based mode)
-        const enhancedContext = body.enhancedContext;
 
         // Prepare Prompt with enriched business info (merge enhancedContext)
         const enrichedInfo = enrichBusinessInfo(businessInfo, enhancedContext);
@@ -1193,8 +1237,7 @@ ${contextDetails.join('\n')}
             }
         }
 
-        // Design Definition Injection (with safe property access)
-        const designDefinition = body.designDefinition;
+        // Design Definition Injection (already validated above)
         if (designDefinition && typeof designDefinition === 'object') {
             const vibe = designDefinition.vibe || 'Modern';
             const description = designDefinition.description || '';
@@ -1271,6 +1314,17 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
             // 必須フィールドの検証
             if (!generatedData.sections || !Array.isArray(generatedData.sections)) {
                 throw new Error('Invalid response structure: sections array is missing');
+            }
+
+            if (generatedData.sections.length === 0) {
+                throw new Error('AI generated an empty LP structure. Please try again with more detailed information.');
+            }
+
+            // セクションの基本構造を検証
+            for (const section of generatedData.sections) {
+                if (!section.type || typeof section.type !== 'string') {
+                    throw new Error(`Invalid section structure: missing or invalid 'type' field`);
+                }
             }
         } catch (e: any) {
             log.error("JSON Parse Error - AI response was not valid JSON");
@@ -1397,6 +1451,26 @@ If the layout is 'Hero-focused', ensure the Hero section is dominant.
         log.success(`Successfully generated: ${successCount}/${sectionsWithImages.length} sections (v3: Anchor + Seam + Guideline)`);
         if (failCount > 0) {
             log.warn(`Failed to generate: ${failCount} sections`);
+        }
+
+        // 全セクション失敗の場合はエラーを返す
+        if (successCount === 0) {
+            log.error('All image generation attempts failed');
+            await logGeneration({
+                userId: user.id,
+                type: isTextBasedMode ? 'lp-generate-text-based' : 'lp-generate',
+                endpoint: '/api/lp-builder/generate',
+                model: MODELS.IMAGE,
+                inputPrompt: 'Image generation failed for all sections',
+                status: 'failed',
+                errorMessage: 'All image generation attempts failed',
+                startTime
+            });
+
+            return NextResponse.json({
+                error: '画像生成に完全に失敗しました。API利用上限に達している可能性があります。しばらく待ってから再試行してください。',
+                details: process.env.NODE_ENV === 'development' ? 'All image generation attempts failed' : undefined
+            }, { status: 500 });
         }
 
         // ログ記録（テキスト生成）
