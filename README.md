@@ -286,6 +286,12 @@ src/
 
 ## 本番デプロイ (Render/Vercel)
 
+**📖 詳細なデプロイガイド**: [DEPLOYMENT.md](./DEPLOYMENT.md) を参照してください
+- Renderへの自動デプロイ設定
+- GitHub Actionsによる CI/CD
+- 手動デプロイ方法
+- トラブルシューティング
+
 ### ビルドコマンド
 ```bash
 npm install && npx prisma migrate deploy && npx prisma generate && npm run build
