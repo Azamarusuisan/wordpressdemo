@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Bot,
-  Sparkles,
   X,
   Upload,
   Loader2,
@@ -199,11 +197,11 @@ export const SEOLLMOOptimizer: React.FC<SEOLLMOOptimizerProps> = ({
           <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+                <Search className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">SEO / LLMO 最適化</h2>
-                <p className="text-white/80 text-sm">画像認識でLPを分析し、検索最適化を実行</p>
+                <p className="text-white/80 text-sm">LPを分析し、検索エンジン最適化を実行</p>
               </div>
             </div>
             <button
@@ -224,8 +222,8 @@ export const SEOLLMOOptimizer: React.FC<SEOLLMOOptimizerProps> = ({
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { id: 'seo', label: 'SEO分析', icon: Search, desc: 'Google検索向け' },
-                  { id: 'llmo', label: 'LLMO分析', icon: Bot, desc: 'AI検索向け' },
-                  { id: 'combined', label: '統合分析', icon: Sparkles, desc: '両方を網羅' }
+                  { id: 'llmo', label: 'LLMO分析', icon: MessageSquare, desc: '対話検索向け' },
+                  { id: 'combined', label: '統合分析', icon: TrendingUp, desc: '両方を網羅' }
                 ].map(({ id, label, icon: Icon, desc }) => (
                   <button
                     key={id}
@@ -393,13 +391,13 @@ export const SEOLLMOOptimizer: React.FC<SEOLLMOOptimizerProps> = ({
                 {result.data.llmo && (
                   <ResultSection
                     title="LLMO最適化"
-                    icon={Bot}
+                    icon={MessageSquare}
                     isExpanded={expandedSections.includes('llmo')}
                     onToggle={() => toggleSection('llmo')}
                   >
                     <div className="space-y-4">
                       <div>
-                        <div className="text-xs text-gray-500 mb-2">AIが回答する質問</div>
+                        <div className="text-xs text-gray-500 mb-2">検索される質問</div>
                         <div className="space-y-2">
                           {result.data.llmo.targetQuestions?.map((q: string, i: number) => (
                             <div key={i} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
@@ -411,7 +409,7 @@ export const SEOLLMOOptimizer: React.FC<SEOLLMOOptimizerProps> = ({
                       </div>
                       {result.data.llmo.summaryForAI && (
                         <div>
-                          <div className="text-xs text-gray-500 mb-2">AI引用用サマリー</div>
+                          <div className="text-xs text-gray-500 mb-2">引用用サマリー</div>
                           <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-700">
                             {result.data.llmo.summaryForAI}
                           </div>
@@ -559,7 +557,7 @@ export const SEOLLMOOptimizer: React.FC<SEOLLMOOptimizerProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
+                    <Search className="w-4 h-4" />
                     分析実行
                   </>
                 )}
