@@ -172,7 +172,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         video: { title: '動画を埋め込む', keywords: ['YouTube', '動画', 'ビデオ', 'video'] },
         thumbnail: { title: 'サムネイル用に変換', keywords: ['サムネ', '画像', '変換'] },
         document: { title: '資料にする', keywords: ['スライド', 'PDF', '資料', 'ドキュメント'] },
-        claude: { title: 'claude-codegen', keywords: ['AI', 'コード', '生成', 'Claude'] },
+        claude: { title: 'gemini-codegen', keywords: ['AI', 'コード', '生成', 'Gemini'] },
         undo: { title: '操作をやり直す', keywords: ['戻す', '履歴', 'undo'] },
         regenerate: { title: 'まとめて作り直す', keywords: ['再生成', 'AI', 'リジェネ'] },
         seo: { title: 'SEO/LLMO対策', keywords: ['SEO', 'LLMO', '検索', '最適化', 'ChatGPT', 'Claude', 'メタ'] },
@@ -4090,8 +4090,8 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         {isMenuItemVisible('claude') && (
                         <EditorMenuItem
                             icon={<Code2 className="h-3.5 w-3.5" />}
-                            title="claude-codegen"
-                            description="sonnet-4 | html/css/js"
+                            title="gemini-codegen"
+                            description="gemini-2.0-flash | html/css/js"
                             tooltip="HTML/CSS/JSコードを自動生成します"
                             iconVariant="dark"
                             badge={<EditorBadge variant="new">NEW</EditorBadge>}
