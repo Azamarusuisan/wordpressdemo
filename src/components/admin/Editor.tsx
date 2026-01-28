@@ -26,6 +26,7 @@ import OverlayEditorModal from '@/components/admin/OverlayEditorModal';
 import ThumbnailTransformModal from '@/components/admin/ThumbnailTransformModal';
 import DocumentTransformModal from '@/components/admin/DocumentTransformModal';
 import ClaudeCodeGeneratorModal from '@/components/admin/ClaudeCodeGeneratorModal';
+import HtmlCodeEditModal from '@/components/admin/HtmlCodeEditModal';
 import PageDeployModal from '@/components/admin/PageDeployModal';
 import { SEOLLMOOptimizer } from '@/components/lp-builder/SEOLLMOOptimizer';
 import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2, Sparkles, Globe, Rocket, ArrowRight, Search, TrendingUp } from 'lucide-react';
@@ -266,6 +267,10 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
     // AIコード生成モーダル
     const [showClaudeGeneratorModal, setShowClaudeGeneratorModal] = useState(false);
+
+    // HTMLコード編集モーダル
+    const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
+    const [htmlEditSectionId, setHtmlEditSectionId] = useState<string | null>(null);
 
     // ページデプロイモーダル
     const [showPageDeployModal, setShowPageDeployModal] = useState(false);
@@ -2869,14 +2874,23 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     </>
                                                 ) : section.role === 'html-embed' && section.config?.htmlContent ? (
                                                     <div className="relative group/embed">
-                                                        <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded">
-                                                            HTML EMBED
-                                                        </div>
+                                                        {/* 編集ボタン：右下に小さく配置 */}
+                                                        <button
+                                                            onClick={() => {
+                                                                setHtmlEditSectionId(String(section.id));
+                                                                setShowHtmlEditModal(true);
+                                                            }}
+                                                            className="absolute bottom-3 right-3 z-10 opacity-0 group-hover/embed:opacity-100 transition-opacity bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 hover:bg-white"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5 text-gray-600" />
+                                                            <span className="text-xs font-medium text-gray-700">編集</span>
+                                                        </button>
                                                         <iframe
                                                             srcDoc={section.config.htmlContent}
-                                                            className="w-full border-0"
+                                                            className="w-full border-0 overflow-auto"
                                                             style={{ minHeight: '300px', height: '600px' }}
                                                             sandbox="allow-scripts allow-forms"
+                                                            scrolling="yes"
                                                             title={`HTML embed - ${section.config.templateType || 'custom'}`}
                                                         />
                                                     </div>
@@ -5835,6 +5849,44 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     }}
                 />
             )}
+
+            {/* HTMLコード編集モーダル */}
+            {showHtmlEditModal && htmlEditSectionId && (() => {
+                const targetSection = sections.find(s => String(s.id) === htmlEditSectionId);
+                if (!targetSection || targetSection.role !== 'html-embed' || !targetSection.config?.htmlContent) {
+                    return null;
+                }
+                return (
+                    <HtmlCodeEditModal
+                        onClose={() => {
+                            setShowHtmlEditModal(false);
+                            setHtmlEditSectionId(null);
+                        }}
+                        currentHtml={targetSection.config.htmlContent}
+                        templateType={targetSection.config.templateType}
+                        originalPrompt={targetSection.config.prompt}
+                        designDefinition={designDefinition}
+                        layoutMode={sections[0]?.config?.layout === 'desktop' ? 'desktop' : 'responsive'}
+                        onSave={async (newHtml) => {
+                            // セクションのHTMLコンテンツを更新
+                            const updatedSections = sections.map(s =>
+                                String(s.id) === htmlEditSectionId
+                                    ? {
+                                        ...s,
+                                        config: {
+                                            ...s.config,
+                                            htmlContent: newHtml,
+                                        }
+                                    }
+                                    : s
+                            );
+                            setSections(updatedSections);
+                            // データベースに保存
+                            await handleSave(updatedSections);
+                        }}
+                    />
+                );
+            })()}
 
             {showPageDeployModal && pageId !== 'new' && (
                 <PageDeployModal

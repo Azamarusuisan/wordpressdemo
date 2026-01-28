@@ -166,7 +166,9 @@ export type GenerationType =
     | 'design-unify'
     | 'background-unify'
     | 'ocr'
-    | 'text-fix';
+    | 'text-fix'
+    | 'claude-generate'
+    | 'claude-edit-code';
 
 export interface GenerationRun {
     id: number;

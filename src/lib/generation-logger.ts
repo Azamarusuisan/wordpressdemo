@@ -26,6 +26,7 @@ export type GenerationType =
   | 'upscale'
   | 'video-generate'
   | 'claude-generate'
+  | 'claude-edit-code'
   | 'seo-analysis'
   | 'llmo-analysis'
   | 'seo-llmo-combined';
