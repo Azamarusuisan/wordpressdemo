@@ -27,6 +27,8 @@ export type GenerationType =
   | 'video-generate'
   | 'claude-generate'
   | 'claude-edit-code'
+  | 'gemini-generate'
+  | 'gemini-edit-code'
   | 'seo-analysis'
   | 'llmo-analysis'
   | 'seo-llmo-combined';

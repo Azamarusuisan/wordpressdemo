@@ -4149,7 +4149,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                     {/* 公開・最適化 */}
                     {isSectionVisible(['seo', 'deploy']) && (
-                    <EditorMenuSection title="公開・最適化" color="violet">
+                    <EditorMenuSection title="公開・最適化" color="purple">
                         {/* SEO/LLMO最適化 */}
                         {isMenuItemVisible('seo') && (
                         <EditorMenuItem
@@ -4157,11 +4157,11 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             title="SEO/LLMO対策"
                             description="検索・対話エンジン最適化"
                             tooltip="Google検索とAI対話エンジン（ChatGPT, Claude等）向けにページを最適化します"
-                            badge={<EditorBadge variant="premium">PRO</EditorBadge>}
+                            badge={<EditorBadge variant="pro">PRO</EditorBadge>}
                             action={
                                 <EditorActionButton
                                     onClick={() => setShowSeoLlmoModal(true)}
-                                    variant="secondary"
+                                    variant="default"
                                 >
                                     最適化する
                                 </EditorActionButton>
@@ -4176,7 +4176,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             title="ページを公開"
                             description="Render等にデプロイ"
                             tooltip="Renderなどのホスティングサービスに公開します"
-                            badge={<EditorBadge variant="premium">PRO</EditorBadge>}
+                            badge={<EditorBadge variant="pro">PRO</EditorBadge>}
                             action={
                                 <EditorActionButton
                                     onClick={() => {
