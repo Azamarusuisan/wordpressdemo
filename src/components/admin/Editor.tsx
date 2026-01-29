@@ -31,15 +31,15 @@ import PageDeployModal from '@/components/admin/PageDeployModal';
 import { SEOLLMOOptimizer } from '@/components/lp-builder/SEOLLMOOptimizer';
 import { GripVertical, Trash2, X, Upload, RefreshCw, Sun, Contrast, Droplet, Palette, Save, Eye, Plus, Download, Github, Loader2, MessageCircle, Send, Copy, Check, Pencil, Undo2, RotateCw, DollarSign, Monitor, Smartphone, Link2, Scissors, Expand, Type, MousePointer, Layers, Video, Lock, Crown, Image as ImageIcon, ChevronDown, ChevronRight, Square, PenTool, HelpCircle, FileText, Code2, Sparkles, Globe, Rocket, ArrowRight, Search, TrendingUp } from 'lucide-react';
 import {
-  EditorMenuSection,
-  EditorMenuItem,
-  EditorSectionList,
-  EditorActionButton,
-  EditorInfoBox,
-  EditorBadge,
-  EditorMenuSearch,
-  EditorMenuProvider,
-  EditorIconBox
+    EditorMenuSection,
+    EditorMenuItem,
+    EditorSectionList,
+    EditorActionButton,
+    EditorInfoBox,
+    EditorBadge,
+    EditorMenuSearch,
+    EditorMenuProvider,
+    EditorIconBox
 } from '@/components/ui/editor-menu';
 import type { ClickableArea } from '@/types';
 import Link from 'next/link';
@@ -3793,407 +3793,407 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
 
                     {/* 見た目を調整する */}
                     {isSectionVisible(['crop', 'overlay', 'delete', 'background', 'colorPalette']) && (
-                    <EditorMenuSection title="見た目を調整する" color="indigo">
-                        {/* 画像を切り取る */}
-                        {isMenuItemVisible('crop') && (
-                        <EditorMenuItem
-                            icon={<Scissors className="h-3.5 w-3.5" />}
-                            title="画像を切り取る"
-                            description="余白や不要な部分をカット"
-                            tooltip="画像の余白や不要な部分を切り取ります"
-                            open={expandedTools.has('crop')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'crop']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('crop');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorSectionList
-                                sections={sections}
-                                onSelect={(section) => {
-                                    if (section?.image?.filePath) {
-                                        setCropSectionId(String(section.id));
-                                        setCropImageUrl(section.image.filePath);
-                                        setShowCropModal(true);
-                                    }
-                                }}
-                            />
-                        </EditorMenuItem>
-                        )}
-
-                        {/* ボタン・文字を重ねる */}
-                        {isMenuItemVisible('overlay') && (
-                        <EditorMenuItem
-                            icon={<Layers className="h-3.5 w-3.5" />}
-                            title="ボタン・文字を重ねる"
-                            description="画像の上に追加できます"
-                            tooltip="テキストやボタンを画像に重ねられます"
-                            open={expandedTools.has('overlay')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'overlay']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('overlay');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorSectionList
-                                sections={sections}
-                                showOverlayCount
-                                onSelect={(section) => {
-                                    const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
-                                        ? section.mobileImage.filePath
-                                        : section.image?.filePath;
-                                    if (imageUrl) {
-                                        setOverlayEditSectionId(String(section.id));
-                                        setOverlayEditImageUrl(imageUrl);
-                                        setShowOverlayEditor(true);
-                                    }
-                                }}
-                            />
-                        </EditorMenuItem>
-                        )}
-
-                        {/* ブロックを削除 */}
-                        {isMenuItemVisible('delete') && (
-                        <EditorMenuItem
-                            icon={<Trash2 className="h-3.5 w-3.5" />}
-                            title="ブロックを削除"
-                            description="いらない部分を外す"
-                            tooltip="不要なセクションを一括で削除できます"
-                            iconVariant="danger"
-                            open={expandedTools.has('delete')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'delete']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('delete');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorActionButton
-                                onClick={() => {
-                                    setSectionDeleteMode(true);
-                                    setBatchRegenerateMode(false);
-                                    setBackgroundUnifyMode(false);
-                                    setBoundaryFixMode(false);
-                                }}
-                                disabled={sections.length === 0}
-                                icon={<Trash2 className="h-3.5 w-3.5" />}
-                                variant="danger"
-                            >
-                                削除するブロックを選ぶ
-                            </EditorActionButton>
-                        </EditorMenuItem>
-                        )}
-
-                        {/* 背景色をそろえる */}
-                        {isMenuItemVisible('background') && (
-                        <EditorMenuItem
-                            icon={<Palette className="h-3.5 w-3.5" />}
-                            title="背景色をそろえる"
-                            description="全体の背景を同じ色に"
-                            tooltip="選択したブロックの背景色を統一します"
-                            action={
-                                <EditorActionButton
-                                    onClick={() => {
-                                        setBackgroundUnifyMode(true);
-                                        setBatchRegenerateMode(false);
-                                        setBoundaryFixMode(false);
+                        <EditorMenuSection title="見た目を調整する" color="indigo">
+                            {/* 画像を切り取る */}
+                            {isMenuItemVisible('crop') && (
+                                <EditorMenuItem
+                                    icon={<Scissors className="h-3.5 w-3.5" />}
+                                    title="画像を切り取る"
+                                    description="余白や不要な部分をカット"
+                                    tooltip="画像の余白や不要な部分を切り取ります"
+                                    open={expandedTools.has('crop')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'crop']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('crop');
+                                                return next;
+                                            });
+                                        }
                                     }}
-                                    disabled={sections.filter(s => s.image?.filePath).length === 0}
                                 >
-                                    ブロックを選ぶ
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
+                                    <EditorSectionList
+                                        sections={sections}
+                                        onSelect={(section) => {
+                                            if (section?.image?.filePath) {
+                                                setCropSectionId(String(section.id));
+                                                setCropImageUrl(section.image.filePath);
+                                                setShowCropModal(true);
+                                            }
+                                        }}
+                                    />
+                                </EditorMenuItem>
+                            )}
 
-                        {/* 色の組み合わせ */}
-                        {isMenuItemVisible('colorPalette') && (
-                        <EditorMenuItem
-                            icon={<Droplet className="h-3.5 w-3.5" />}
-                            title="色の組み合わせ"
-                            description="ページ全体の色を選ぶ"
-                            tooltip="ページ全体の配色テーマを変更できます"
-                            open={expandedTools.has('color-palette')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'color-palette']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('color-palette');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorActionButton onClick={() => setShowColorPaletteModal(true)}>
-                                色を選ぶ
-                            </EditorActionButton>
-                        </EditorMenuItem>
-                        )}
-                    </EditorMenuSection>
+                            {/* ボタン・文字を重ねる */}
+                            {isMenuItemVisible('overlay') && (
+                                <EditorMenuItem
+                                    icon={<Layers className="h-3.5 w-3.5" />}
+                                    title="ボタン・文字を重ねる"
+                                    description="画像の上に追加できます"
+                                    tooltip="テキストやボタンを画像に重ねられます"
+                                    open={expandedTools.has('overlay')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'overlay']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('overlay');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorSectionList
+                                        sections={sections}
+                                        showOverlayCount
+                                        onSelect={(section) => {
+                                            const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
+                                                ? section.mobileImage.filePath
+                                                : section.image?.filePath;
+                                            if (imageUrl) {
+                                                setOverlayEditSectionId(String(section.id));
+                                                setOverlayEditImageUrl(imageUrl);
+                                                setShowOverlayEditor(true);
+                                            }
+                                        }}
+                                    />
+                                </EditorMenuItem>
+                            )}
+
+                            {/* ブロックを削除 */}
+                            {isMenuItemVisible('delete') && (
+                                <EditorMenuItem
+                                    icon={<Trash2 className="h-3.5 w-3.5" />}
+                                    title="ブロックを削除"
+                                    description="いらない部分を外す"
+                                    tooltip="不要なセクションを一括で削除できます"
+                                    iconVariant="danger"
+                                    open={expandedTools.has('delete')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'delete']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('delete');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorActionButton
+                                        onClick={() => {
+                                            setSectionDeleteMode(true);
+                                            setBatchRegenerateMode(false);
+                                            setBackgroundUnifyMode(false);
+                                            setBoundaryFixMode(false);
+                                        }}
+                                        disabled={sections.length === 0}
+                                        icon={<Trash2 className="h-3.5 w-3.5" />}
+                                        variant="danger"
+                                    >
+                                        削除するブロックを選ぶ
+                                    </EditorActionButton>
+                                </EditorMenuItem>
+                            )}
+
+                            {/* 背景色をそろえる */}
+                            {isMenuItemVisible('background') && (
+                                <EditorMenuItem
+                                    icon={<Palette className="h-3.5 w-3.5" />}
+                                    title="背景色をそろえる"
+                                    description="全体の背景を同じ色に"
+                                    tooltip="選択したブロックの背景色を統一します"
+                                    action={
+                                        <EditorActionButton
+                                            onClick={() => {
+                                                setBackgroundUnifyMode(true);
+                                                setBatchRegenerateMode(false);
+                                                setBoundaryFixMode(false);
+                                            }}
+                                            disabled={sections.filter(s => s.image?.filePath).length === 0}
+                                        >
+                                            ブロックを選ぶ
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
+
+                            {/* 色の組み合わせ */}
+                            {isMenuItemVisible('colorPalette') && (
+                                <EditorMenuItem
+                                    icon={<Droplet className="h-3.5 w-3.5" />}
+                                    title="色の組み合わせ"
+                                    description="ページ全体の色を選ぶ"
+                                    tooltip="ページ全体の配色テーマを変更できます"
+                                    open={expandedTools.has('color-palette')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'color-palette']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('color-palette');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorActionButton onClick={() => setShowColorPaletteModal(true)}>
+                                        色を選ぶ
+                                    </EditorActionButton>
+                                </EditorMenuItem>
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* 内容を編集する */}
                     {isSectionVisible(['copyEdit', 'cta']) && (
-                    <EditorMenuSection title="内容を編集する" color="emerald">
-                        {/* 文字を修正 - AI画像編集と同じUIで領域選択 */}
-                        {isMenuItemVisible('copyEdit') && (
-                        <EditorMenuItem
-                            icon={<Type className="h-3.5 w-3.5" />}
-                            title="文字を修正"
-                            description="変更したい部分を囲んで修正"
-                            tooltip="画像上でテキスト領域を選択し、修正します（複数選択OK）"
-                            open={expandedTools.has('copy-edit')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'copy-edit']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('copy-edit');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorSectionList
-                                sections={sections}
-                                onSelect={(section) => {
-                                    const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
-                                        ? section.mobileImage.filePath
-                                        : section.image?.filePath;
-                                    const mobileImageUrl = section.mobileImage?.filePath;
-                                    if (imageUrl) {
-                                        handleOpenInpaint(String(section.id), imageUrl, mobileImageUrl, 'text-fix');
-                                    }
-                                }}
-                            />
-                        </EditorMenuItem>
-                        )}
+                        <EditorMenuSection title="内容を編集する" color="emerald">
+                            {/* 文字を修正 - AI画像編集と同じUIで領域選択 */}
+                            {isMenuItemVisible('copyEdit') && (
+                                <EditorMenuItem
+                                    icon={<Type className="h-3.5 w-3.5" />}
+                                    title="文字を修正"
+                                    description="変更したい部分を囲んで修正"
+                                    tooltip="画像上でテキスト領域を選択し、修正します（複数選択OK）"
+                                    open={expandedTools.has('copy-edit')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'copy-edit']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('copy-edit');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorSectionList
+                                        sections={sections}
+                                        onSelect={(section) => {
+                                            const imageUrl = viewMode === 'mobile' && section.mobileImage?.filePath
+                                                ? section.mobileImage.filePath
+                                                : section.image?.filePath;
+                                            const mobileImageUrl = section.mobileImage?.filePath;
+                                            if (imageUrl) {
+                                                handleOpenInpaint(String(section.id), imageUrl, mobileImageUrl, 'text-fix');
+                                            }
+                                        }}
+                                    />
+                                </EditorMenuItem>
+                            )}
 
-                        {/* ボタンのリンク先 */}
-                        {isMenuItemVisible('cta') && (
-                        <EditorMenuItem
-                            icon={<MousePointer className="h-3.5 w-3.5" />}
-                            title="ボタンのリンク先"
-                            description="押したときの移動先を変更"
-                            tooltip="CTAボタンのリンク先URLを変更できます"
-                            open={expandedTools.has('cta')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'cta']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('cta');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorActionButton onClick={() => setShowCTAModal(true)}>
-                                リンク先を変更
-                            </EditorActionButton>
-                        </EditorMenuItem>
-                        )}
-                    </EditorMenuSection>
+                            {/* ボタンのリンク先 */}
+                            {isMenuItemVisible('cta') && (
+                                <EditorMenuItem
+                                    icon={<MousePointer className="h-3.5 w-3.5" />}
+                                    title="ボタンのリンク先"
+                                    description="押したときの移動先を変更"
+                                    tooltip="CTAボタンのリンク先URLを変更できます"
+                                    open={expandedTools.has('cta')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'cta']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('cta');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorActionButton onClick={() => setShowCTAModal(true)}>
+                                        リンク先を変更
+                                    </EditorActionButton>
+                                </EditorMenuItem>
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* もっと魅力的にする */}
                     {isSectionVisible(['video']) && (
-                    <EditorMenuSection title="もっと魅力的にする" color="amber">
-                        {/* 動画を埋め込む */}
-                        {isMenuItemVisible('video') && (
-                        <EditorMenuItem
-                            icon={<Video className="h-3.5 w-3.5" />}
-                            title="動画を埋め込む"
-                            description="YouTube等の動画を追加"
-                            badge={<EditorBadge variant="dark">Max</EditorBadge>}
-                            tooltip="YouTubeやVimeoの動画を埋め込めます"
-                            open={expandedTools.has('video')}
-                            onOpenChange={(open) => {
-                                if (open) {
-                                    setExpandedTools(prev => new Set([...prev, 'video']));
-                                } else {
-                                    setExpandedTools(prev => {
-                                        const next = new Set(prev);
-                                        next.delete('video');
-                                        return next;
-                                    });
-                                }
-                            }}
-                        >
-                            <EditorActionButton onClick={() => setShowVideoModal(true)} variant="primary">
-                                動画を追加
-                            </EditorActionButton>
-                        </EditorMenuItem>
-                        )}
-                    </EditorMenuSection>
+                        <EditorMenuSection title="もっと魅力的にする" color="amber">
+                            {/* 動画を埋め込む */}
+                            {isMenuItemVisible('video') && (
+                                <EditorMenuItem
+                                    icon={<Video className="h-3.5 w-3.5" />}
+                                    title="動画を埋め込む"
+                                    description="YouTube等の動画を追加"
+                                    badge={<EditorBadge variant="dark">Max</EditorBadge>}
+                                    tooltip="YouTubeやVimeoの動画を埋め込めます"
+                                    open={expandedTools.has('video')}
+                                    onOpenChange={(open) => {
+                                        if (open) {
+                                            setExpandedTools(prev => new Set([...prev, 'video']));
+                                        } else {
+                                            setExpandedTools(prev => {
+                                                const next = new Set(prev);
+                                                next.delete('video');
+                                                return next;
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <EditorActionButton onClick={() => setShowVideoModal(true)} variant="primary">
+                                        動画を追加
+                                    </EditorActionButton>
+                                </EditorMenuItem>
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* 別の用途で使う */}
                     {isSectionVisible(['thumbnail', 'document']) && (
-                    <EditorMenuSection title="別の用途で使う" color="purple">
-                        {/* サムネイル用に変換 */}
-                        {isMenuItemVisible('thumbnail') && (
-                        <EditorMenuItem
-                            icon={<ImageIcon className="h-3.5 w-3.5" />}
-                            title="サムネイル用に変換"
-                            description="参考サムネイルを元に変換"
-                            tooltip="LPをYouTubeサムネイル風に変換します"
-                            action={
-                                <EditorActionButton onClick={() => setShowThumbnailModal(true)}>
-                                    変換を開始
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
+                        <EditorMenuSection title="別の用途で使う" color="purple">
+                            {/* サムネイル用に変換 */}
+                            {isMenuItemVisible('thumbnail') && (
+                                <EditorMenuItem
+                                    icon={<ImageIcon className="h-3.5 w-3.5" />}
+                                    title="サムネイル用に変換"
+                                    description="参考サムネイルを元に変換"
+                                    tooltip="LPをYouTubeサムネイル風に変換します"
+                                    action={
+                                        <EditorActionButton onClick={() => setShowThumbnailModal(true)}>
+                                            変換を開始
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
 
-                        {/* 資料にする */}
-                        {isMenuItemVisible('document') && (
-                        <EditorMenuItem
-                            icon={<FileText className="h-3.5 w-3.5" />}
-                            title="資料にする"
-                            description="スライド風の資料を作成"
-                            tooltip="LPをプレゼン資料形式に変換します"
-                            action={
-                                <EditorActionButton onClick={() => setShowDocumentModal(true)}>
-                                    資料を作成
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
-                    </EditorMenuSection>
+                            {/* 資料にする */}
+                            {isMenuItemVisible('document') && (
+                                <EditorMenuItem
+                                    icon={<FileText className="h-3.5 w-3.5" />}
+                                    title="資料にする"
+                                    description="スライド風の資料を作成"
+                                    tooltip="LPをプレゼン資料形式に変換します"
+                                    action={
+                                        <EditorActionButton onClick={() => setShowDocumentModal(true)}>
+                                            資料を作成
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* AIコード生成 */}
                     {isSectionVisible(['claude']) && (
-                    <EditorMenuSection title="AIコード生成" color="indigo">
-                        {isMenuItemVisible('claude') && (
-                        <EditorMenuItem
-                            icon={<Code2 className="h-3.5 w-3.5" />}
-                            title="gemini-codegen"
-                            description="html/css/js"
-                            tooltip="HTML/CSS/JSコードを自動生成します"
-                            iconVariant="dark"
-                            badge={<EditorBadge variant="new">NEW</EditorBadge>}
-                            action={
-                                <EditorActionButton onClick={() => setShowClaudeGeneratorModal(true)} variant="primary">
-                                    コードを生成
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
-                    </EditorMenuSection>
+                        <EditorMenuSection title="AIコード生成" color="indigo">
+                            {isMenuItemVisible('claude') && (
+                                <EditorMenuItem
+                                    icon={<Code2 className="h-3.5 w-3.5" />}
+                                    title="gemini-codegen"
+                                    description="html/css/js"
+                                    tooltip="HTML/CSS/JSコードを自動生成します"
+                                    iconVariant="dark"
+                                    badge={<EditorBadge variant="new">NEW</EditorBadge>}
+                                    action={
+                                        <EditorActionButton onClick={() => setShowClaudeGeneratorModal(true)} variant="primary">
+                                            コードを生成
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* 整理・やり直し */}
                     {isSectionVisible(['undo', 'regenerate']) && (
-                    <EditorMenuSection title="整理・やり直し" color="rose">
-                        {/* 操作をやり直す */}
-                        {isMenuItemVisible('undo') && (
-                        <EditorMenuItem
-                            icon={<Undo2 className="h-3.5 w-3.5" />}
-                            title="操作をやり直す"
-                            description="前の状態に戻せます"
-                            tooltip="各ブロックの履歴から以前の状態に戻せます"
-                            action={
-                                <EditorInfoBox variant="info">
-                                    各ブロックの「履歴」をクリック
-                                </EditorInfoBox>
-                            }
-                        />
-                        )}
+                        <EditorMenuSection title="整理・やり直し" color="rose">
+                            {/* 操作をやり直す */}
+                            {isMenuItemVisible('undo') && (
+                                <EditorMenuItem
+                                    icon={<Undo2 className="h-3.5 w-3.5" />}
+                                    title="操作をやり直す"
+                                    description="前の状態に戻せます"
+                                    tooltip="各ブロックの履歴から以前の状態に戻せます"
+                                    action={
+                                        <EditorInfoBox variant="info">
+                                            各ブロックの「履歴」をクリック
+                                        </EditorInfoBox>
+                                    }
+                                />
+                            )}
 
-                        {/* まとめて作り直す */}
-                        {isMenuItemVisible('regenerate') && (
-                        <EditorMenuItem
-                            icon={<RefreshCw className="h-3.5 w-3.5" />}
-                            title="まとめて作り直す"
-                            description="ページ全体を再生成"
-                            tooltip="選択したブロックを一括再生成します"
-                            action={
-                                <EditorActionButton
-                                    onClick={() => {
-                                        setBatchRegenerateMode(true);
-                                        setBoundaryFixMode(false);
-                                        setBackgroundUnifyMode(false);
-                                    }}
-                                    disabled={sections.filter(s => s.image?.filePath).length === 0}
-                                >
-                                    ブロックを選ぶ
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
-                    </EditorMenuSection>
+                            {/* まとめて作り直す */}
+                            {isMenuItemVisible('regenerate') && (
+                                <EditorMenuItem
+                                    icon={<RefreshCw className="h-3.5 w-3.5" />}
+                                    title="まとめて作り直す"
+                                    description="ページ全体を再生成"
+                                    tooltip="選択したブロックを一括再生成します"
+                                    action={
+                                        <EditorActionButton
+                                            onClick={() => {
+                                                setBatchRegenerateMode(true);
+                                                setBoundaryFixMode(false);
+                                                setBackgroundUnifyMode(false);
+                                            }}
+                                            disabled={sections.filter(s => s.image?.filePath).length === 0}
+                                        >
+                                            ブロックを選ぶ
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
+                        </EditorMenuSection>
                     )}
 
                     {/* 公開・最適化 */}
                     {isSectionVisible(['seo', 'deploy']) && (
-                    <EditorMenuSection title="公開・最適化" color="purple">
-                        {/* SEO/LLMO最適化 */}
-                        {isMenuItemVisible('seo') && (
-                        <EditorMenuItem
-                            icon={<Search className="h-3.5 w-3.5" />}
-                            title="SEO/LLMO対策"
-                            description="検索・対話エンジン最適化"
-                            tooltip="Google検索とAI対話エンジン（ChatGPT, Claude等）向けにページを最適化します"
-                            badge={<EditorBadge variant="pro">PRO</EditorBadge>}
-                            action={
-                                <EditorActionButton
-                                    onClick={() => setShowSeoLlmoModal(true)}
-                                    variant="primary"
-                                >
-                                    最適化する
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
+                        <EditorMenuSection title="公開・最適化" color="purple">
+                            {/* SEO/LLMO最適化 */}
+                            {isMenuItemVisible('seo') && (
+                                <EditorMenuItem
+                                    icon={<Search className="h-3.5 w-3.5" />}
+                                    title="SEO/LLMO対策"
+                                    description="検索・対話エンジン最適化"
+                                    tooltip="Google検索とAI対話エンジン（ChatGPT, Claude等）向けにページを最適化します"
+                                    badge={<EditorBadge variant="pro">PRO</EditorBadge>}
+                                    action={
+                                        <EditorActionButton
+                                            onClick={() => setShowSeoLlmoModal(true)}
+                                            variant="primary"
+                                        >
+                                            最適化する
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
 
-                        {/* デプロイ */}
-                        {isMenuItemVisible('deploy') && (
-                        <EditorMenuItem
-                            icon={<Rocket className="h-3.5 w-3.5" />}
-                            title="ページを公開"
-                            description="Render等にデプロイ"
-                            tooltip="Renderなどのホスティングサービスに公開します"
-                            badge={<EditorBadge variant="pro">PRO</EditorBadge>}
-                            action={
-                                <EditorActionButton
-                                    onClick={() => {
-                                        if (pageId === 'new') {
-                                            toast.error('デプロイする前にページを保存してください。');
-                                            return;
-                                        }
-                                        setShowPageDeployModal(true);
-                                    }}
-                                    variant="primary"
-                                >
-                                    公開する
-                                </EditorActionButton>
-                            }
-                        />
-                        )}
-                    </EditorMenuSection>
+                            {/* デプロイ */}
+                            {isMenuItemVisible('deploy') && (
+                                <EditorMenuItem
+                                    icon={<Rocket className="h-3.5 w-3.5" />}
+                                    title="ページを公開"
+                                    description="Render等にデプロイ"
+                                    tooltip="Renderなどのホスティングサービスに公開します"
+                                    badge={<EditorBadge variant="pro">PRO</EditorBadge>}
+                                    action={
+                                        <EditorActionButton
+                                            onClick={() => {
+                                                if (pageId === 'new') {
+                                                    toast.error('デプロイする前にページを保存してください。');
+                                                    return;
+                                                }
+                                                setShowPageDeployModal(true);
+                                            }}
+                                            variant="primary"
+                                        >
+                                            公開する
+                                        </EditorActionButton>
+                                    }
+                                />
+                            )}
+                        </EditorMenuSection>
                     )}
                 </div>
             </div>
@@ -5752,11 +5752,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         const data = await response.json();
 
                         // セクションを更新
-                        setSections(prev => prev.map(s =>
+                        const updatedSections = sections.map(s =>
                             String(s.id) === sectionId
-                                ? { ...s, image: data.image }
+                                ? { ...s, image: data.image, imageId: data.image?.id }
                                 : s
-                        ));
+                        );
+                        setSections(updatedSections);
+
+                        // 変更をサーバーに保存
+                        await handleSave(updatedSections);
                     }}
                 />
             )}
