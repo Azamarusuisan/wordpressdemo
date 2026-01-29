@@ -1057,12 +1057,6 @@ function CreditPurchaseModal({
                             </button>
                         ))}
                     </div>
-
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                        <p className="text-sm text-blue-900 font-medium">
-                            💡 クレジットは有効期限なしで使用できます
-                        </p>
-                    </div>
                 </div>
 
                 <div className="p-6 border-t border-gray-100 bg-gray-50">
