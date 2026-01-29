@@ -23,22 +23,12 @@ async function checkUserStatus(userId: string): Promise<UserStatus> {
         .eq('userId', userId)
         .single();
 
-    // Subscriptionを取得
-    const { data: subscription } = await supabaseAdmin
-        .from('Subscription')
-        .select('status, plan')
-        .eq('userId', userId)
-        .single();
-
     const isBanned = settings?.isBanned === true;
+    const plan = settings?.plan || null;
 
     // 有効なサブスクリプションがあるかチェック
-    // active または past_due（支払い遅延中だがまだアクセス可能）の場合は有効
-    const hasActiveSubscription =
-        subscription?.status === 'active' ||
-        subscription?.status === 'past_due';
-
-    const plan = subscription?.plan || settings?.plan || null;
+    // planがfree以外なら有効（pro, business, enterprise）
+    const hasActiveSubscription = !!plan && plan !== 'free';
 
     return {
         isBanned,
