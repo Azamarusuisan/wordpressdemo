@@ -273,6 +273,28 @@ function SettingsPage() {
         }
     };
 
+    const handleSubscribe = async (planId: string) => {
+        setIsPurchasing(true);
+        try {
+            const res = await fetch('/api/billing/subscription/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to create checkout session');
+            }
+
+            const { url } = await res.json();
+            window.location.href = url;
+        } catch (error) {
+            console.error('Subscription error:', error);
+            toast.error('サブスクリプション処理に失敗しました');
+            setIsPurchasing(false);
+        }
+    };
+
     const planInfo = PLANS[currentPlan] || PLANS.free;
     const isFreePlan = currentPlan === 'free';
 
@@ -415,22 +437,31 @@ function SettingsPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <PlanCard
+                                            planId="pro"
                                             name="Pro"
-                                            price="¥10,000"
-                                            features={['4Kアップスケール', 'リスタイル機能', '月$16.67クレジット']}
+                                            price="¥20,000"
+                                            features={['最大30ページ', '画像生成', 'インペイント編集', '月¥5,000分クレジット']}
                                             highlighted={false}
+                                            onSubscribe={handleSubscribe}
+                                            disabled={isPurchasing}
                                         />
                                         <PlanCard
-                                            name="Expert"
-                                            price="¥30,000"
-                                            features={['動画生成', '優先サポート', '月$50クレジット']}
+                                            planId="business"
+                                            name="Business"
+                                            price="¥40,000"
+                                            features={['最大100ページ', '4Kアップスケール', 'リスタイル機能', '月¥10,000分クレジット']}
                                             highlighted={true}
+                                            onSubscribe={handleSubscribe}
+                                            disabled={isPurchasing}
                                         />
                                         <PlanCard
+                                            planId="enterprise"
                                             name="Enterprise"
                                             price="¥100,000"
-                                            features={['無制限ページ', '専任サポート', '月$166.67クレジット']}
+                                            features={['無制限ページ', '動画生成', '優先サポート', '月¥25,000分クレジット']}
                                             highlighted={false}
+                                            onSubscribe={handleSubscribe}
+                                            disabled={isPurchasing}
                                         />
                                     </div>
                                 </section>
@@ -962,12 +993,18 @@ function PlanCard({
     name,
     price,
     features,
-    highlighted
+    highlighted,
+    planId,
+    onSubscribe,
+    disabled
 }: {
     name: string;
     price: string;
     features: string[];
     highlighted: boolean;
+    planId: string;
+    onSubscribe: (planId: string) => void;
+    disabled?: boolean;
 }) {
     return (
         <div className={`p-6 rounded-xl border transition-all h-full flex flex-col ${highlighted
@@ -995,7 +1032,10 @@ function PlanCard({
                 ))}
             </ul>
 
-            <button className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${highlighted
+            <button
+                onClick={() => onSubscribe(planId)}
+                disabled={disabled}
+                className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${highlighted
                     ? 'bg-gray-900 text-white hover:bg-gray-800'
                     : 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50'
                 }`}>
