@@ -15,7 +15,7 @@ function getStripe(): Stripe {
 
 /**
  * GET: Checkout Session完了後の情報取得
- * session_idからユーザー情報とパスワードを取得
+ * session_idからユーザー情報を取得（パスワードはメールで送信されるため含まない）
  */
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('session_id');
@@ -44,25 +44,16 @@ export async function GET(request: NextRequest) {
 
     const customer = session.customer as Stripe.Customer;
     const sessionMetadata = session.metadata || {};
-    const customerMetadata = customer?.metadata || {};
 
-    const email = session.customer_email || sessionMetadata.email || customer?.email || '';
-
-    // パスワードはSessionメタデータから取得（Checkout作成時に設定）
-    // Webhookで処理後はCustomerメタデータにも設定される
-    const password = sessionMetadata.tempPassword || customerMetadata.tempPassword || '';
+    const email = session.customer_email || customer?.email || '';
 
     const planId = sessionMetadata.planId || 'pro';
     const plan = PLANS[planId as keyof typeof PLANS];
 
-    // 新規ユーザーかどうか（パスワードがあれば新規）
-    const isNewUser = !!password;
-
     return NextResponse.json({
       email,
-      password, // パスワードは常に返す（あれば）
       planName: plan?.name || planId,
-      isNewUser,
+      isNewUser: true,
     });
   } catch (error: unknown) {
     console.error('Failed to get checkout session:', error);

@@ -951,6 +951,7 @@ function SettingsPage() {
                     onClose={() => setShowCreditPurchaseModal(false)}
                     onPurchase={handleCreditPurchase}
                     isPurchasing={isPurchasing}
+                    currentPlan={currentPlan}
                 />
             )}
         </div>
@@ -1057,27 +1058,32 @@ function Step({ number, children }: { number: number; children: React.ReactNode 
     );
 }
 
+// プランごとのクレジットパッケージ定義
+const PLAN_CREDIT_PACKAGES: Record<string, { id: number; name: string; priceJpy: number; creditUsd: number }> = {
+    pro: { id: 1, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33 },
+    business: { id: 2, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67 },
+    enterprise: { id: 3, name: '25,000円分', priceJpy: 25000, creditUsd: 166.67 },
+};
+
 // クレジット購入モーダル
 function CreditPurchaseModal({
     onClose,
     onPurchase,
     isPurchasing,
+    currentPlan,
 }: {
     onClose: () => void;
     onPurchase: (packageId: number) => void;
     isPurchasing: boolean;
+    currentPlan: string;
 }) {
-    const packages = [
-        { id: 1, name: '500円分', priceJpy: 500, creditUsd: 3.33 },
-        { id: 2, name: '1,000円分', priceJpy: 1000, creditUsd: 6.67 },
-        { id: 3, name: '3,000円分', priceJpy: 3000, creditUsd: 20.0 },
-        { id: 4, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33 },
-        { id: 5, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67 },
-    ];
+    // 現在のプランに対応するクレジットパッケージを取得
+    const planPackage = PLAN_CREDIT_PACKAGES[currentPlan];
+    const planName = currentPlan === 'pro' ? 'Pro' : currentPlan === 'business' ? 'Business' : currentPlan === 'enterprise' ? 'Enterprise' : currentPlan;
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-bold text-gray-900">クレジット購入</h2>
@@ -1092,34 +1098,37 @@ function CreditPurchaseModal({
                             </svg>
                         </button>
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">追加のAPIクレジットを購入できます</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                        {planName}プランの月間クレジット分を追加購入できます
+                    </p>
                 </div>
 
                 <div className="p-6">
-                    <div className="grid gap-3">
-                        {packages.map((pkg) => (
-                            <button
-                                key={pkg.id}
-                                onClick={() => onPurchase(pkg.id)}
-                                disabled={isPurchasing}
-                                className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-gray-100 rounded-lg group-hover:bg-gray-900 group-hover:text-white transition-colors">
-                                        <CreditCard className="h-5 w-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-semibold text-gray-900">{pkg.name}</p>
-                                        <p className="text-sm text-gray-500">${pkg.creditUsd.toFixed(2)} USD相当</p>
-                                    </div>
+                    {planPackage ? (
+                        <button
+                            onClick={() => onPurchase(planPackage.id)}
+                            disabled={isPurchasing}
+                            className="w-full flex items-center justify-between p-5 border-2 border-gray-900 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-gray-900 text-white rounded-lg">
+                                    <CreditCard className="h-5 w-5" />
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-lg font-bold text-gray-900">¥{pkg.priceJpy.toLocaleString()}</p>
-                                    <p className="text-xs text-gray-500">税込</p>
+                                <div className="text-left">
+                                    <p className="font-semibold text-gray-900">{planPackage.name}</p>
+                                    <p className="text-sm text-gray-500">${planPackage.creditUsd.toFixed(2)} USD相当</p>
                                 </div>
-                            </button>
-                        ))}
-                    </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-lg font-bold text-gray-900">¥{planPackage.priceJpy.toLocaleString()}</p>
+                                <p className="text-xs text-gray-500">税込</p>
+                            </div>
+                        </button>
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>このプランではクレジット購入はご利用いただけません</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="p-6 border-t border-gray-100 bg-gray-50">

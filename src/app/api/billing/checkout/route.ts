@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PLANS, type PlanType } from '@/lib/plans';
-import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
 // Stripeクライアント
@@ -34,20 +33,13 @@ function generatePassword(): string {
 
 /**
  * POST: 未認証ユーザー向けCheckout Session作成
- * メールアドレスとプランIDを受け取り、Stripe Checkoutセッションを作成
+ * プランIDのみを受け取り、Stripe Checkoutセッションを作成
+ * メールアドレスはStripe Checkout画面でユーザーが入力する
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, planId } = body as { email: string; planId: string };
-
-    // バリデーション
-    if (!email || !email.includes('@')) {
-      return NextResponse.json(
-        { error: '有効なメールアドレスを入力してください' },
-        { status: 400 }
-      );
-    }
+    const { planId } = body as { planId: string };
 
     // freeプランは受け付けない
     if (planId === 'free' || !planId || !(planId in PLANS)) {
@@ -64,31 +56,8 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
 
-    // Stripe Customerを検索または作成
-    const existingCustomers = await stripe.customers.list({
-      email,
-      limit: 1,
-    });
-
-    let customerId: string;
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id;
-    } else {
-      const customer = await stripe.customers.create({
-        email,
-        metadata: { tempPassword }, // 一時的にパスワードを保存
-      });
-      customerId = customer.id;
-    }
-
-    // メタデータにパスワードを保存（Customerが既存の場合も更新）
-    await stripe.customers.update(customerId, {
-      metadata: { tempPassword },
-    });
-
-    // Checkout Session作成
+    // Checkout Session作成（Customerは作成しない、Stripeが自動で作成）
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
       mode: 'subscription',
       line_items: [
         {
@@ -99,13 +68,11 @@ export async function POST(request: NextRequest) {
       success_url: `${getBaseUrl()}/welcome?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${getBaseUrl()}/?canceled=true`,
       metadata: {
-        email,
         planId,
         tempPassword, // Webhook側でパスワードを取得するため
       },
       subscription_data: {
         metadata: {
-          email,
           planId,
         },
       },
@@ -113,6 +80,8 @@ export async function POST(request: NextRequest) {
       billing_address_collection: 'required',
       payment_method_types: ['card'],
       locale: 'ja',
+      // メール入力を必須に（Stripeが自動でCustomerを作成）
+      customer_creation: 'always',
     });
 
     return NextResponse.json({ url: session.url });

@@ -1,5 +1,9 @@
 import { Resend } from 'resend';
 
+// システムメール用の設定
+const SYSTEM_FROM_EMAIL = process.env.SYSTEM_FROM_EMAIL || 'noreply@lpbuilder.app';
+const SYSTEM_RESEND_API_KEY = process.env.RESEND_API_KEY;
+
 interface FormField {
   fieldName: string;
   fieldLabel: string;
@@ -16,6 +20,90 @@ interface SendFormNotificationParams {
   fields: FormField[];
   senderEmail?: string | null;
   senderName?: string | null;
+}
+
+/**
+ * ウェルカムメール送信（新規登録完了時）
+ */
+export async function sendWelcomeEmail({
+  to,
+  password,
+  planName,
+}: {
+  to: string;
+  password: string;
+  planName: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!SYSTEM_RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not configured');
+    return { success: false, error: 'メール設定が構成されていません' };
+  }
+
+  try {
+    const resend = new Resend(SYSTEM_RESEND_API_KEY);
+
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="display:inline-block;background:#000;color:#fff;padding:12px 20px;border-radius:8px;font-size:20px;font-weight:bold;">
+            LP Builder
+          </div>
+        </div>
+
+        <h1 style="font-size:24px;font-weight:bold;color:#111827;margin-bottom:16px;text-align:center;">
+          ご登録ありがとうございます
+        </h1>
+
+        <p style="color:#6b7280;margin-bottom:24px;text-align:center;">
+          ${escapeHtml(planName)}プランへのご登録が完了しました。<br>
+          以下のログイン情報でサービスをご利用いただけます。
+        </p>
+
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-bottom:24px;">
+          <table style="width:100%;">
+            <tr>
+              <td style="padding:8px 0;color:#6b7280;font-size:14px;">ログインID（メールアドレス）</td>
+            </tr>
+            <tr>
+              <td style="padding:0 0 16px;font-size:18px;font-weight:600;color:#111827;">${escapeHtml(to)}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:#6b7280;font-size:14px;">パスワード</td>
+            </tr>
+            <tr>
+              <td style="padding:0;font-size:18px;font-weight:600;color:#111827;font-family:monospace;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px;letter-spacing:1px;">${escapeHtml(password)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'https://xn--lp-xv5crjy08r.com'}"
+             style="display:inline-block;background:#000;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
+            ログインする
+          </a>
+        </div>
+
+        <div style="border-top:1px solid #e5e7eb;padding-top:24px;margin-top:24px;">
+          <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">
+            このメールは自動送信されています。<br>
+            ご不明な点がございましたら、サポートまでお問い合わせください。
+          </p>
+        </div>
+      </div>
+    `;
+
+    await resend.emails.send({
+      from: SYSTEM_FROM_EMAIL,
+      to,
+      subject: '【LP Builder】ご登録完了 - ログイン情報のお知らせ',
+      html,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Welcome email send error:', error);
+    return { success: false, error: error.message || 'Failed to send email' };
+  }
 }
 
 export async function sendFormNotification({

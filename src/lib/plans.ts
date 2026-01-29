@@ -155,21 +155,26 @@ export const PLANS: Record<PlanType, Plan> = {
 // デフォルトプラン（サブスク未契約時）
 export const DEFAULT_PLAN: PlanType = 'free';
 
-// 追加クレジットパッケージ
+// 追加クレジットパッケージ（プランごとの月間クレジット分のみ）
 export interface CreditPackage {
   id: number;
   name: string;
   priceJpy: number;
   creditUsd: number;
+  planId: PlanType; // 対応するプラン
 }
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: 1, name: '500円分', priceJpy: 500, creditUsd: 3.33 },
-  { id: 2, name: '1,000円分', priceJpy: 1000, creditUsd: 6.67 },
-  { id: 3, name: '3,000円分', priceJpy: 3000, creditUsd: 20.0 },
-  { id: 4, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33 },
-  { id: 5, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67 },
+  { id: 1, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33, planId: 'pro' },
+  { id: 2, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67, planId: 'business' },
+  { id: 3, name: '25,000円分', priceJpy: 25000, creditUsd: 166.67, planId: 'enterprise' },
 ];
+
+// プランIDに対応するクレジットパッケージを取得
+export function getCreditPackageForPlan(planId: string | null | undefined): CreditPackage | undefined {
+  if (!planId) return undefined;
+  return CREDIT_PACKAGES.find(pkg => pkg.planId === planId);
+}
 
 // プラン取得ヘルパー
 export function getPlan(planId: string | null | undefined): Plan {

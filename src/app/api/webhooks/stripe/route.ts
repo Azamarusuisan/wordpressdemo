@@ -11,6 +11,7 @@ import {
 import { PLANS } from '@/lib/plans';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
+import { sendWelcomeEmail } from '@/lib/email';
 
 // Supabase Admin Client（ユーザー作成用）
 function getSupabaseAdmin() {
@@ -164,7 +165,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       userId = newUser.user.id;
       console.log(`New user created: ${userId}, email: ${email}`);
 
-      // パスワードをStripe Customerのメタデータに保存（決済完了画面で表示するため）
+      // パスワードをStripe Customerのメタデータに保存
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
         apiVersion: '2025-12-15.clover',
       });
@@ -175,6 +176,20 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
           passwordSet: 'true',
         },
       });
+
+      // ウェルカムメールでパスワードを送信
+      const planName = plan?.name || planId;
+      const emailResult = await sendWelcomeEmail({
+        to: email,
+        password,
+        planName,
+      });
+
+      if (emailResult.success) {
+        console.log(`Welcome email sent to ${email}`);
+      } else {
+        console.error(`Failed to send welcome email: ${emailResult.error}`);
+      }
     }
 
     // サブスクリプション情報を保存

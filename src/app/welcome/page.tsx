@@ -3,12 +3,10 @@
 import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, Copy, Loader2, ArrowRight, AlertCircle, Key } from 'lucide-react';
+import { Check, Loader2, ArrowRight, AlertCircle, Mail } from 'lucide-react';
 
 interface WelcomeData {
   email: string;
-  userId: string;
-  password: string;
   planName: string;
   isNewUser: boolean;
 }
@@ -21,7 +19,6 @@ function WelcomeContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [data, setData] = useState<WelcomeData | null>(null);
-  const [copied, setCopied] = useState<'password' | 'email' | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -47,16 +44,6 @@ function WelcomeContent() {
         setLoading(false);
       });
   }, [sessionId]);
-
-  const copyToClipboard = async (text: string, type: 'password' | 'email') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(type);
-      setTimeout(() => setCopied(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
 
   if (loading) {
     return (
@@ -115,83 +102,39 @@ function WelcomeContent() {
           </p>
         </div>
 
-        {/* Account Info Card */}
+        {/* Email Sent Card */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-            <h2 className="font-bold text-lg">アカウント情報</h2>
-            <p className="text-sm text-muted-foreground">
-              以下の情報を必ずメモしてください
+          <div className="bg-blue-50 px-6 py-6 text-center">
+            <Mail className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+            <h2 className="font-bold text-xl text-blue-800 mb-2">
+              ログイン情報をメールで送信しました
+            </h2>
+            <p className="text-blue-700">
+              <span className="font-mono font-bold">{data.email}</span>
             </p>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {/* Email (as ID) */}
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">ログインID（メールアドレス）</p>
-                  <p className="font-mono text-lg">{data.email}</p>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(data.email, 'email')}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="コピー"
-                >
-                  {copied === 'email' ? (
-                    <Check className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Copy className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Password */}
-            {data.password && (
-              <div className="px-6 py-5 bg-amber-50 border-l-4 border-amber-400">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Key className="h-4 w-4 text-amber-600" />
-                      <p className="text-sm font-bold text-amber-800">
-                        パスワード（自動発行）
-                      </p>
-                    </div>
-                    <p className="font-mono text-2xl font-bold tracking-widest text-amber-900">{data.password}</p>
-                  </div>
-                  <button
-                    onClick={() => copyToClipboard(data.password, 'password')}
-                    className="p-3 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
-                    title="コピー"
-                  >
-                    {copied === 'password' ? (
-                      <Check className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <Copy className="h-5 w-5 text-amber-700" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="px-6 py-5">
+            <p className="text-gray-600 leading-relaxed">
+              上記のメールアドレス宛に、ログインに必要なパスワードを送信しました。
+              メールをご確認の上、ログインしてください。
+            </p>
           </div>
         </div>
 
-        {/* Warning */}
-        {data.password && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-            <div className="flex gap-3">
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-red-800">必ずメモしてください</p>
-                <p className="text-sm text-red-700 mt-1">
-                  このパスワードはこの画面でのみ表示されます。<br />
-                  ページを閉じると二度と確認できません。<br />
-                  スクリーンショットやメモ帳への保存を推奨します。
-                </p>
-              </div>
+        {/* Note */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-800">メールが届かない場合</p>
+              <p className="text-sm text-amber-700 mt-1">
+                迷惑メールフォルダをご確認ください。<br />
+                数分経ってもメールが届かない場合は、サポートまでお問い合わせください。
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* CTA Button */}
         <button
@@ -203,7 +146,7 @@ function WelcomeContent() {
         </button>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          上記のメールアドレスとパスワードでログインできます
+          メールに記載されたパスワードでログインできます
         </p>
       </main>
     </div>

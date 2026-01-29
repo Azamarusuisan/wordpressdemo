@@ -27,20 +27,14 @@ export default function LandingPage() {
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!email.includes('@')) {
-      setError('有効なメールアドレスを入力してください');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // 未認証ユーザー向けCheckout APIを呼び出し
+      // プランIDのみでCheckout APIを呼び出し（メールアドレスはStripeで入力）
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, planId: selectedPlan }),
+        body: JSON.stringify({ planId: selectedPlan }),
       });
 
       const data = await res.json();
@@ -134,26 +128,6 @@ export default function LandingPage() {
           </div>
 
           <form onSubmit={handleCheckout} className="space-y-8">
-            {/* Email Input */}
-            <div className="max-w-md mx-auto">
-              <label htmlFor="email" className="block text-sm font-bold mb-2">
-                メールアドレス
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  placeholder="email@example.com"
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-
             {/* Plan Selection */}
             <div>
               <h2 className="text-lg font-bold text-center mb-6">プランを選択</h2>
@@ -231,7 +205,7 @@ export default function LandingPage() {
                 )}
               </button>
               <p className="text-xs text-center text-muted-foreground mt-3">
-                決済完了後、ログインパスワードが発行されます
+                決済完了後、入力したメールアドレスにログイン情報が送信されます
               </p>
             </div>
           </form>
