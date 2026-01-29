@@ -87,41 +87,7 @@ export async function GET() {
     }
 }
 
-// PATCH: ユーザーのプランを変更
-export async function PATCH(request: NextRequest) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 管理者チェック
-    const admin = await isAdmin(user.id);
-    if (!admin) {
-        return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
-    }
-
-    try {
-        const { userId, plan } = await request.json();
-
-        if (!userId || !plan || !(plan in PLANS)) {
-            return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-        }
-
-        // UserSettingsをupsert
-        await prisma.userSettings.upsert({
-            where: { userId },
-            update: { plan },
-            create: { userId, plan },
-        });
-
-        return NextResponse.json({ success: true, userId, plan });
-    } catch (error: any) {
-        console.error('Failed to update user plan:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-}
+// PATCH: プラン変更は削除（ユーザー自身がサブスクリプション購入で変更）
 
 // DELETE: ユーザーをBANまたはBAN解除
 export async function DELETE(request: NextRequest) {

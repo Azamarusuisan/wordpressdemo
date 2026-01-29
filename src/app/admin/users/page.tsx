@@ -69,29 +69,6 @@ export default function UsersPage() {
     }, [fetchUsers]);
 
 
-    const handlePlanChange = async (userId: string, newPlan: string) => {
-        try {
-            setProcessing(userId);
-            const res = await fetch('/api/admin/users', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, plan: newPlan }),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to update plan');
-            }
-
-            setUsers(prev => prev.map(u =>
-                u.id === userId ? { ...u, plan: newPlan as keyof typeof PLANS } : u
-            ));
-        } catch (err: any) {
-            alert(err.message);
-        } finally {
-            setProcessing(null);
-        }
-    };
 
     const handleBan = async (userId: string, action: 'ban' | 'unban') => {
         if (action === 'ban') {
@@ -476,32 +453,22 @@ export default function UsersPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Plan Selection */}
+                                            {/* Current Plan Display (Read-only) */}
                                             <div>
-                                                <h4 className="text-sm font-medium text-gray-900 mb-3">プラン設定</h4>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {Object.entries(PLANS).map(([planId, planInfo]) => (
-                                                        <button
-                                                            key={planId}
-                                                            onClick={() => handlePlanChange(user.id, planId)}
-                                                            disabled={processing === user.id || user.plan === planId}
-                                                            className={`p-3 rounded-lg border text-left transition-all ${
-                                                                user.plan === planId
-                                                                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                                                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                                            } ${processing === user.id ? 'opacity-50' : ''}`}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <Crown className={`w-4 h-4 ${user.plan === planId ? 'text-blue-600' : 'text-gray-400'}`} />
-                                                                <span className={`font-medium ${user.plan === planId ? 'text-blue-900' : 'text-gray-900'}`}>
-                                                                    {planInfo.name}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-500 mt-1 ml-6">
-                                                                {planInfo.description}
-                                                            </p>
-                                                        </button>
-                                                    ))}
+                                                <h4 className="text-sm font-medium text-gray-900 mb-3">現在のプラン</h4>
+                                                <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+                                                    <div className="flex items-center gap-2">
+                                                        <Crown className="w-4 h-4 text-gray-600" />
+                                                        <span className="font-medium text-gray-900">
+                                                            {PLANS[user.plan]?.name || 'Free'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                                                        {PLANS[user.plan]?.description || '自分のAPIキー使用'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-2">
+                                                        ※ プラン変更はユーザー自身が設定ページから行います
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
