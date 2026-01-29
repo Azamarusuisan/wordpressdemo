@@ -104,7 +104,8 @@ export async function updateSession(request: NextRequest) {
         || pathname.startsWith('/p/')
         || pathname.startsWith('/api/auth/')
         || pathname.startsWith('/api/billing/checkout')
-        || pathname.startsWith('/api/webhooks/');
+        || pathname.startsWith('/api/webhooks/')
+        || pathname.startsWith('/reset-password');
 
     // 特殊ページ
     const isBannedPage = pathname === '/banned';

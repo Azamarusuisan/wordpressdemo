@@ -323,6 +323,15 @@ export default function LandingPage() {
                   </>
                 )}
               </button>
+
+              <div className="text-center">
+                <a
+                  href="/reset-password"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  パスワードを忘れた方はこちら
+                </a>
+              </div>
             </form>
           </div>
         </main>
