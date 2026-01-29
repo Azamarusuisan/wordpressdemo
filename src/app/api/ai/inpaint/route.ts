@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase as supabaseStorage } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
@@ -338,7 +338,7 @@ async function processInpaintResponse(
     const buffer = Buffer.from(editedImageBase64, 'base64');
     const filename = `inpaint-${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
 
-    const { error: uploadError } = await supabase
+    const { error: uploadError } = await supabaseStorage
         .storage
         .from('images')
         .upload(filename, buffer, {
@@ -353,7 +353,7 @@ async function processInpaintResponse(
     }
 
     // 公開URL取得
-    const { data: { publicUrl } } = supabase
+    const { data: { publicUrl } } = supabaseStorage
         .storage
         .from('images')
         .getPublicUrl(filename);
