@@ -23,12 +23,12 @@ interface User {
     email: string;
     createdAt: string;
     lastSignInAt: string | null;
-    isApproved: boolean;
-    approvedAt: string | null;
     isBanned: boolean;
     bannedAt: string | null;
     banReason: string | null;
     plan: keyof typeof PLANS;
+    subscriptionStatus: string | null;
+    subscriptionId: string | null;
     usage: UserUsage;
 }
 
@@ -68,31 +68,6 @@ export default function UsersPage() {
         fetchUsers();
     }, [fetchUsers]);
 
-    const handleApproval = async (userId: string, action: 'approve' | 'revoke') => {
-        try {
-            setProcessing(userId);
-            const res = await fetch('/api/admin/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, action }),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to update approval');
-            }
-
-            setUsers(prev => prev.map(u =>
-                u.id === userId
-                    ? { ...u, isApproved: action === 'approve', approvedAt: action === 'approve' ? new Date().toISOString() : null }
-                    : u
-            ));
-        } catch (err: any) {
-            alert(err.message);
-        } finally {
-            setProcessing(null);
-        }
-    };
 
     const handlePlanChange = async (userId: string, newPlan: string) => {
         try {
@@ -235,7 +210,7 @@ export default function UsersPage() {
         });
     };
 
-    const pendingCount = users.filter(u => !u.isApproved && !u.isBanned).length;
+    const activeSubscriptions = users.filter(u => u.subscriptionStatus === 'active').length;
     const bannedCount = users.filter(u => u.isBanned).length;
 
     if (error) {
@@ -265,7 +240,7 @@ export default function UsersPage() {
                         <span className="truncate">ユーザー管理</span>
                     </h1>
                     <p className="text-sm text-gray-600 mt-1 hidden sm:block">
-                        ユーザーの承認・プラン管理を行います
+                        ユーザーのサブスク・プラン管理を行います
                     </p>
                 </div>
                 <button
@@ -285,8 +260,8 @@ export default function UsersPage() {
                     <p className="text-xl sm:text-2xl font-bold text-gray-900">{users.length}</p>
                 </div>
                 <div className="bg-white rounded-lg border p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm text-gray-500">承認待ち</p>
-                    <p className="text-xl sm:text-2xl font-bold text-amber-600">{pendingCount}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">アクティブサブスク</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">{activeSubscriptions}</p>
                 </div>
                 <div className="bg-white rounded-lg border p-3 sm:p-4">
                     <p className="text-xs sm:text-sm text-gray-500">BAN</p>
@@ -320,7 +295,7 @@ export default function UsersPage() {
                 ) : (
                     <div className="divide-y divide-gray-200">
                         {users.map((user) => (
-                            <div key={user.id} className={user.isBanned ? 'bg-red-50' : !user.isApproved ? 'bg-amber-50' : ''}>
+                            <div key={user.id} className={user.isBanned ? 'bg-red-50' : ''}>
                                 {/* Main Row - card on mobile, row on desktop */}
                                 <div
                                     className="px-3 sm:px-4 py-3 sm:py-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]"
@@ -334,13 +309,13 @@ export default function UsersPage() {
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
                                                         <Ban className="w-3 h-3" />BAN
                                                     </span>
-                                                ) : user.isApproved ? (
+                                                ) : user.subscriptionStatus === 'active' ? (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                                        <Check className="w-3 h-3" />承認済
+                                                        <CreditCard className="w-3 h-3" />サブスク
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                                                        <Clock className="w-3 h-3" />待機中
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                                                        <Clock className="w-3 h-3" />未課金
                                                     </span>
                                                 )}
                                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${PLANS[user.plan]?.color || PLANS.free.color}`}>
@@ -358,29 +333,13 @@ export default function UsersPage() {
                                             </div>
                                         </div>
                                         <div className="flex-shrink-0">
-                                            {user.isBanned ? (
+                                            {user.isBanned && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleBan(user.id, 'unban'); }}
                                                     disabled={processing === user.id}
                                                     className="px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded min-h-[36px]"
                                                 >
                                                     解除
-                                                </button>
-                                            ) : user.isApproved ? (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleApproval(user.id, 'revoke'); }}
-                                                    disabled={processing === user.id}
-                                                    className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded min-h-[36px]"
-                                                >
-                                                    取消
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleApproval(user.id, 'approve'); }}
-                                                    disabled={processing === user.id}
-                                                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 min-h-[36px]"
-                                                >
-                                                    承認
                                                 </button>
                                             )}
                                         </div>
@@ -389,18 +348,18 @@ export default function UsersPage() {
                                     {/* Desktop: horizontal row */}
                                     <div className="hidden sm:flex items-center gap-4">
                                         {/* Status */}
-                                        <div className="w-24 flex-shrink-0">
+                                        <div className="w-32 flex-shrink-0">
                                             {user.isBanned ? (
                                                 <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
                                                     <Ban className="w-3 h-3" />BAN
                                                 </span>
-                                            ) : user.isApproved ? (
+                                            ) : user.subscriptionStatus === 'active' ? (
                                                 <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                                    <Check className="w-3 h-3" />承認済
+                                                    <CreditCard className="w-3 h-3" />サブスク有効
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                                                    <Clock className="w-3 h-3" />待機中
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                                                    <Clock className="w-3 h-3" />未課金
                                                 </span>
                                             )}
                                         </div>
@@ -428,29 +387,13 @@ export default function UsersPage() {
                                         </div>
                                         {/* Quick Actions */}
                                         <div className="w-32 flex-shrink-0 flex justify-end gap-2">
-                                            {user.isBanned ? (
+                                            {user.isBanned && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleBan(user.id, 'unban'); }}
                                                     disabled={processing === user.id}
                                                     className="px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded min-h-[36px]"
                                                 >
                                                     BAN解除
-                                                </button>
-                                            ) : user.isApproved ? (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleApproval(user.id, 'revoke'); }}
-                                                    disabled={processing === user.id}
-                                                    className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded min-h-[36px]"
-                                                >
-                                                    取消
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleApproval(user.id, 'approve'); }}
-                                                    disabled={processing === user.id}
-                                                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 min-h-[36px]"
-                                                >
-                                                    承認
                                                 </button>
                                             )}
                                         </div>
@@ -460,6 +403,32 @@ export default function UsersPage() {
                                 {/* Expanded Details */}
                                 {expandedUser === user.id && (
                                     <div className="px-3 sm:px-4 py-4 bg-gray-50 border-t">
+                                        {/* Subscription Status */}
+                                        {user.subscriptionStatus && (
+                                            <div className="mb-4 p-3 bg-white rounded-lg border">
+                                                <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                                                    <CreditCard className="w-4 h-4 text-green-500" />
+                                                    サブスクリプション情報
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                                    <div>
+                                                        <p className="text-xs text-gray-500">ステータス</p>
+                                                        <p className={`font-medium ${user.subscriptionStatus === 'active' ? 'text-green-600' : 'text-gray-600'}`}>
+                                                            {user.subscriptionStatus === 'active' ? 'アクティブ' : user.subscriptionStatus}
+                                                        </p>
+                                                    </div>
+                                                    {user.subscriptionId && (
+                                                        <div>
+                                                            <p className="text-xs text-gray-500">Subscription ID</p>
+                                                            <p className="font-mono text-xs text-gray-600 truncate">
+                                                                {user.subscriptionId}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                             {/* Usage Details */}
                                             <div>
