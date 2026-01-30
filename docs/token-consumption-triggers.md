@@ -14,14 +14,14 @@
 
 | エンドポイント | トリガーとなるアクション | 使用モデル | 推定コスト |
 |--------------|----------------------|-----------|----------|
-| `/api/ai/generate-image` | 新規画像生成 | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/edit-image` | 画像編集・リブランディング | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/inpaint` | 画像の部分修正（インペイント） | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/text-fix` | 画像内テキストの文字化け修正 | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/background-unify` | 背景色の統一 | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/design-unify` | デザインスタイルの統一 | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/image-transform` | サムネイル変換・資料化 | gemini-3-pro-image-preview | ~$0.04/枚 |
-| `/api/ai/upscale` | 画像の高解像度化（AI超解像） | real-esrgan | ~$0.02/枚 |
+| `/api/ai/generate-image` | 新規画像生成 | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/edit-image` | 画像編集・リブランディング | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/inpaint` | 画像の部分修正（インペイント） | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/text-fix` | 画像内テキストの文字化け修正 | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/background-unify` | 背景色の統一 | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/design-unify` | デザインスタイルの統一 | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/image-transform` | サムネイル変換・資料化 | gemini-3-pro-image-preview | $0.04 / 60トークン |
+| `/api/ai/upscale` | 画像の高解像度化（AI超解像） | real-esrgan | $0.02 / 30トークン |
 
 ---
 
@@ -29,15 +29,15 @@
 
 | エンドポイント | トリガーとなるアクション | 使用モデル | 推定コスト |
 |--------------|----------------------|-----------|----------|
-| `/api/ai/generate-copy` | LPセクションのコピー生成 | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/generate-nav` | ナビゲーション構成の生成 | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/review` | コピーのレビュー・改善提案 | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/suggest-benefits` | メリット・USP・保証の提案 | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/prompt-copilot` | プロンプト作成支援チャット | gemini-2.0-flash | ~$0.0005 |
-| `/api/ai/ocr` | 画像からテキスト抽出（OCR） | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/analyze-design` | デザイン解析（色・スタイル抽出） | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/image-to-prompt` | 画像からプロンプト生成 | gemini-2.0-flash | ~$0.001 |
-| `/api/ai/extract-background-color` | 背景色の自動検出 | gemini-2.0-flash | ~$0.0005 |
+| `/api/ai/generate-copy` | LPセクションのコピー生成 | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/generate-nav` | ナビゲーション構成の生成 | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/review` | コピーのレビュー・改善提案 | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/suggest-benefits` | メリット・USP・保証の提案 | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/prompt-copilot` | プロンプト作成支援チャット | gemini-2.0-flash | $0.0005 / 0.75トークン |
+| `/api/ai/ocr` | 画像からテキスト抽出（OCR） | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/analyze-design` | デザイン解析（色・スタイル抽出） | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/image-to-prompt` | 画像からプロンプト生成 | gemini-2.0-flash | $0.001 / 1.5トークン |
+| `/api/ai/extract-background-color` | 背景色の自動検出 | gemini-2.0-flash | $0.0005 / 0.75トークン |
 
 ---
 
@@ -45,8 +45,8 @@
 
 | エンドポイント | トリガーとなるアクション | 使用モデル | 推定コスト |
 |--------------|----------------------|-----------|----------|
-| `/api/ai/claude-generate` | HTMLコード生成 | gemini-2.0-flash | ~$0.002 |
-| `/api/ai/claude-edit-code` | HTMLコード編集 | gemini-2.0-flash | ~$0.002 |
+| `/api/ai/claude-generate` | HTMLコード生成 | gemini-2.0-flash | $0.002 / 3トークン |
+| `/api/ai/claude-edit-code` | HTMLコード編集 | gemini-2.0-flash | $0.002 / 3トークン |
 
 ---
 
@@ -54,7 +54,7 @@
 
 | エンドポイント | トリガーとなるアクション | 使用モデル | 推定コスト |
 |--------------|----------------------|-----------|----------|
-| `/api/ai/seo-llmo-optimize` | SEO/LLMO最適化分析 | claude-sonnet-4 | ~$0.01 |
+| `/api/ai/seo-llmo-optimize` | SEO/LLMO最適化分析 | claude-sonnet-4 | $0.01 / 15トークン |
 
 ---
 
@@ -62,7 +62,7 @@
 
 | エンドポイント | トリガーとなるアクション | 使用モデル | 推定コスト |
 |--------------|----------------------|-----------|----------|
-| `/api/ai/generate-video` | AI動画生成 | veo-2.0 | $0.35/秒 |
+| `/api/ai/generate-video` | AI動画生成 | veo-2.0 | $0.35/秒 / 525トークン/秒 |
 
 ※ 動画生成はEnterpriseプラン限定機能
 
