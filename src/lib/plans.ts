@@ -1,6 +1,8 @@
 /**
  * SaaSプラン定義
- * クレジットベースのAPI使用量管理
+ * トークンベースのAPI使用量管理
+ * 内部的には円で管理し、表示時はトークン（1円 = 10トークン）
+ * 例: ¥5,000 = 50,000トークン
  */
 
 export type PlanType = 'free' | 'pro' | 'business' | 'enterprise';
@@ -30,20 +32,39 @@ export interface Plan {
   description: string;
   // 月額（円）
   priceJpy: number;
-  // 月額に含まれるAPIクレジット（USD）
+  // 月額に含まれるトークン（1円 = 100トークン）
+  includedTokens: number;
+  // 後方互換性：USDでのクレジット額（内部処理用）
   includedCreditUsd: number;
   // Stripe Price ID（サブスク用）
   stripePriceId: string;
   // 表示用の価格
   priceDisplay: string;
+  // 表示用のカラークラス（Tailwind）
+  colorClass: string;
   // 機能制限
   limits: PlanLimits;
   // 機能一覧（表示用）
   features: string[];
 }
 
-// 為替レート（1USD = 150円）
-export const USD_TO_JPY_RATE = 150;
+// トークン変換レート（1円 = 10トークン）
+export const JPY_TO_TOKEN_RATE = 10;
+
+// 円からトークンへ変換
+export function jpyToTokens(jpy: number): number {
+  return Math.round(jpy * JPY_TO_TOKEN_RATE);
+}
+
+// トークンから円へ変換
+export function tokensToJpy(tokens: number): number {
+  return tokens / JPY_TO_TOKEN_RATE;
+}
+
+// トークン表示用フォーマット
+export function formatTokens(tokens: number): string {
+  return tokens.toLocaleString();
+}
 
 export const PLANS: Record<PlanType, Plan> = {
   // 無料プラン（レガシー、新規登録は非推奨）
@@ -52,9 +73,11 @@ export const PLANS: Record<PlanType, Plan> = {
     name: 'Free',
     description: '無料プラン（自分のAPIキーが必要）',
     priceJpy: 0,
-    includedCreditUsd: 0, // クレジットなし（自分のAPIキーを使用）
+    includedTokens: 0, // トークンなし（自分のAPIキーを使用）
+    includedCreditUsd: 0, // 後方互換性
     stripePriceId: '',
     priceDisplay: '¥0/月',
+    colorClass: 'text-gray-600',
     limits: {
       maxPages: 10, // 10ページまで
       maxStorageMB: 500, // 500MBまで
@@ -77,9 +100,11 @@ export const PLANS: Record<PlanType, Plan> = {
     name: 'Pro',
     description: 'スタートアップ・個人事業主向け',
     priceJpy: 20000,
-    includedCreditUsd: 33.33, // ¥5,000分 (25%)
+    includedTokens: 50000, // ¥5,000分 = 50,000トークン
+    includedCreditUsd: 33.33, // 後方互換性: ¥5,000 / 150
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro',
     priceDisplay: '¥20,000/月',
+    colorClass: 'text-blue-600',
     limits: {
       maxPages: 30,
       maxStorageMB: 5000,
@@ -92,7 +117,7 @@ export const PLANS: Record<PlanType, Plan> = {
     },
     features: [
       '最大30ページ',
-      '月間クレジット ¥5,000分',
+      '月間 50,000 トークン',
       '画像生成',
       'インペイント編集',
       'HTMLエクスポート',
@@ -103,9 +128,11 @@ export const PLANS: Record<PlanType, Plan> = {
     name: 'Business',
     description: '成長企業・制作会社向け',
     priceJpy: 40000,
-    includedCreditUsd: 66.67, // ¥10,000分 (25%)
+    includedTokens: 100000, // ¥10,000分 = 100,000トークン
+    includedCreditUsd: 66.67, // 後方互換性: ¥10,000 / 150
     stripePriceId: process.env.STRIPE_PRICE_BUSINESS || 'price_business',
     priceDisplay: '¥40,000/月',
+    colorClass: 'text-purple-600',
     limits: {
       maxPages: 100,
       maxStorageMB: 20000,
@@ -118,7 +145,7 @@ export const PLANS: Record<PlanType, Plan> = {
     },
     features: [
       '最大100ページ',
-      '月間クレジット ¥10,000分',
+      '月間 100,000 トークン',
       'Pro全機能',
       '4Kアップスケール',
       'リスタイル機能',
@@ -129,9 +156,11 @@ export const PLANS: Record<PlanType, Plan> = {
     name: 'Enterprise',
     description: '代理店・大規模ビジネス向け',
     priceJpy: 100000,
-    includedCreditUsd: 166.67, // ¥25,000分 (25%)
+    includedTokens: 250000, // ¥25,000分 = 250,000トークン
+    includedCreditUsd: 166.67, // 後方互換性: ¥25,000 / 150
     stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise',
     priceDisplay: '¥100,000/月',
+    colorClass: 'text-amber-600',
     limits: {
       maxPages: -1, // 無制限
       maxStorageMB: -1, // 無制限
@@ -144,7 +173,7 @@ export const PLANS: Record<PlanType, Plan> = {
     },
     features: [
       '無制限ページ',
-      '月間クレジット ¥25,000分',
+      '月間 250,000 トークン',
       'Business全機能',
       '動画生成',
       '優先サポート',
@@ -155,26 +184,34 @@ export const PLANS: Record<PlanType, Plan> = {
 // デフォルトプラン（サブスク未契約時）
 export const DEFAULT_PLAN: PlanType = 'free';
 
-// 追加クレジットパッケージ（プランごとの月間クレジット分のみ）
-export interface CreditPackage {
+// 追加トークンパッケージ（プランごとの月間トークン分のみ）
+export interface TokenPackage {
   id: number;
   name: string;
   priceJpy: number;
-  creditUsd: number;
+  tokens: number; // トークン数（1円 = 100トークン）
+  creditUsd: number; // 後方互換性: USD換算
   planId: PlanType; // 対応するプラン
 }
 
-export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: 1, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33, planId: 'pro' },
-  { id: 2, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67, planId: 'business' },
-  { id: 3, name: '25,000円分', priceJpy: 25000, creditUsd: 166.67, planId: 'enterprise' },
+export const TOKEN_PACKAGES: TokenPackage[] = [
+  { id: 1, name: '50,000 トークン', priceJpy: 5000, tokens: 50000, creditUsd: 33.33, planId: 'pro' },
+  { id: 2, name: '100,000 トークン', priceJpy: 10000, tokens: 100000, creditUsd: 66.67, planId: 'business' },
+  { id: 3, name: '250,000 トークン', priceJpy: 25000, tokens: 250000, creditUsd: 166.67, planId: 'enterprise' },
 ];
 
-// プランIDに対応するクレジットパッケージを取得
-export function getCreditPackageForPlan(planId: string | null | undefined): CreditPackage | undefined {
+// 後方互換性のためのエイリアス
+export type CreditPackage = TokenPackage;
+export const CREDIT_PACKAGES = TOKEN_PACKAGES;
+
+// プランIDに対応するトークンパッケージを取得
+export function getTokenPackageForPlan(planId: string | null | undefined): TokenPackage | undefined {
   if (!planId) return undefined;
-  return CREDIT_PACKAGES.find(pkg => pkg.planId === planId);
+  return TOKEN_PACKAGES.find(pkg => pkg.planId === planId);
 }
+
+// 後方互換性のためのエイリアス
+export const getCreditPackageForPlan = getTokenPackageForPlan;
 
 // プラン取得ヘルパー
 export function getPlan(planId: string | null | undefined): Plan {
@@ -226,10 +263,26 @@ export function requiresSubscription(planId: string | null | undefined): boolean
   return !(planId in PLANS);
 }
 
-// プランの月間クレジット額を取得（USD）
-export function getPlanIncludedCredit(planId: string | null | undefined): number {
+// プランの月間トークン数を取得
+export function getPlanIncludedTokens(planId: string | null | undefined): number {
   const plan = getPlan(planId);
-  return plan.includedCreditUsd;
+  return plan.includedTokens;
+}
+
+// 後方互換性：USDをトークンに変換（既存コードとの互換性維持）
+// 1 USD = 150円、1円 = 10トークン → 1 USD = 1,500トークン
+export const USD_TO_JPY_RATE = 150;
+export function usdToTokens(usd: number): number {
+  // USD → 円 → トークン
+  const jpy = usd * USD_TO_JPY_RATE;
+  return Math.round(jpy * JPY_TO_TOKEN_RATE);
+}
+
+// 後方互換性のためのエイリアス
+export function getPlanIncludedCredit(planId: string | null | undefined): number {
+  // トークンをUSDに変換して返す（後方互換性）
+  const tokens = getPlanIncludedTokens(planId);
+  return tokens / USD_TO_JPY_RATE;
 }
 
 // プランIDの一覧

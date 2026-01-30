@@ -5,6 +5,7 @@ import { X, Sparkles, RefreshCw, Palette, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { GEMINI_PRICING } from '@/lib/ai-costs';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 interface ColorPalette {
     primary: string;
@@ -233,9 +234,9 @@ export default function ColorPaletteModal({
                     {/* コスト表示 */}
                     {imageCount > 0 && (
                         <div className="flex items-center gap-2 text-xs text-gray-500 bg-white px-3 py-2 rounded-lg border border-gray-200">
-                            <DollarSign className="h-3.5 w-3.5" />
+                            <Sparkles className="h-3.5 w-3.5" />
                             <span>
-                                「適用して再生成」の費用: 約${estimatedCost.toFixed(2)}
+                                「適用して再生成」の消費トークン: 約{formatTokens(usdToTokens(estimatedCost))}
                                 <span className="text-gray-400 ml-1">({imageCount}枚)</span>
                             </span>
                         </div>

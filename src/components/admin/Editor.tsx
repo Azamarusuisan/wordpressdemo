@@ -47,6 +47,7 @@ import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { GEMINI_PRICING } from '@/lib/ai-costs';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 // ドラッグ＆ドロップ可能なセクションラッパー
 function SortableSectionWrapper({ id, children }: { id: string; children: React.ReactNode }) {
@@ -1957,18 +1958,18 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                     </>
                 )}
 
-                {/* API料金 */}
+                {/* API消費トークン */}
                 {apiCost && (
                     <div className="flex items-center gap-3 px-2">
                         <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                             <span className="text-[10px] text-gray-400 uppercase tracking-wider">Today</span>
-                            <span className="font-bold text-sm text-gray-800">¥{Math.round(apiCost.todayCost * 150).toLocaleString()}</span>
+                            <span className="font-bold text-sm text-gray-800">{formatTokens(usdToTokens(apiCost.todayCost))}</span>
                         </div>
                         <div className="w-px h-4 bg-gray-200" />
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-gray-400 uppercase tracking-wider">Month</span>
-                            <span className="font-bold text-sm text-gray-600">¥{Math.round(apiCost.monthCost * 150).toLocaleString()}</span>
+                            <span className="font-bold text-sm text-gray-600">{formatTokens(usdToTokens(apiCost.monthCost))}</span>
                         </div>
                     </div>
                 )}

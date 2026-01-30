@@ -308,7 +308,7 @@ function SettingsPage() {
                                 <p className="mt-1 sm:mt-1.5 text-sm text-gray-500 font-medium">
                                     {isFreePlan
                                         ? 'APIキーを設定して利用中'
-                                        : `クレジット残高: $${creditBalance?.toFixed(4) || '0.0000'}`
+                                        : `トークン残高: ${creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}`
                                     }
                                 </p>
                             </div>
@@ -324,7 +324,7 @@ function SettingsPage() {
                                 className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 sm:px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors min-h-[44px] w-full sm:w-auto"
                             >
                                 <CreditCard className="h-4 w-4" />
-                                クレジット購入
+                                トークン購入
                             </button>
                         )}
                     </div>
@@ -432,25 +432,27 @@ function SettingsPage() {
                                 </section>
                             )}
 
-                            {/* クレジット情報（有料プランのみ） */}
+                            {/* トークン情報（有料プランのみ） */}
                             {!isFreePlan && (
                                 <section>
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-4 tracking-tight">クレジット管理</h3>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-4 tracking-tight">トークン管理</h3>
                                     <div className="rounded-xl border border-gray-200 bg-white p-6">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-3xl font-bold text-gray-900 tracking-tight">
-                                                        ${creditBalance?.toFixed(4) || '0.0000'}
+                                                        {creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}
                                                     </span>
-                                                    <span className="text-sm text-gray-500 font-medium">USD</span>
+                                                    <span className="text-sm text-gray-500 font-medium">トークン</span>
                                                 </div>
                                                 <p className="text-xs text-gray-400 mt-1 align-middle flex items-center gap-1">
                                                     <Sparkles className="h-3 w-3" />
-                                                    現在のクレジット残高
+                                                    現在のトークン残高
                                                 </p>
                                             </div>
-                                            <button className="flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+                                            <button
+                                                onClick={() => setShowCreditPurchaseModal(true)}
+                                                className="flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
                                                 <Zap className="h-4 w-4" />
                                                 チャージする
                                             </button>
@@ -1023,14 +1025,14 @@ function Step({ number, children }: { number: number; children: React.ReactNode 
     );
 }
 
-// プランごとのクレジットパッケージ定義
-const PLAN_CREDIT_PACKAGES: Record<string, { id: number; name: string; priceJpy: number; creditUsd: number }> = {
-    pro: { id: 1, name: '5,000円分', priceJpy: 5000, creditUsd: 33.33 },
-    business: { id: 2, name: '10,000円分', priceJpy: 10000, creditUsd: 66.67 },
-    enterprise: { id: 3, name: '25,000円分', priceJpy: 25000, creditUsd: 166.67 },
+// プランごとのトークンパッケージ定義
+const PLAN_TOKEN_PACKAGES: Record<string, { id: number; name: string; priceJpy: number; tokens: number }> = {
+    pro: { id: 1, name: '50,000 トークン', priceJpy: 5000, tokens: 50000 },
+    business: { id: 2, name: '100,000 トークン', priceJpy: 10000, tokens: 100000 },
+    enterprise: { id: 3, name: '250,000 トークン', priceJpy: 25000, tokens: 250000 },
 };
 
-// クレジット購入モーダル
+// トークン購入モーダル
 function CreditPurchaseModal({
     onClose,
     onPurchase,
@@ -1042,8 +1044,8 @@ function CreditPurchaseModal({
     isPurchasing: boolean;
     currentPlan: string;
 }) {
-    // 現在のプランに対応するクレジットパッケージを取得
-    const planPackage = PLAN_CREDIT_PACKAGES[currentPlan];
+    // 現在のプランに対応するトークンパッケージを取得
+    const planPackage = PLAN_TOKEN_PACKAGES[currentPlan];
     const planName = currentPlan === 'pro' ? 'Pro' : currentPlan === 'business' ? 'Business' : currentPlan === 'enterprise' ? 'Enterprise' : currentPlan;
 
     return (
@@ -1051,7 +1053,7 @@ function CreditPurchaseModal({
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-gray-900">クレジット購入</h2>
+                        <h2 className="text-xl font-bold text-gray-900">トークン購入</h2>
                         <button
                             onClick={onClose}
                             disabled={isPurchasing}
@@ -1064,7 +1066,7 @@ function CreditPurchaseModal({
                         </button>
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
-                        {planName}プランの月間クレジット分を追加購入できます
+                        {planName}プランの月間トークン分を追加購入できます
                     </p>
                 </div>
 
@@ -1081,7 +1083,7 @@ function CreditPurchaseModal({
                                 </div>
                                 <div className="text-left">
                                     <p className="font-semibold text-gray-900">{planPackage.name}</p>
-                                    <p className="text-sm text-gray-500">${planPackage.creditUsd.toFixed(2)} USD相当</p>
+                                    <p className="text-sm text-gray-500">{planPackage.tokens.toLocaleString()} トークン</p>
                                 </div>
                             </div>
                             <div className="text-right">
@@ -1091,7 +1093,7 @@ function CreditPurchaseModal({
                         </button>
                     ) : (
                         <div className="text-center py-8 text-gray-500">
-                            <p>このプランではクレジット購入はご利用いただけません</p>
+                            <p>このプランではトークン購入はご利用いただけません</p>
                         </div>
                     )}
                 </div>

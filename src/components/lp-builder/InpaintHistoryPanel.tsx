@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { History, ArrowRight, DollarSign, Clock, ChevronDown, ChevronUp, X, Loader2 } from 'lucide-react';
+import { History, ArrowRight, DollarSign, Clock, ChevronDown, ChevronUp, X, Loader2, Sparkles } from 'lucide-react';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 interface MaskArea {
     x: number;
@@ -205,7 +206,7 @@ export function InpaintHistoryPanel({
                                 <div className="flex items-center gap-2 shrink-0">
                                     {history.estimatedCost && (
                                         <span className="text-[10px] font-mono text-muted-foreground">
-                                            ${history.estimatedCost.toFixed(4)}
+                                            {formatTokens(usdToTokens(history.estimatedCost))}
                                         </span>
                                     )}
                                     {expandedId === history.id ? (
@@ -275,8 +276,8 @@ export function InpaintHistoryPanel({
 
                                         <div className="flex items-center gap-4 pt-2 border-t border-border">
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                <DollarSign className="w-3 h-3" />
-                                                <span className="font-mono">${history.estimatedCost?.toFixed(4) || '0.0000'}</span>
+                                                <Sparkles className="w-3 h-3" />
+                                                <span className="font-mono">{formatTokens(usdToTokens(history.estimatedCost || 0))}</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                 <Clock className="w-3 h-3" />

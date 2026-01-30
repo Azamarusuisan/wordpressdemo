@@ -97,8 +97,8 @@ export async function getUserPlan(userId: string): Promise<string> {
 }
 
 // 開発者アカウント（クレジット無制限）
-const DEVELOPER_EMAILS = [
-  'renrenfujiwara@gmail.com',
+const DEVELOPER_EMAILS: string[] = [
+  // 'renrenfujiwara@gmail.com', // 本番環境では無効化
 ];
 
 /**

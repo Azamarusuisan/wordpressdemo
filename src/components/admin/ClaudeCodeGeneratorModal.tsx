@@ -5,6 +5,7 @@ import { X, ArrowLeft, Copy, Check, Eye, Code2, ArrowRight, Plus, Trash2, Chevro
 import { TEMPLATES } from '@/lib/claude-templates';
 import type { FormField, DesignContext } from '@/lib/claude-templates';
 import toast from 'react-hot-toast';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 interface Section {
   id: number | string;
@@ -892,7 +893,7 @@ export default function ClaudeCodeGeneratorModal({ onClose, sections, designDefi
                 </div>
                 <div className="flex items-center gap-3">
                   {estimatedCost > 0 && (
-                    <span className="text-xs text-gray-400">${estimatedCost.toFixed(4)}</span>
+                    <span className="text-xs text-gray-400">{formatTokens(usdToTokens(estimatedCost))} トークン</span>
                   )}
                   <button
                     onClick={handleCopy}

@@ -3,6 +3,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { Card, Typography, Flex, theme } from 'antd';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 const { Title } = Typography;
 const { useToken } = theme;
@@ -55,7 +56,7 @@ export function DailyUsageChart({ data }: { data: DailyData[] }) {
                                 }}
                                 formatter={(value: any, name: any) => {
                                     if (name === 'count') return [value, 'API呼び出し'];
-                                    if (name === 'cost') return [`$${value.toFixed(4)}`, 'コスト'];
+                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'トークン'];
                                     return [value, name];
                                 }}
                             />

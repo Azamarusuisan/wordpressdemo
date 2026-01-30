@@ -5,6 +5,7 @@ import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, Doll
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
 import { TextFixModule } from './TextFixModule';
 import type { ClickableArea, FormFieldConfig, ViewportType } from '@/types';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 // デザイン定義の型
 interface DesignDefinition {
@@ -1365,8 +1366,8 @@ export function ImageInpaintEditor({
                             {costInfo && (
                                 <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border">
                                     <div className="text-center">
-                                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">コスト</p>
-                                        <p className="text-lg font-bold text-foreground font-mono">${costInfo.estimatedCost.toFixed(4)}</p>
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">消費トークン</p>
+                                        <p className="text-lg font-bold text-foreground font-mono">{formatTokens(usdToTokens(costInfo.estimatedCost))}</p>
                                     </div>
                                     <div className="w-px h-8 bg-border" />
                                     <div className="text-center">
@@ -1483,8 +1484,8 @@ export function ImageInpaintEditor({
                             <div className="flex items-center gap-3 bg-surface-100 rounded-md px-4 py-2 border border-border">
                                 <span className="text-xs font-bold text-muted-foreground">前回:</span>
                                 <div className="flex items-center gap-1 text-foreground">
-                                    <DollarSign className="w-3 h-3 text-muted-foreground" />
-                                    <span className="text-xs font-mono font-bold">${costInfo.estimatedCost.toFixed(4)}</span>
+                                    <Sparkles className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-xs font-mono font-bold">{formatTokens(usdToTokens(costInfo.estimatedCost))}</span>
                                 </div>
                                 <div className="w-px h-3 bg-border" />
                                 <div className="flex items-center gap-1 text-foreground">

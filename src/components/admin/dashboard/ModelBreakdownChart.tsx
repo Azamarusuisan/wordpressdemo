@@ -3,6 +3,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Cpu } from 'lucide-react';
 import { Card, Typography, Flex, theme } from 'antd';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 
 const { Title } = Typography;
 const { useToken } = theme;
@@ -60,7 +61,7 @@ export function ModelBreakdownChart({ data }: { data: ModelData[] }) {
                                 }}
                                 formatter={(value: any, name: any) => {
                                     if (name === 'calls') return [value, 'API呼び出し'];
-                                    if (name === 'cost') return [`$${value.toFixed(4)}`, 'コスト'];
+                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'トークン'];
                                     return [value, name];
                                 }}
                             />

@@ -68,7 +68,7 @@ export async function checkCreditBalance(
       currentBalanceUsd: currentBalance,
       estimatedCostUsd,
       remainingAfterUsd: remaining,
-      reason: `クレジット残高が不足しています。残高: $${currentBalance.toFixed(4)}, 必要: $${estimatedCostUsd.toFixed(4)}`,
+      reason: `トークン残高が不足しています`,
       needPurchase: true,
     };
   }

@@ -9,14 +9,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useUserSettings } from '@/lib/hooks/useAdminData';
 import { createClient } from '@/lib/supabase/client';
-
-// プラン定義（plans.tsと同期）
-const PLAN_INFO: Record<string, { name: string; color: string }> = {
-    free: { name: '無料', color: 'text-gray-600' },
-    pro: { name: 'Pro', color: 'text-blue-600' },
-    business: { name: 'Business', color: 'text-purple-600' },
-    enterprise: { name: 'Enterprise', color: 'text-amber-600' },
-};
+import { PLANS, type PlanType } from '@/lib/plans';
 
 // ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
 const navItems = [
@@ -186,10 +179,10 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             </div>
                             <div className={clsx(
                                 "truncate text-[10px] font-medium flex items-center gap-1",
-                                PLAN_INFO[plan]?.color || "text-muted-foreground"
+                                PLANS[plan as PlanType]?.colorClass || "text-muted-foreground"
                             )}>
                                 <Crown className="h-3 w-3" />
-                                {PLAN_INFO[plan]?.name || '無料'}
+                                {PLANS[plan as PlanType]?.name || 'Free'}
                             </div>
                         </div>
                     </div>

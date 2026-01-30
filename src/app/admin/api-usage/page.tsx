@@ -10,8 +10,10 @@ import {
     AlertTriangle,
     Clock,
     MessageSquare,
-    RefreshCw
+    RefreshCw,
+    Sparkles
 } from 'lucide-react';
+import { usdToTokens, formatTokens } from '@/lib/plans';
 import {
     Row,
     Col,
@@ -175,7 +177,7 @@ export default function ApiUsageDashboard() {
                     <Title level={1} style={{ margin: 0 }}>
                         API使用状況
                     </Title>
-                    <Text type="secondary">AI APIの使用状況とコスト分析</Text>
+                    <Text type="secondary">AI APIの使用状況とトークン消費分析</Text>
                 </Space>
 
                 {/* Period Selector */}
@@ -210,11 +212,11 @@ export default function ApiUsageDashboard() {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <StatCard
-                        title="推定コスト"
-                        value={`$${(stats?.summary?.totalCost || 0).toFixed(4)}`}
-                        icon={DollarSign}
+                        title="消費トークン"
+                        value={formatTokens(usdToTokens(stats?.summary?.totalCost || 0))}
+                        icon={Sparkles}
                         color="green"
-                        subValue={`平均: $${stats?.summary?.totalCalls ? ((stats?.summary?.totalCost || 0) / stats.summary.totalCalls).toFixed(6) : '0'}/回`}
+                        subValue={`平均: ${formatTokens(usdToTokens(stats?.summary?.totalCalls ? ((stats?.summary?.totalCost || 0) / stats.summary.totalCalls) : 0))}/回`}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
@@ -293,12 +295,12 @@ export default function ApiUsageDashboard() {
                     <Card>
                         <Space direction="vertical" size="large" style={{ width: '100%' }}>
                             <Flex align="center" gap="small">
-                                <DollarSign
+                                <Sparkles
                                     size={20}
                                     color={token.colorSuccess}
                                 />
                                 <Title level={3} style={{ margin: 0 }}>
-                                    モデル別コスト
+                                    モデル別トークン消費
                                 </Title>
                             </Flex>
 
@@ -320,7 +322,7 @@ export default function ApiUsageDashboard() {
                                                     ),
                                                     children: (
                                                         <Text strong>
-                                                            ${model.cost.toFixed(4)}
+                                                            {formatTokens(usdToTokens(model.cost))}
                                                         </Text>
                                                     )
                                                 }
@@ -342,7 +344,7 @@ export default function ApiUsageDashboard() {
                                                             type="success"
                                                             style={{ margin: 0 }}
                                                         >
-                                                            ${(stats?.summary?.totalCost || 0).toFixed(4)}
+                                                            {formatTokens(usdToTokens(stats?.summary?.totalCost || 0))} トークン
                                                         </Title>
                                                     )
                                                 }
