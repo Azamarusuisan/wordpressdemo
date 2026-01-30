@@ -195,9 +195,9 @@ export interface TokenPackage {
 }
 
 export const TOKEN_PACKAGES: TokenPackage[] = [
-  { id: 1, name: '50,000 トークン', priceJpy: 5000, tokens: 50000, creditUsd: 33.33, planId: 'pro' },
-  { id: 2, name: '100,000 トークン', priceJpy: 10000, tokens: 100000, creditUsd: 66.67, planId: 'business' },
-  { id: 3, name: '250,000 トークン', priceJpy: 25000, tokens: 250000, creditUsd: 166.67, planId: 'enterprise' },
+  { id: 1, name: '50,000 トークン', priceJpy: 20000, tokens: 50000, creditUsd: 33.33, planId: 'pro' },
+  { id: 2, name: '50,000 トークン', priceJpy: 20000, tokens: 50000, creditUsd: 33.33, planId: 'business' },
+  { id: 3, name: '50,000 トークン', priceJpy: 20000, tokens: 50000, creditUsd: 33.33, planId: 'enterprise' },
 ];
 
 // 後方互換性のためのエイリアス

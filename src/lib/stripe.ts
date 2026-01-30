@@ -131,8 +131,8 @@ export async function createCreditPurchaseCheckout(
         price_data: {
           currency: 'jpy',
           product_data: {
-            name: `APIクレジット購入 (${pkg.name})`,
-            description: `$${pkg.creditUsd.toFixed(2)}分のAPIクレジット`,
+            name: `トークン追加購入 (${pkg.name})`,
+            description: `${pkg.tokens.toLocaleString()}トークン`,
           },
           unit_amount: pkg.priceJpy,
         },
