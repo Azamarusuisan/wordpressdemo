@@ -1941,17 +1941,21 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
         <div className={clsx("min-h-screen bg-gray-100 transition-all", showLPComparePanel ? "lg:pr-[680px]" : "lg:pr-[360px]")}>
             {/* フローティングツールバー - デスクトップ版 */}
             <div className="hidden lg:flex fixed top-4 left-1/2 -translate-x-1/2 z-50 items-center gap-3 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl px-4 py-2.5 border border-gray-200" style={{ transform: 'translateX(calc(-50% - 180px))' }}>
-                {/* HD高画質化 */}
-                <button
-                    onClick={() => setShow4KModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm"
-                    title="HD高画質化"
-                >
-                    <span className="text-white font-black text-xs">HD</span>
-                    <span className="text-violet-200 text-xs">高画質化</span>
-                </button>
+                {/* HD高画質化（Business/Enterpriseプランのみ） */}
+                {planLimits?.canUpscale4K && (
+                    <>
+                        <button
+                            onClick={() => setShow4KModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-lg transition-all shadow-sm"
+                            title="HD高画質化"
+                        >
+                            <span className="text-white font-black text-xs">HD</span>
+                            <span className="text-violet-200 text-xs">高画質化</span>
+                        </button>
 
-                <div className="w-px h-6 bg-gray-200" />
+                        <div className="w-px h-6 bg-gray-200" />
+                    </>
+                )}
 
                 {/* API料金 */}
                 {apiCost && (
@@ -2035,13 +2039,15 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                         <span>プレビュー</span>
                     </button>
 
-                    {/* HD */}
-                    <button
-                        onClick={() => setShow4KModal(true)}
-                        className="flex items-center gap-1 bg-violet-600 text-white px-2.5 py-2.5 rounded-lg text-xs font-bold min-h-[44px]"
-                    >
-                        <span className="font-black text-[10px]">HD</span>
-                    </button>
+                    {/* HD（Business/Enterpriseプランのみ） */}
+                    {planLimits?.canUpscale4K && (
+                        <button
+                            onClick={() => setShow4KModal(true)}
+                            className="flex items-center gap-1 bg-violet-600 text-white px-2.5 py-2.5 rounded-lg text-xs font-bold min-h-[44px]"
+                        >
+                            <span className="font-black text-[10px]">HD</span>
+                        </button>
+                    )}
 
                     {/* メニュー開閉 */}
                     <button
@@ -5314,21 +5320,24 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                     >
                                         カスタム再生成
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            // 最初のセクションを参照として設定
-                                            const firstWithImage = sections.find(s => s.image?.filePath);
-                                            if (firstWithImage) setBatchReferenceSection(firstWithImage.id);
-                                        }}
-                                        className={clsx(
-                                            "py-3 text-sm font-bold transition-all border-b-2",
-                                            batchReferenceSection
-                                                ? "text-blue-600 border-blue-600 bg-blue-50/50"
-                                                : "text-gray-400 border-transparent hover:text-gray-600"
-                                        )}
-                                    >
-                                        🎨 デザイン統一
-                                    </button>
+                                    {/* デザイン統一（Business/Enterpriseプランのみ） */}
+                                    {planLimits?.canRestyle && (
+                                        <button
+                                            onClick={() => {
+                                                // 最初のセクションを参照として設定
+                                                const firstWithImage = sections.find(s => s.image?.filePath);
+                                                if (firstWithImage) setBatchReferenceSection(firstWithImage.id);
+                                            }}
+                                            className={clsx(
+                                                "py-3 text-sm font-bold transition-all border-b-2",
+                                                batchReferenceSection
+                                                    ? "text-blue-600 border-blue-600 bg-blue-50/50"
+                                                    : "text-gray-400 border-transparent hover:text-gray-600"
+                                            )}
+                                        >
+                                            🎨 デザイン統一
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="p-5 space-y-4">
