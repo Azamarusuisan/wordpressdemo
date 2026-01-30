@@ -164,7 +164,7 @@ function SettingsPage() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // Save user-level settings (API keys)
+            // Save user-level settings (API keys, deploy settings)
             const userSettingsPayload: any = {};
             if (googleApiKey && canSetApiKey) {
                 userSettingsPayload.googleApiKey = googleApiKey;
@@ -188,27 +188,20 @@ function SettingsPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userSettingsPayload)
                 });
-                if (userRes.ok) {
-                    if (googleApiKey) { setHasApiKey(true); setGoogleApiKey(''); }
-                    if (renderApiKey) { setHasRenderApiKey(true); setRenderApiKey(''); }
-                    if (resendApiKey) { setHasResendApiKey(true); setResendApiKey(''); }
+                if (!userRes.ok) {
+                    const errorData = await userRes.json();
+                    throw new Error(errorData.error || '保存に失敗しました');
                 }
+                if (googleApiKey) { setHasApiKey(true); setGoogleApiKey(''); }
+                if (renderApiKey) { setHasRenderApiKey(true); setRenderApiKey(''); }
+                if (resendApiKey) { setHasResendApiKey(true); setResendApiKey(''); }
             }
 
-            // Save global config
-            const res = await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(config)
-            });
-
-            if (res.ok) {
-                setSaveStatus('success');
-                toast.success('設定を保存しました');
-                setTimeout(() => setSaveStatus('idle'), 3000);
-            }
-        } catch (e) {
-            toast.error('設定の保存に失敗しました');
+            setSaveStatus('success');
+            toast.success('設定を保存しました');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        } catch (e: any) {
+            toast.error(e.message || '設定の保存に失敗しました');
         } finally {
             setIsSaving(false);
         }
