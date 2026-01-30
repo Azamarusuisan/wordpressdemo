@@ -9,42 +9,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-
-// プラン情報の型
-interface PlanInfo {
-    id: string;
-    name: string;
-    priceDisplay: string;
-    features: string[];
-}
-
-// プラン定義
-const PLANS: Record<string, PlanInfo> = {
-    free: {
-        id: 'free',
-        name: 'Free',
-        priceDisplay: '¥0/月',
-        features: ['AI画像生成（自分のAPIキー使用）', '最大10ページ', 'エクスポート機能']
-    },
-    pro: {
-        id: 'pro',
-        name: 'Pro',
-        priceDisplay: '¥10,000/月',
-        features: ['AI画像生成', '4Kアップスケール', 'リスタイル機能', '月間$16.67クレジット']
-    },
-    expert: {
-        id: 'expert',
-        name: 'Expert',
-        priceDisplay: '¥30,000/月',
-        features: ['Pro全機能', '動画生成', '優先サポート', '月間$50クレジット']
-    },
-    enterprise: {
-        id: 'enterprise',
-        name: 'Enterprise',
-        priceDisplay: '¥100,000/月',
-        features: ['Expert全機能', '無制限ページ', '専任サポート', '月間$166.67クレジット']
-    }
-};
+import { PLANS as PLAN_DEFINITIONS, type PlanType } from '@/lib/plans';
 
 export default function SettingsPageWrapper() {
     return (
@@ -295,7 +260,7 @@ function SettingsPage() {
         }
     };
 
-    const planInfo = PLANS[currentPlan] || PLANS.free;
+    const planInfo = PLAN_DEFINITIONS[currentPlan as PlanType] || PLAN_DEFINITIONS.free;
     const isFreePlan = currentPlan === 'free';
 
     return (
