@@ -9,6 +9,7 @@ import {
   checkCreditBalance,
   consumeCredit,
   getCurrentBalance,
+  InsufficientCreditError,
 } from '@/lib/credits';
 import { AI_COSTS, estimateImageCost, estimateTextCost } from '@/lib/ai-costs';
 import { getGoogleApiKeyWithInfo } from '@/lib/apiKeys';
@@ -237,6 +238,7 @@ export async function checkVideoGenerationLimit(
 
 /**
  * API使用後のクレジット消費
+ * InsufficientCreditErrorが発生した場合はそのままthrow（呼び出し側でハンドル）
  */
 export async function recordApiUsage(
   userId: string,
@@ -249,8 +251,21 @@ export async function recordApiUsage(
     imageCount?: number;
   }
 ): Promise<void> {
-  await consumeCredit(userId, actualCostUsd, generationRunId, details);
+  try {
+    await consumeCredit(userId, actualCostUsd, generationRunId, details);
+  } catch (error) {
+    if (error instanceof InsufficientCreditError) {
+      // レースコンディションでクレジット不足になった場合
+      // ログに記録して再throw
+      console.error(`[recordApiUsage] Race condition detected: user=${userId}, required=${actualCostUsd}, balance=${error.currentBalance}`);
+      throw error;
+    }
+    throw error;
+  }
 }
+
+// エラークラスをre-export
+export { InsufficientCreditError };
 
 /**
  * アップロードが可能かチェック

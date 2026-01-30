@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/pages/[id]/seo
@@ -9,6 +10,14 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const pageId = parseInt(params.id);
         if (isNaN(pageId)) {
@@ -17,11 +26,16 @@ export async function GET(
 
         const page = await prisma.page.findUnique({
             where: { id: pageId },
-            select: { id: true, title: true, slug: true, seoData: true }
+            select: { id: true, userId: true, title: true, slug: true, seoData: true }
         });
 
         if (!page) {
             return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+        }
+
+        // 所有権チェック
+        if (page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         let seoData = null;
@@ -56,10 +70,32 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const pageId = parseInt(params.id);
         if (isNaN(pageId)) {
             return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+        }
+
+        // 所有権チェック
+        const page = await prisma.page.findUnique({
+            where: { id: pageId },
+            select: { userId: true }
+        });
+
+        if (!page) {
+            return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+        }
+
+        if (page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -102,10 +138,32 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    // 認証チェック
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const pageId = parseInt(params.id);
         if (isNaN(pageId)) {
             return NextResponse.json({ error: 'Invalid page ID' }, { status: 400 });
+        }
+
+        // 所有権チェック
+        const page = await prisma.page.findUnique({
+            where: { id: pageId },
+            select: { userId: true }
+        });
+
+        if (!page) {
+            return NextResponse.json({ error: 'Page not found' }, { status: 404 });
+        }
+
+        if (page.userId !== user.id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         await prisma.page.update({

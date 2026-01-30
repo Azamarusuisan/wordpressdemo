@@ -13,6 +13,82 @@ import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 import { sendWelcomeEmail } from '@/lib/email';
 
+/**
+ * Webhookイベントの冪等性チェック
+ * 既に処理済みのイベントはスキップ、処理中のイベントは待機
+ */
+async function checkAndLockEvent(eventId: string, eventType: string): Promise<{ shouldProcess: boolean; eventRecord?: any }> {
+  try {
+    // 既存のイベントレコードを確認
+    const existingEvent = await prisma.webhookEvent.findUnique({
+      where: { eventId }
+    });
+
+    if (existingEvent) {
+      // 既に完了しているイベントはスキップ
+      if (existingEvent.status === 'completed') {
+        console.log(`[Webhook] Event ${eventId} already processed, skipping`);
+        return { shouldProcess: false };
+      }
+      // 処理中のイベントもスキップ（重複リクエスト）
+      if (existingEvent.status === 'processing') {
+        console.log(`[Webhook] Event ${eventId} is being processed, skipping`);
+        return { shouldProcess: false };
+      }
+      // failedの場合は再処理を許可（リトライ）
+    }
+
+    // 新規イベントの場合、または再処理の場合はロックを取得
+    const eventRecord = await prisma.webhookEvent.upsert({
+      where: { eventId },
+      update: {
+        status: 'processing',
+        updatedAt: new Date()
+      },
+      create: {
+        eventId,
+        eventType,
+        status: 'processing'
+      }
+    });
+
+    return { shouldProcess: true, eventRecord };
+  } catch (error: any) {
+    // ユニーク制約違反の場合（同時リクエスト）
+    if (error.code === 'P2002') {
+      console.log(`[Webhook] Concurrent request for event ${eventId}, skipping`);
+      return { shouldProcess: false };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Webhookイベントの完了をマーク
+ */
+async function markEventCompleted(eventId: string): Promise<void> {
+  await prisma.webhookEvent.update({
+    where: { eventId },
+    data: {
+      status: 'completed',
+      processedAt: new Date()
+    }
+  });
+}
+
+/**
+ * Webhookイベントの失敗をマーク
+ */
+async function markEventFailed(eventId: string, error: string): Promise<void> {
+  await prisma.webhookEvent.update({
+    where: { eventId },
+    data: {
+      status: 'failed',
+      error
+    }
+  });
+}
+
 // Supabase Admin Client（ユーザー作成用）
 function getSupabaseAdmin() {
   return createClient(
@@ -73,6 +149,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 冪等性チェック：既に処理済みのイベントはスキップ
+  const { shouldProcess, eventRecord } = await checkAndLockEvent(event.id, event.type);
+  if (!shouldProcess) {
+    return NextResponse.json({ received: true, skipped: true });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':
@@ -95,9 +177,16 @@ export async function POST(request: NextRequest) {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
+    // イベント処理完了をマーク
+    await markEventCompleted(event.id);
+
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
     console.error('Webhook handler error:', error);
+
+    // イベント処理失敗をマーク
+    await markEventFailed(event.id, error instanceof Error ? error.message : 'Unknown error');
+
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

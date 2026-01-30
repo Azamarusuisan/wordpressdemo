@@ -311,3 +311,20 @@ model Subscription {
 
   @@index([stripeCustomerId])
 }
+
+// Stripe Webhookイベント処理履歴（冪等性確保）
+model WebhookEvent {
+  id          Int       @id @default(autoincrement())
+  eventId     String    @unique // Stripe event.id (e.g., evt_1234567890abcdef)
+  eventType   String    // checkout.session.completed, invoice.paid, etc.
+  status      String    @default("pending") // pending | processing | completed | failed
+  rawData     String?   @db.Text // Full event JSON (optional for debugging)
+  error       String?   @db.Text // Error message if failed
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([eventId])
+  @@index([eventType, createdAt])
+  @@index([status])
+}

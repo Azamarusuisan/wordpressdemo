@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 
+// 管理者チェック
+async function isAdmin(userId: string): Promise<boolean> {
+    const userSettings = await prisma.userSettings.findUnique({
+        where: { userId },
+        select: { role: true }
+    });
+    return userSettings?.role === 'admin';
+}
+
 export async function GET() {
     // 認証チェック
     const supabase = await createClient();
@@ -9,6 +18,11 @@ export async function GET() {
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 管理者チェック
+    if (!await isAdmin(user.id)) {
+        return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
     }
 
     try {
@@ -30,6 +44,11 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 管理者チェック
+    if (!await isAdmin(user.id)) {
+        return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
     }
 
     try {

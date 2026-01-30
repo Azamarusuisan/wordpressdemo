@@ -33,20 +33,18 @@ export interface CreditSummary {
 
 /**
  * ユーザーのクレジット残高を取得（なければ作成）
+ * upsertを使用してレースコンディションを防ぐ
  */
 export async function getOrCreateCreditBalance(userId: string) {
-  let balance = await prisma.creditBalance.findUnique({
+  // upsertを使用して、findとcreateの間のレースコンディションを防ぐ
+  const balance = await prisma.creditBalance.upsert({
     where: { userId },
+    update: {}, // 既存の場合は何も更新しない
+    create: {
+      userId,
+      balanceUsd: new Decimal(0),
+    },
   });
-
-  if (!balance) {
-    balance = await prisma.creditBalance.create({
-      data: {
-        userId,
-        balanceUsd: new Decimal(0),
-      },
-    });
-  }
 
   return balance;
 }
@@ -81,8 +79,20 @@ export async function checkCreditBalance(
   };
 }
 
+// クレジット不足エラー
+export class InsufficientCreditError extends Error {
+  constructor(
+    public currentBalance: number,
+    public requiredAmount: number
+  ) {
+    super(`Insufficient credit: balance=${currentBalance}, required=${requiredAmount}`);
+    this.name = 'InsufficientCreditError';
+  }
+}
+
 /**
  * API使用後のクレジット消費
+ * トランザクション内で残高を再確認し、レースコンディションを防ぐ
  */
 export async function consumeCredit(
   userId: string,
@@ -96,8 +106,27 @@ export async function consumeCredit(
   }
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    // トランザクション内で現在の残高を取得（FOR UPDATEロック相当）
+    // Prismaでは直接FOR UPDATEは使えないが、$transaction内でのupdate操作は
+    // PostgreSQLの行レベルロックにより排他制御される
+    const currentBalance = await tx.creditBalance.findUnique({
+      where: { userId },
+      select: { balanceUsd: true }
+    });
+
+    if (!currentBalance) {
+      throw new Error(`Credit balance not found for user: ${userId}`);
+    }
+
+    const balance = Number(currentBalance.balanceUsd);
+
+    // トランザクション内で残高を再チェック（レースコンディション防止）
+    if (balance < costUsd) {
+      throw new InsufficientCreditError(balance, costUsd);
+    }
+
     // 残高を更新
-    const balance = await tx.creditBalance.update({
+    const updatedBalance = await tx.creditBalance.update({
       where: { userId },
       data: {
         balanceUsd: { decrement: costUsd },
@@ -110,7 +139,7 @@ export async function consumeCredit(
         userId,
         type: 'api_usage',
         amountUsd: new Decimal(-costUsd),
-        balanceAfter: balance.balanceUsd,
+        balanceAfter: updatedBalance.balanceUsd,
         description: `API使用: ${details.model}`,
         generationRunId,
         model: details.model,
