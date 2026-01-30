@@ -61,7 +61,7 @@ export function ModelBreakdownChart({ data }: { data: ModelData[] }) {
                                 }}
                                 formatter={(value: any, name: any) => {
                                     if (name === 'calls') return [value, 'API呼び出し'];
-                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'トークン'];
+                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'クレジット'];
                                     return [value, name];
                                 }}
                             />

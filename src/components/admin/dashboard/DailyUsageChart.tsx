@@ -56,7 +56,7 @@ export function DailyUsageChart({ data }: { data: DailyData[] }) {
                                 }}
                                 formatter={(value: any, name: any) => {
                                     if (name === 'count') return [value, 'API呼び出し'];
-                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'トークン'];
+                                    if (name === 'cost') return [formatTokens(usdToTokens(value)), 'クレジット'];
                                     return [value, name];
                                 }}
                             />

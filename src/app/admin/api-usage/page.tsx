@@ -177,7 +177,7 @@ export default function ApiUsageDashboard() {
                     <Title level={1} style={{ margin: 0 }}>
                         API使用状況
                     </Title>
-                    <Text type="secondary">AI APIの使用状況とトークン消費分析</Text>
+                    <Text type="secondary">AI APIの使用状況とクレジット消費分析</Text>
                 </Space>
 
                 {/* Period Selector */}
@@ -212,7 +212,7 @@ export default function ApiUsageDashboard() {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <StatCard
-                        title="消費トークン"
+                        title="消費クレジット"
                         value={formatTokens(usdToTokens(stats?.summary?.totalCost || 0))}
                         icon={Sparkles}
                         color="green"
@@ -250,7 +250,7 @@ export default function ApiUsageDashboard() {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <StatCard
-                        title="入力トークン"
+                        title="入力クレジット"
                         value={(stats?.summary?.totalInputTokens || 0).toLocaleString()}
                         icon={MessageSquare}
                         color="blue"
@@ -258,7 +258,7 @@ export default function ApiUsageDashboard() {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <StatCard
-                        title="出力トークン"
+                        title="出力クレジット"
                         value={(stats?.summary?.totalOutputTokens || 0).toLocaleString()}
                         icon={MessageSquare}
                         color="purple"
@@ -266,7 +266,7 @@ export default function ApiUsageDashboard() {
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <StatCard
-                        title="合計トークン"
+                        title="合計クレジット"
                         value={((stats?.summary?.totalInputTokens || 0) + (stats?.summary?.totalOutputTokens || 0)).toLocaleString()}
                         icon={MessageSquare}
                         color="green"
@@ -300,7 +300,7 @@ export default function ApiUsageDashboard() {
                                     color={token.colorSuccess}
                                 />
                                 <Title level={3} style={{ margin: 0 }}>
-                                    モデル別トークン消費
+                                    モデル別クレジット消費
                                 </Title>
                             </Flex>
 
@@ -344,7 +344,7 @@ export default function ApiUsageDashboard() {
                                                             type="success"
                                                             style={{ margin: 0 }}
                                                         >
-                                                            {formatTokens(usdToTokens(stats?.summary?.totalCost || 0))} トークン
+                                                            {formatTokens(usdToTokens(stats?.summary?.totalCost || 0))} クレジット
                                                         </Title>
                                                     )
                                                 }

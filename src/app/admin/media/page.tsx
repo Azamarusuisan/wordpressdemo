@@ -220,20 +220,6 @@ export default function MediaLibrary() {
                         <p className="text-sm text-muted-foreground mt-1 hidden sm:block">アップロードまたは生成されたすべてのアセットを管理します。</p>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <button
-                            onClick={() => setShowAIModal(true)}
-                            className="flex items-center gap-2 rounded-md bg-foreground px-3 sm:px-5 py-2.5 text-sm font-bold text-background hover:bg-foreground/90 transition-all min-h-[44px]"
-                        >
-                            <Sparkles className="h-4 w-4 text-primary-foreground" />
-                            <span className="hidden xs:inline">AI生成</span>
-                        </button>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-md bg-primary px-3 sm:px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all min-h-[44px]">
-                            <Upload className="h-4 w-4" />
-                            {uploading ? '...' : <span className="hidden xs:inline">アップロード</span>}
-                            <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
-                        </label>
-                    </div>
                 </div>
 
                 <div className="relative group">
