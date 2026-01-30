@@ -30,6 +30,7 @@ function SettingsPage() {
     const [canSetApiKey, setCanSetApiKey] = useState(false);
     const [currentPlan, setCurrentPlan] = useState('free');
     const [creditBalance, setCreditBalance] = useState<number | null>(null);
+    const [isLoadingCredits, setIsLoadingCredits] = useState(true);
     const [config, setConfig] = useState<any>({
         siteName: 'My Landing Page',
         github: { token: '', owner: '', repo: '', branch: 'main', path: 'public/lp' }
@@ -133,6 +134,7 @@ function SettingsPage() {
         fetchUserSettings();
 
         const fetchCreditBalance = async () => {
+            setIsLoadingCredits(true);
             try {
                 const res = await fetch('/api/user/credits');
                 if (res.ok) {
@@ -141,6 +143,8 @@ function SettingsPage() {
                 }
             } catch (e) {
                 console.error('Failed to fetch credit balance', e);
+            } finally {
+                setIsLoadingCredits(false);
             }
         };
         fetchCreditBalance();
@@ -308,7 +312,9 @@ function SettingsPage() {
                                 <p className="mt-1 sm:mt-1.5 text-sm text-gray-500 font-medium">
                                     {isFreePlan
                                         ? 'APIキーを設定して利用中'
-                                        : `トークン残高: ${creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}`
+                                        : isLoadingCredits
+                                            ? <span className="inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" />読み込み中...</span>
+                                            : `トークン残高: ${creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}`
                                     }
                                 </p>
                             </div>
@@ -439,16 +445,25 @@ function SettingsPage() {
                                     <div className="rounded-xl border border-gray-200 bg-white p-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-3xl font-bold text-gray-900 tracking-tight">
-                                                        {creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}
-                                                    </span>
-                                                    <span className="text-sm text-gray-500 font-medium">トークン</span>
-                                                </div>
-                                                <p className="text-xs text-gray-400 mt-1 align-middle flex items-center gap-1">
-                                                    <Sparkles className="h-3 w-3" />
-                                                    現在のトークン残高
-                                                </p>
+                                                {isLoadingCredits ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                                        <span className="text-sm text-gray-500">トークン残高を取得中...</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="text-3xl font-bold text-gray-900 tracking-tight">
+                                                                {creditBalance ? Math.round(creditBalance * 150 * 10).toLocaleString() : '0'}
+                                                            </span>
+                                                            <span className="text-sm text-gray-500 font-medium">トークン</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-400 mt-1 align-middle flex items-center gap-1">
+                                                            <Sparkles className="h-3 w-3" />
+                                                            現在のトークン残高
+                                                        </p>
+                                                    </>
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => setShowCreditPurchaseModal(true)}
@@ -1025,11 +1040,11 @@ function Step({ number, children }: { number: number; children: React.ReactNode 
     );
 }
 
-// プランごとのトークンパッケージ定義
+// プランごとのトークンパッケージ定義（全プラン共通: ¥20,000 = 50,000トークン）
 const PLAN_TOKEN_PACKAGES: Record<string, { id: number; name: string; priceJpy: number; tokens: number }> = {
-    pro: { id: 1, name: '50,000 トークン', priceJpy: 5000, tokens: 50000 },
-    business: { id: 2, name: '100,000 トークン', priceJpy: 10000, tokens: 100000 },
-    enterprise: { id: 3, name: '250,000 トークン', priceJpy: 25000, tokens: 250000 },
+    pro: { id: 1, name: '50,000 トークン', priceJpy: 20000, tokens: 50000 },
+    business: { id: 2, name: '50,000 トークン', priceJpy: 20000, tokens: 50000 },
+    enterprise: { id: 3, name: '50,000 トークン', priceJpy: 20000, tokens: 50000 },
 };
 
 // トークン購入モーダル
