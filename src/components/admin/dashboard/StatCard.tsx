@@ -43,7 +43,10 @@ export function StatCard({ title, value, icon: Icon, color, subValue }: StatCard
                 hoverable
                 styles={{
                     body: {
-                        padding: `${token.paddingSM}px`
+                        padding: `${token.paddingSM}px`,
+                        minHeight: 140,
+                        display: 'flex',
+                        flexDirection: 'column'
                     }
                 }}
             >
