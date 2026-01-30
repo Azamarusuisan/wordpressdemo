@@ -13,9 +13,9 @@ import { createClient } from '@/lib/supabase/client';
 // プラン定義（plans.tsと同期）
 const PLAN_INFO: Record<string, { name: string; color: string }> = {
     free: { name: '無料', color: 'text-gray-600' },
-    starter: { name: 'スターター', color: 'text-blue-600' },
-    pro: { name: 'プロ', color: 'text-purple-600' },
-    enterprise: { name: 'エンタープライズ', color: 'text-amber-600' },
+    pro: { name: 'Pro', color: 'text-blue-600' },
+    business: { name: 'Business', color: 'text-purple-600' },
+    enterprise: { name: 'Enterprise', color: 'text-amber-600' },
 };
 
 // ナビゲーションアイテムをコンポーネント外で定義（再生成防止）
