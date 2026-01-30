@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getGoogleApiKeyForUser } from '@/lib/apiKeys';
 import { logGeneration, createTimer } from '@/lib/generation-logger';
 import { estimateImageCost } from '@/lib/ai-costs';
+import { checkImageGenerationLimit, recordApiUsage } from '@/lib/usage';
 
 interface MaskArea {
     x: number;      // 選択範囲の左上X（0-1の比率）
@@ -60,6 +61,34 @@ export async function POST(request: NextRequest) {
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // クレジット残高チェック
+    const limitCheck = await checkImageGenerationLimit(user.id, 'gemini-3-pro-image-preview', 1);
+    if (!limitCheck.allowed) {
+        if (limitCheck.needApiKey) {
+            return NextResponse.json({
+                error: 'API_KEY_REQUIRED',
+                message: limitCheck.reason,
+            }, { status: 402 });
+        }
+        if (limitCheck.needSubscription) {
+            return NextResponse.json({
+                error: 'SUBSCRIPTION_REQUIRED',
+                message: limitCheck.reason,
+            }, { status: 402 });
+        }
+        return NextResponse.json({
+            error: 'INSUFFICIENT_CREDIT',
+            message: limitCheck.reason,
+            credits: {
+                currentBalance: limitCheck.currentBalanceUsd,
+                estimatedCost: limitCheck.estimatedCostUsd,
+            },
+            needPurchase: true,
+        }, { status: 402 });
+    }
+
+    const skipCreditConsumption = limitCheck.skipCreditConsumption || false;
 
     try {
         const { imageUrl, imageBase64, mask, masks, prompt, referenceDesign, referenceImageBase64 }: InpaintRequest = await request.json();
@@ -263,7 +292,7 @@ Generate the complete edited image with pixel-perfect quality now.`;
         );
 
         // ログ記録（成功）
-        await logGeneration({
+        const logResult = await logGeneration({
             userId: user.id,
             type: 'inpaint',
             endpoint: '/api/ai/inpaint',
@@ -273,6 +302,14 @@ Generate the complete edited image with pixel-perfect quality now.`;
             status: 'succeeded',
             startTime
         });
+
+        // クレジット消費（自分のAPIキー使用時はスキップ）
+        if (logResult && !skipCreditConsumption) {
+            await recordApiUsage(user.id, logResult.id, logResult.estimatedCost, {
+                model: modelUsed,
+                imageCount: 1,
+            });
+        }
 
         return result;
 
