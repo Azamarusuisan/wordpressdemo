@@ -431,16 +431,16 @@ export default function VideoInsertModal({
 
                         {videoSource === 'ai-generate' && (
                             <div className="space-y-4">
-                                {/* API課金費用 */}
-                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                {/* クレジット消費目安 */}
+                                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                                     <div className="flex items-center gap-2">
-                                        <DollarSign className="h-4 w-4 text-gray-600" />
-                                        <span className="text-xs font-bold text-gray-900">
-                                            AI動画生成の課金費用: 約${(aiDuration * 0.35).toFixed(2)}
+                                        <Sparkles className="h-4 w-4 text-indigo-600" />
+                                        <span className="text-xs font-bold text-indigo-800">
+                                            消費クレジット: 約{(aiDuration * 3500).toLocaleString()}クレジット
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-gray-600 mt-1 ml-6">
-                                        Veo 2: {aiDuration}秒 × $0.35/秒
+                                    <p className="text-[10px] text-indigo-600 mt-1 ml-6">
+                                        Veo 2: {aiDuration}秒 × 3,500クレジット/秒
                                     </p>
                                 </div>
 

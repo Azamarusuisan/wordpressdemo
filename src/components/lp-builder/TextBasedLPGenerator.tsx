@@ -10,10 +10,9 @@ import {
     Sparkles, X, AlertCircle, Loader2, DollarSign,
     ChevronRight, ChevronLeft, Check, Building2, Users,
     Target, Zap, MessageSquare, Award, HelpCircle, Lightbulb,
-    FileText, Palette, Wand2
+    FileText, Palette, Wand2, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { GEMINI_PRICING } from '@/lib/ai-costs';
 
 // Enhanced schema for deep product understanding
 const textBasedLPSchema = z.object({
@@ -102,6 +101,98 @@ const conversionGoalOptions = [
     { value: 'trial', label: '無料体験', desc: 'トライアル・お試し' },
 ];
 
+const genderOptions = [
+    { value: '', label: '指定なし' },
+    { value: 'male', label: '男性' },
+    { value: 'female', label: '女性' },
+    { value: 'both', label: '両方' },
+];
+
+// アコーディオン選択コンポーネント
+interface AccordionSelectProps {
+    label: string;
+    required?: boolean;
+    options: { value: string; label: string }[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    error?: string;
+}
+
+const AccordionSelect: React.FC<AccordionSelectProps> = ({
+    label,
+    required,
+    options,
+    value,
+    onChange,
+    placeholder = '選択してください',
+    error,
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div className="relative">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`
+                    w-full px-4 py-3 bg-white/60 border rounded-xl text-left transition-all flex items-center justify-between
+                    ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-gray-200 hover:border-indigo-300'}
+                    ${error ? 'border-red-300' : ''}
+                `}
+            >
+                <span className={`text-sm ${selectedOption?.value ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {selectedOption?.label || placeholder}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+                            {options.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(option.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`
+                                        w-full px-4 py-3 text-left text-sm transition-all flex items-center justify-between
+                                        ${value === option.value
+                                            ? 'bg-indigo-50 text-indigo-700 font-bold'
+                                            : 'hover:bg-gray-50 text-gray-700'
+                                        }
+                                    `}
+                                >
+                                    <span>{option.label}</span>
+                                    {value === option.value && <Check className="h-4 w-4 text-indigo-600" />}
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {error && (
+                <p className="text-red-500 text-[10px] mt-1">{error}</p>
+            )}
+        </div>
+    );
+};
+
 const STEPS = [
     { id: 1, title: '基本情報', icon: Building2, desc: 'ビジネスの基本情報' },
     { id: 2, title: '商品・サービス', icon: FileText, desc: '提供するものの詳細' },
@@ -144,6 +235,9 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
     const watchedImageStyle = watch('imageStyle');
     const watchedConversionGoal = watch('conversionGoal');
     const watchedBusinessType = watch('businessType');
+    const watchedIndustry = watch('industry');
+    const watchedProductCategory = watch('productCategory');
+    const watchedTargetGender = watch('targetGender');
 
     // Step validation before moving forward
     const validateStep = async (step: number): Promise<boolean> => {
@@ -353,23 +447,15 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                業種 <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                {...register('industry')}
-                                className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm"
-                            >
-                                <option value="">選択してください</option>
-                                {industryOptions.map((opt) => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                            </select>
-                            {errors.industry && (
-                                <p className="text-red-500 text-[10px] mt-1">{errors.industry.message}</p>
-                            )}
-                        </div>
+                        <AccordionSelect
+                            label="業種"
+                            required
+                            options={industryOptions.map(opt => ({ value: opt, label: opt }))}
+                            value={watchedIndustry || ''}
+                            onChange={(val) => setValue('industry', val)}
+                            placeholder="選択してください"
+                            error={errors.industry?.message}
+                        />
 
                         <div>
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
@@ -418,23 +504,15 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                カテゴリ <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                {...register('productCategory')}
-                                className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm"
-                            >
-                                <option value="">選択してください</option>
-                                {productCategories.map((cat) => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
-                            {errors.productCategory && (
-                                <p className="text-red-500 text-[10px] mt-1">{errors.productCategory.message}</p>
-                            )}
-                        </div>
+                        <AccordionSelect
+                            label="カテゴリ"
+                            required
+                            options={productCategories.map(cat => ({ value: cat, label: cat }))}
+                            value={watchedProductCategory || ''}
+                            onChange={(val) => setValue('productCategory', val)}
+                            placeholder="選択してください"
+                            error={errors.productCategory?.message}
+                        />
 
                         <div>
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
@@ -504,20 +582,13 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                                     placeholder="例: 30〜50代"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                    性別
-                                </label>
-                                <select
-                                    {...register('targetGender')}
-                                    className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm"
-                                >
-                                    <option value="">指定なし</option>
-                                    <option value="male">男性</option>
-                                    <option value="female">女性</option>
-                                    <option value="both">両方</option>
-                                </select>
-                            </div>
+                            <AccordionSelect
+                                label="性別"
+                                options={genderOptions}
+                                value={watchedTargetGender || ''}
+                                onChange={(val) => setValue('targetGender', val)}
+                                placeholder="指定なし"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -876,12 +947,13 @@ export const TextBasedLPGenerator: React.FC<TextBasedLPGeneratorProps> = ({
                             <div className="flex items-center gap-2">
                                 <DollarSign className="h-5 w-5 text-amber-600" />
                                 <span className="text-sm font-bold text-amber-800">
-                                    API課金費用: 約$0.20〜$0.50
+                                    トークン消費目安
                                 </span>
                             </div>
-                            <p className="text-xs text-amber-600 mt-1 ml-7">
-                                約5-10セクション × ${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage}（Gemini 3 Pro Image）
-                            </p>
+                            <div className="text-xs text-amber-600 mt-2 ml-7 space-y-1">
+                                <p>・テキスト生成: 約5,000〜10,000トークン（入力+出力）</p>
+                                <p>・画像生成: 約5〜10枚（1枚あたり約1,300トークン相当）</p>
+                            </div>
                         </div>
                     </div>
                 );

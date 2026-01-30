@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusinessInfoForm, BusinessInfo } from './BusinessInfoForm';
-import { Sparkles, X, AlertCircle, Loader2, DollarSign } from 'lucide-react';
-import { GEMINI_PRICING } from '@/lib/ai-costs';
+import { Sparkles, X, AlertCircle, Loader2 } from 'lucide-react';
 
 interface GeminiGeneratorModalProps {
     isOpen: boolean;
@@ -257,16 +256,16 @@ export const GeminiGeneratorModal: React.FC<GeminiGeneratorModalProps> = ({
                                 </motion.div>
                             )}
 
-                            {/* API課金費用の表示 */}
-                            <div className="mb-8 p-4 bg-amber-50/80 backdrop-blur-sm border border-amber-200 rounded-xl">
+                            {/* クレジット消費目安の表示 */}
+                            <div className="mb-8 p-4 bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 rounded-xl">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-5 w-5 text-amber-600" />
-                                    <span className="text-sm font-bold text-amber-800">
-                                        この作業のAPI課金費用: 約$0.67〜$1.34
+                                    <Sparkles className="h-5 w-5 text-indigo-600" />
+                                    <span className="text-sm font-bold text-indigo-800">
+                                        消費クレジット目安: 約6,500〜13,000クレジット
                                     </span>
                                 </div>
-                                <p className="text-xs text-amber-600 mt-1 ml-7">
-                                    約5-10セクション × ${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage}（Gemini 3 Pro Image）
+                                <p className="text-xs text-indigo-600 mt-1 ml-7">
+                                    約5〜10セクション × 1,300クレジット/枚
                                 </p>
                             </div>
 

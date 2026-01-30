@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, MousePointer2, Eraser, RotateCcw, Check, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
+import { X, Loader2, Wand2, MousePointer2, Eraser, RotateCcw, Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { GEMINI_PRICING } from '@/lib/ai-costs';
 
 interface MaskArea {
     x: number;
@@ -406,17 +405,17 @@ export function DesignUnifyModal({ sections, targetSectionId, onClose, onSuccess
                 {/* フッター */}
                 {step !== 'processing' && (
                     <div className="px-5 py-4 border-t bg-gray-50">
-                        {/* API課金費用の表示（draw-maskステップ時） */}
+                        {/* クレジット消費目安の表示（draw-maskステップ時） */}
                         {step === 'draw-mask' && masks.length === 1 && (
-                            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div className="mb-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-gray-600" />
-                                    <span className="text-xs font-bold text-gray-900">
-                                        この作業のAPI課金費用: 約${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(2)}
+                                    <Sparkles className="h-4 w-4 text-indigo-600" />
+                                    <span className="text-xs font-bold text-indigo-800">
+                                        消費クレジット: 約1,300クレジット
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-gray-600 mt-1 ml-6">
-                                    画像1枚 × ${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(3)}（Gemini 3 Pro Image）
+                                <p className="text-[10px] text-indigo-600 mt-1 ml-6">
+                                    画像1枚 × 1,300クレジット/枚
                                 </p>
                             </div>
                         )}

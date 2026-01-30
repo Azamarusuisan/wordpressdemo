@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone, Scissors, Type } from 'lucide-react';
+import { X, Loader2, Wand2, RotateCcw, ZoomIn, ZoomOut, Move, Trash2, Plus, DollarSign, Clock, Check, History, Link, MousePointer, ImagePlus, Palette, Sparkles, Monitor, Smartphone, Scissors, Type, Paintbrush, Box, Image as ImageIcon, PenTool, MessageSquare } from 'lucide-react';
 import { InpaintHistoryPanel } from './InpaintHistoryPanel';
 import { TextFixModule } from './TextFixModule';
 import type { ClickableArea, FormFieldConfig, ViewportType } from '@/types';
@@ -111,45 +111,45 @@ export function ImageInpaintEditor({
     const [slotAfter, setSlotAfter] = useState('');
 
     // 編集タイプごとのプリセット
-    const editTypeConfig: Record<EditType, { label: string; icon: string; beforePlaceholder: string; afterPlaceholder: string; examples: string[] }> = {
+    const editTypeConfig: Record<EditType, { label: string; Icon: React.ComponentType<{ className?: string }>; beforePlaceholder: string; afterPlaceholder: string; examples: string[] }> = {
         color: {
             label: '色',
-            icon: '🎨',
+            Icon: Paintbrush,
             beforePlaceholder: '例: 青いボタン',
             afterPlaceholder: '例: 緑のボタン',
             examples: ['赤', '青', '緑', '白', '黒', 'グレー', 'ゴールド']
         },
         text: {
             label: 'テキスト',
-            icon: '✏️',
+            Icon: Type,
             beforePlaceholder: '例: 無料体験',
             afterPlaceholder: '例: 今すぐ申込',
             examples: ['削除する', '日本語に', '英語に']
         },
         object: {
             label: 'オブジェクト',
-            icon: '📦',
+            Icon: Box,
             beforePlaceholder: '例: 左の人物',
             afterPlaceholder: '例: 削除して背景で埋める',
             examples: ['削除', '別の画像に', '移動']
         },
         background: {
             label: '背景',
-            icon: '🖼️',
+            Icon: ImageIcon,
             beforePlaceholder: '例: 白い背景',
             afterPlaceholder: '例: 青空の背景',
             examples: ['白に', '透明に', '青空', 'グラデーション']
         },
         style: {
             label: 'スタイル',
-            icon: '✨',
+            Icon: PenTool,
             beforePlaceholder: '例: シンプルなデザイン',
             afterPlaceholder: '例: モダンで洗練されたデザイン',
             examples: ['モダンに', 'ミニマルに', 'ポップに', 'プロフェッショナルに']
         },
         custom: {
             label: '自由入力',
-            icon: '💬',
+            Icon: MessageSquare,
             beforePlaceholder: '現在の状態を記述...',
             afterPlaceholder: '変更後の状態を記述...',
             examples: []
@@ -1780,24 +1780,27 @@ export function ImageInpaintEditor({
                                             何をしたい？
                                         </label>
                                         <div className="flex flex-wrap gap-1.5">
-                                            {(Object.keys(editTypeConfig) as EditType[]).map((type) => (
-                                                <button
-                                                    key={type}
-                                                    onClick={() => {
-                                                        setEditType(type);
-                                                        setSlotBefore('');
-                                                        setSlotAfter('');
-                                                    }}
-                                                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                                                        editType === type
-                                                            ? 'bg-primary text-primary-foreground shadow-sm'
-                                                            : 'bg-surface-100 text-muted-foreground hover:bg-surface-200 hover:text-foreground'
-                                                    }`}
-                                                >
-                                                    <span className="mr-1">{editTypeConfig[type].icon}</span>
-                                                    {editTypeConfig[type].label}
-                                                </button>
-                                            ))}
+                                            {(Object.keys(editTypeConfig) as EditType[]).map((type) => {
+                                                const { Icon } = editTypeConfig[type];
+                                                return (
+                                                    <button
+                                                        key={type}
+                                                        onClick={() => {
+                                                            setEditType(type);
+                                                            setSlotBefore('');
+                                                            setSlotAfter('');
+                                                        }}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                                                            editType === type
+                                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                                : 'bg-surface-100 text-muted-foreground hover:bg-surface-200 hover:text-foreground'
+                                                        }`}
+                                                    >
+                                                        <Icon className="h-3 w-3" />
+                                                        {editTypeConfig[type].label}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 

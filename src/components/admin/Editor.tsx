@@ -3297,13 +3297,13 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                                                         item.actionType === 'revert' ? 'bg-gray-100 text-gray-900' :
                                                                                             'bg-gray-100 text-gray-900'
                                                                 }`}>
-                                                                {item.actionType === 'design-unify' ? '🎨 デザイン統一' :
-                                                                    item.actionType === 'background-unify' ? '🎨 背景色統一' :
-                                                                        item.actionType === 'inpaint' ? '✏️ AI編集' :
-                                                                            item.actionType === 'regenerate' ? '🔄 再生成' :
-                                                                                item.actionType === 'regenerate-heavy-mobile' ? '🔄 モバイル再生成' :
-                                                                                    item.actionType === 'restore-canvas' ? '📐 キャンバス復元' :
-                                                                                        item.actionType === 'boundary-design' ? '🔗 境界デザイン' :
+                                                                {item.actionType === 'design-unify' ? 'デザイン統一' :
+                                                                    item.actionType === 'background-unify' ? '背景色統一' :
+                                                                        item.actionType === 'inpaint' ? 'AI編集' :
+                                                                            item.actionType === 'regenerate' ? '再生成' :
+                                                                                item.actionType === 'regenerate-heavy-mobile' ? 'モバイル再生成' :
+                                                                                    item.actionType === 'restore-canvas' ? 'キャンバス復元' :
+                                                                                        item.actionType === 'boundary-design' ? '境界デザイン' :
                                                                                             item.actionType === 'revert' ? '↩️ 復元' :
                                                                                                 item.actionType?.replace(/-/g, ' ') || '変更'}
                                                             </span>
@@ -5224,16 +5224,16 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                 </div>
                             </div>
 
-                            {/* API課金費用の表示 */}
-                            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                            {/* クレジット消費目安の表示 */}
+                            <div className="mt-4 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
                                 <div className="flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-amber-600" />
-                                    <span className="text-xs font-bold text-amber-800">
-                                        この作業のAPI課金費用: 約${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(2)}
+                                    <Sparkles className="h-4 w-4 text-indigo-600" />
+                                    <span className="text-xs font-bold text-indigo-800">
+                                        消費クレジット: 約1,300クレジット
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-amber-600 mt-1 ml-6">
-                                    画像1枚 × ${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(3)}（Gemini 3 Pro Image）
+                                <p className="text-[10px] text-indigo-600 mt-1 ml-6">
+                                    画像1枚 × 1,300クレジット/枚
                                 </p>
                             </div>
 
@@ -5336,7 +5336,7 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                                     : "text-gray-400 border-transparent hover:text-gray-600"
                                             )}
                                         >
-                                            🎨 デザイン統一
+                                            デザイン統一
                                         </button>
                                     )}
                                 </div>
@@ -5400,26 +5400,26 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                             {/* カスタムモード：スタイル選択 */}
                                             <div>
                                                 <label className="mb-2 block text-xs font-bold text-gray-700">スタイル</label>
-                                                <div className="grid grid-cols-3 gap-1.5">
+                                                <div className="flex flex-wrap gap-1.5">
                                                     {[
-                                                        { id: 'sampling', label: '元のまま', icon: '📋' },
-                                                        { id: 'professional', label: 'ビジネス', icon: '💼' },
-                                                        { id: 'pops', label: 'ポップ', icon: '🎉' },
-                                                        { id: 'luxury', label: '高級', icon: '✨' },
-                                                        { id: 'minimal', label: 'シンプル', icon: '◻️' },
-                                                        { id: 'emotional', label: '情熱', icon: '🔥' },
+                                                        { id: 'sampling', label: '元のまま' },
+                                                        { id: 'professional', label: 'ビジネス' },
+                                                        { id: 'pops', label: 'ポップ' },
+                                                        { id: 'luxury', label: '高級' },
+                                                        { id: 'minimal', label: 'シンプル' },
+                                                        { id: 'emotional', label: '情熱' },
                                                     ].map((s) => (
                                                         <button
                                                             key={s.id}
                                                             onClick={() => setBatchRegenerateStyle(s.id)}
                                                             className={clsx(
-                                                                "px-2 py-2 rounded-lg text-xs font-medium transition-all border",
+                                                                "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
                                                                 batchRegenerateStyle === s.id
                                                                     ? "border-blue-500 bg-blue-50 text-blue-700"
                                                                     : "border-gray-200 hover:border-gray-300 text-gray-600"
                                                             )}
                                                         >
-                                                            <span className="mr-1">{s.icon}</span>{s.label}
+                                                            {s.label}
                                                         </button>
                                                     ))}
                                                 </div>
@@ -5461,28 +5461,28 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                                         {/* モード */}
                                         <div>
                                             <label className="mb-2 block text-xs font-bold text-gray-700">変更の度合い</label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex gap-2">
                                                 <button
                                                     onClick={() => setBatchRegenerateGenerationMode('light')}
                                                     className={clsx(
-                                                        "px-3 py-2 rounded-lg text-xs font-medium transition-all border",
+                                                        "flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all border",
                                                         batchRegenerateGenerationMode === 'light'
                                                             ? "border-blue-500 bg-blue-50 text-blue-700"
                                                             : "border-gray-200 hover:border-gray-300 text-gray-600"
                                                     )}
                                                 >
-                                                    🎨 色・スタイルのみ
+                                                    色・スタイルのみ
                                                 </button>
                                                 <button
                                                     onClick={() => setBatchRegenerateGenerationMode('heavy')}
                                                     className={clsx(
-                                                        "px-3 py-2 rounded-lg text-xs font-medium transition-all border",
+                                                        "flex-1 px-3 py-2 rounded-full text-xs font-medium transition-all border",
                                                         batchRegenerateGenerationMode === 'heavy'
                                                             ? "border-blue-500 bg-blue-50 text-blue-700"
                                                             : "border-gray-200 hover:border-gray-300 text-gray-600"
                                                     )}
                                                 >
-                                                    🔄 レイアウトも変更
+                                                    レイアウトも変更
                                                 </button>
                                             </div>
                                         </div>
@@ -5518,24 +5518,25 @@ export default function Editor({ pageId, initialSections, initialHeaderConfig, i
                             </div>
                         )}
 
-                        {/* API課金費用の表示（フッター固定） */}
+                        {/* クレジット消費目安の表示（フッター固定） */}
                         {!isBatchRegenerating && (
-                            <div className="flex-shrink-0 px-5 py-3 border-t bg-amber-50">
+                            <div className="flex-shrink-0 px-5 py-3 border-t bg-indigo-50">
                                 {(() => {
                                     const baseCount = batchReferenceSection
                                         ? selectedSectionsForRegenerate.size - (selectedSectionsForRegenerate.has(batchReferenceSection) && !regenerateReferenceAlso ? 1 : 0)
                                         : selectedSectionsForRegenerate.size;
                                     const totalImages = includeMobileInBatch ? baseCount * 2 : baseCount;
-                                    const totalCost = totalImages * GEMINI_PRICING['gemini-3-pro-image-preview'].perImage;
+                                    const tokensPerImage = 1300;
+                                    const totalTokens = totalImages * tokensPerImage;
                                     return (
                                         <div className="flex items-center gap-2">
-                                            <DollarSign className="h-4 w-4 text-amber-600" />
+                                            <Sparkles className="h-4 w-4 text-indigo-600" />
                                             <div>
-                                                <span className="text-xs font-bold text-amber-800">
-                                                    この作業のAPI課金費用: 約${totalCost.toFixed(2)}
+                                                <span className="text-xs font-bold text-indigo-800">
+                                                    消費クレジット: 約{totalTokens.toLocaleString()}クレジット
                                                 </span>
-                                                <p className="text-[10px] text-amber-600">
-                                                    {baseCount}件{includeMobileInBatch ? ' × 2（PC+モバイル）' : ''} × ${GEMINI_PRICING['gemini-3-pro-image-preview'].perImage.toFixed(3)}
+                                                <p className="text-[10px] text-indigo-600">
+                                                    {baseCount}件{includeMobileInBatch ? ' × 2（PC+モバイル）' : ''} × {tokensPerImage.toLocaleString()}クレジット/枚
                                                 </p>
                                             </div>
                                         </div>
