@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/admin/settings?error=invalid_state`);
   }
 
-  const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(`${baseUrl}/admin/settings?error=not_configured`);

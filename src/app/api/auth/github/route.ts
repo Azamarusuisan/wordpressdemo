@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
+  const clientId = process.env.GITHUB_CLIENT_ID;
   if (!clientId) {
     return NextResponse.json({ error: 'GitHub OAuth is not configured' }, { status: 500 });
   }
