@@ -90,8 +90,8 @@ export async function GET() {
 
 // PATCH: プラン変更は削除（ユーザー自身がサブスクリプション購入で変更）
 
-// DELETE: ユーザーをBANまたはBAN解除
-export async function DELETE(request: NextRequest) {
+// PUT: ユーザーをBANまたはBAN解除
+export async function PUT(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

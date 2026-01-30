@@ -1,15 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, X, RefreshCw, Shield, Clock, Mail, Zap, Database, FileText, Crown, Ban, AlertTriangle, CreditCard, Plus, DollarSign } from 'lucide-react';
+import { Check, X, RefreshCw, Shield, Clock, Mail, Zap, Database, FileText, Crown, Ban, AlertTriangle, CreditCard, Plus, Coins } from 'lucide-react';
 
 // プラン定義（src/lib/plans.ts と同期）
 const PLANS = {
-    free: { name: 'Free', color: 'bg-gray-100 text-gray-700', description: '自分のAPIキー使用' },
-    pro: { name: 'Pro', color: 'bg-purple-100 text-purple-700', description: '月$16.67クレジット' },
-    expert: { name: 'Expert', color: 'bg-blue-100 text-blue-700', description: '月$50クレジット' },
-    enterprise: { name: 'Enterprise', color: 'bg-amber-100 text-amber-700', description: '月$166.67クレジット' },
+    free: { name: 'Free', color: 'bg-gray-100 text-gray-700', description: '自分のAPIキー使用', monthlyTokens: 0 },
+    pro: { name: 'Pro', color: 'bg-purple-100 text-purple-700', description: '月50,000トークン', monthlyTokens: 50000 },
+    business: { name: 'Business', color: 'bg-blue-100 text-blue-700', description: '月100,000トークン', monthlyTokens: 100000 },
+    enterprise: { name: 'Enterprise', color: 'bg-amber-100 text-amber-700', description: '月250,000トークン', monthlyTokens: 250000 },
 };
+
+// USD → トークン変換（1 USD = 150円、1円 = 10トークン → 1 USD = 1,500トークン）
+const USD_TO_TOKENS = 1500;
+const usdToTokens = (usd: number) => Math.round(usd * USD_TO_TOKENS);
+const tokensToUsd = (tokens: number) => tokens / USD_TO_TOKENS;
+
+// トークン表示用フォーマット
+const formatTokens = (tokens: number) => tokens.toLocaleString();
 
 interface UserUsage {
     monthlyGenerations: number;
@@ -32,8 +40,19 @@ interface User {
     usage: UserUsage;
 }
 
+interface Transaction {
+    id: string;
+    type: string;
+    amountUsd: number;
+    description: string | null;
+    createdAt: string;
+}
+
 interface CreditInfo {
     currentBalanceUsd: number;
+    currentBalanceTokens: number;
+    monthlyUsageTokens: number;
+    recentTransactions: Transaction[];
     loading: boolean;
 }
 
@@ -44,7 +63,7 @@ export default function UsersPage() {
     const [processing, setProcessing] = useState<string | null>(null);
     const [expandedUser, setExpandedUser] = useState<string | null>(null);
     const [creditInfoMap, setCreditInfoMap] = useState<Map<string, CreditInfo>>(new Map());
-    const [creditAmount, setCreditAmount] = useState<string>('10');
+    const [tokenAmount, setTokenAmount] = useState<string>('10000');
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -106,7 +125,13 @@ export default function UsersPage() {
         // ローディング状態を設定
         setCreditInfoMap(prev => {
             const newMap = new Map(prev);
-            newMap.set(userId, { currentBalanceUsd: 0, loading: true });
+            newMap.set(userId, {
+                currentBalanceUsd: 0,
+                currentBalanceTokens: 0,
+                monthlyUsageTokens: 0,
+                recentTransactions: [],
+                loading: true
+            });
             return newMap;
         });
 
@@ -116,26 +141,42 @@ export default function UsersPage() {
                 throw new Error('Failed to fetch credit info');
             }
             const data = await res.json();
+            const balanceUsd = data.currentBalanceUsd || 0;
+            const monthlyUsageUsd = data.monthlyUsageUsd || 0;
             setCreditInfoMap(prev => {
                 const newMap = new Map(prev);
-                newMap.set(userId, { currentBalanceUsd: data.currentBalanceUsd || 0, loading: false });
+                newMap.set(userId, {
+                    currentBalanceUsd: balanceUsd,
+                    currentBalanceTokens: usdToTokens(balanceUsd),
+                    monthlyUsageTokens: usdToTokens(monthlyUsageUsd),
+                    recentTransactions: data.recentTransactions || [],
+                    loading: false
+                });
                 return newMap;
             });
         } catch (err) {
             setCreditInfoMap(prev => {
                 const newMap = new Map(prev);
-                newMap.set(userId, { currentBalanceUsd: 0, loading: false });
+                newMap.set(userId, {
+                    currentBalanceUsd: 0,
+                    currentBalanceTokens: 0,
+                    monthlyUsageTokens: 0,
+                    recentTransactions: [],
+                    loading: false
+                });
                 return newMap;
             });
         }
     };
 
-    // クレジット付与
-    const handleCreditGrant = async (userId: string, amount: number) => {
-        if (amount <= 0) {
-            alert('金額は0より大きい値を入力してください');
+    // トークン付与（内部でUSDに変換してAPI呼び出し）
+    const handleTokenGrant = async (userId: string, tokens: number) => {
+        if (tokens <= 0) {
+            alert('トークン数は0より大きい値を入力してください');
             return;
         }
+
+        const amountUsd = tokensToUsd(tokens);
 
         try {
             setProcessing(userId);
@@ -144,24 +185,35 @@ export default function UsersPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
-                    amount,
-                    description: `管理者によるクレジット付与 $${amount}`,
+                    amount: amountUsd,
+                    description: `管理者によるトークン付与 ${formatTokens(tokens)}トークン`,
                 }),
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to grant credit');
+                throw new Error(data.error || 'Failed to grant tokens');
             }
 
             const data = await res.json();
+            const newBalanceTokens = usdToTokens(data.newBalance);
+            // 既存の情報を保持しながら残高だけ更新
             setCreditInfoMap(prev => {
                 const newMap = new Map(prev);
-                newMap.set(userId, { currentBalanceUsd: data.newBalance, loading: false });
+                const existing = prev.get(userId);
+                newMap.set(userId, {
+                    currentBalanceUsd: data.newBalance,
+                    currentBalanceTokens: newBalanceTokens,
+                    monthlyUsageTokens: existing?.monthlyUsageTokens || 0,
+                    recentTransactions: existing?.recentTransactions || [],
+                    loading: false
+                });
                 return newMap;
             });
+            // 履歴を最新に更新
+            fetchCreditInfo(userId);
 
-            alert(`$${amount} のクレジットを付与しました。新残高: $${data.newBalance.toFixed(2)}`);
+            alert(`${formatTokens(tokens)} トークンを付与しました。新残高: ${formatTokens(newBalanceTokens)} トークン`);
         } catch (err: any) {
             alert(err.message);
         } finally {
@@ -251,9 +303,9 @@ export default function UsersPage() {
                     </p>
                 </div>
                 <div className="bg-white rounded-lg border p-3 sm:p-4 col-span-2 sm:col-span-1">
-                    <p className="text-xs sm:text-sm text-gray-500">今月の総生成数</p>
+                    <p className="text-xs sm:text-sm text-gray-500">今月の総生成回数</p>
                     <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                        {users.reduce((sum, u) => sum + u.usage.monthlyGenerations, 0)}
+                        {users.reduce((sum, u) => sum + u.usage.monthlyGenerations, 0).toLocaleString()}
                     </p>
                 </div>
             </div>
@@ -305,7 +357,7 @@ export default function UsersPage() {
                                                 <span>{formatDate(user.createdAt)}</span>
                                                 <span className="flex items-center gap-1">
                                                     <Zap className="w-3 h-3 text-amber-500" />
-                                                    {user.usage.monthlyGenerations}回/月
+                                                    {user.usage.monthlyGenerations.toLocaleString()}生成/月
                                                 </span>
                                             </div>
                                         </div>
@@ -359,7 +411,7 @@ export default function UsersPage() {
                                         <div className="w-32 flex-shrink-0 text-right">
                                             <div className="flex items-center justify-end gap-1 text-sm text-gray-700">
                                                 <Zap className="w-4 h-4 text-amber-500" />
-                                                <span>{user.usage.monthlyGenerations}回/月</span>
+                                                <span>{user.usage.monthlyGenerations.toLocaleString()}生成/月</span>
                                             </div>
                                         </div>
                                         {/* Quick Actions */}
@@ -473,11 +525,11 @@ export default function UsersPage() {
                                             </div>
                                         </div>
 
-                                        {/* Credit Management */}
+                                        {/* Token Management */}
                                         <div className="mt-6 pt-4 border-t">
                                             <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                                                <CreditCard className="w-4 h-4 text-amber-500" />
-                                                クレジット管理
+                                                <Coins className="w-4 h-4 text-amber-500" />
+                                                トークン管理
                                             </h4>
                                             <div className="bg-white rounded-lg border p-4">
                                                 {/* 現在の残高 */}
@@ -488,7 +540,7 @@ export default function UsersPage() {
                                                             <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
                                                         ) : (
                                                             <span className="text-xl font-bold text-amber-600">
-                                                                ${(creditInfoMap.get(user.id)?.currentBalanceUsd || 0).toFixed(2)}
+                                                                {formatTokens(creditInfoMap.get(user.id)?.currentBalanceTokens || 0)} トークン
                                                             </span>
                                                         )}
                                                         <button
@@ -501,37 +553,37 @@ export default function UsersPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* クレジット付与 */}
+                                                {/* トークン付与 */}
                                                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                                                     <div className="flex-1">
-                                                        <label className="text-xs text-gray-500 mb-1 block">付与額 (USD)</label>
+                                                        <label className="text-xs text-gray-500 mb-1 block">付与数 (トークン)</label>
                                                         <div className="relative">
-                                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                             <input
                                                                 type="number"
-                                                                min="0.01"
-                                                                step="0.01"
-                                                                value={creditAmount}
-                                                                onChange={(e) => setCreditAmount(e.target.value)}
+                                                                min="100"
+                                                                step="100"
+                                                                value={tokenAmount}
+                                                                onChange={(e) => setTokenAmount(e.target.value)}
                                                                 className="w-full pl-9 pr-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 min-h-[44px]"
-                                                                placeholder="10.00"
+                                                                placeholder="10000"
                                                             />
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 flex-wrap">
-                                                        {[5, 10, 20, 50].map((amount) => (
+                                                        {[5000, 10000, 50000, 100000].map((amount) => (
                                                             <button
                                                                 key={amount}
-                                                                onClick={() => setCreditAmount(amount.toString())}
+                                                                onClick={() => setTokenAmount(amount.toString())}
                                                                 className="px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors min-h-[36px]"
                                                             >
-                                                                ${amount}
+                                                                {formatTokens(amount)}
                                                             </button>
                                                         ))}
                                                     </div>
                                                     <button
-                                                        onClick={() => handleCreditGrant(user.id, parseFloat(creditAmount) || 0)}
-                                                        disabled={processing === user.id || !creditAmount || parseFloat(creditAmount) <= 0}
+                                                        onClick={() => handleTokenGrant(user.id, parseInt(tokenAmount) || 0)}
+                                                        disabled={processing === user.id || !tokenAmount || parseInt(tokenAmount) <= 0}
                                                         className="px-4 py-2.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center justify-center gap-2 transition-colors min-h-[44px]"
                                                     >
                                                         <Plus className="w-4 h-4" />
@@ -541,8 +593,70 @@ export default function UsersPage() {
 
                                                 {/* 注意書き */}
                                                 <p className="text-xs text-gray-400 mt-3">
-                                                    ※ Freeプランのユーザーはクレジットを使用しません（自分のAPIキーを使用）
+                                                    ※ Freeプランのユーザーはトークンを使用しません（自分のAPIキーを使用）
                                                 </p>
+                                            </div>
+
+                                            {/* 今月の使用量 */}
+                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-gray-600">今月の使用量</span>
+                                                    <span className="font-medium text-gray-900">
+                                                        {formatTokens(creditInfoMap.get(user.id)?.monthlyUsageTokens || 0)} トークン
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* 使用履歴 */}
+                                            <div className="mt-4">
+                                                <h5 className="text-sm font-medium text-gray-700 mb-2">最近の履歴（直近20件）</h5>
+                                                {creditInfoMap.get(user.id)?.loading ? (
+                                                    <div className="flex items-center justify-center py-4">
+                                                        <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
+                                                    </div>
+                                                ) : creditInfoMap.get(user.id)?.recentTransactions?.length === 0 ? (
+                                                    <p className="text-sm text-gray-400 py-2">履歴がありません</p>
+                                                ) : (
+                                                    <div className="max-h-60 overflow-y-auto border rounded-lg divide-y divide-gray-100">
+                                                        {creditInfoMap.get(user.id)?.recentTransactions?.map((tx) => (
+                                                            <div key={tx.id} className="px-3 py-2 bg-white hover:bg-gray-50 text-sm">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`inline-flex items-center px-1.5 py-0.5 text-xs rounded ${
+                                                                            tx.type === 'api_usage' ? 'bg-red-100 text-red-700' :
+                                                                            tx.type === 'plan_grant' ? 'bg-green-100 text-green-700' :
+                                                                            tx.type === 'admin_grant' ? 'bg-blue-100 text-blue-700' :
+                                                                            tx.type === 'purchase' ? 'bg-purple-100 text-purple-700' :
+                                                                            'bg-gray-100 text-gray-700'
+                                                                        }`}>
+                                                                            {tx.type === 'api_usage' ? '使用' :
+                                                                             tx.type === 'plan_grant' ? 'プラン' :
+                                                                             tx.type === 'admin_grant' ? '付与' :
+                                                                             tx.type === 'purchase' ? '購入' :
+                                                                             tx.type}
+                                                                        </span>
+                                                                        <span className="text-gray-600 truncate max-w-[200px]">
+                                                                            {tx.description || '-'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className={`font-medium ${tx.amountUsd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                            {tx.amountUsd >= 0 ? '+' : ''}{formatTokens(usdToTokens(tx.amountUsd))}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-400">
+                                                                            {new Date(tx.createdAt).toLocaleDateString('ja-JP', {
+                                                                                month: '2-digit',
+                                                                                day: '2-digit',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 

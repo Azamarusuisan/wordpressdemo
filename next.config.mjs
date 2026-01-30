@@ -50,18 +50,18 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // スクリプト: self + インラインスクリプト（Next.jsが必要） + 外部サービス
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com",
+              // スクリプト: self + インラインスクリプト（Next.jsが必要） + Stripe + hCaptcha
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com",
               // スタイル: self + インラインスタイル（Tailwind等が必要）
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // フォント
               "font-src 'self' https://fonts.gstatic.com data:",
-              // 画像: self + Supabase Storage + data URI + blob
-              "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.com https://replicate.delivery https://pbxt.replicate.delivery",
-              // 接続先: self + Supabase + Stripe + AI APIs
-              "connect-src 'self' https://*.supabase.co https://*.supabase.com https://api.stripe.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.replicate.com wss://*.supabase.co",
-              // フレーム: Stripeの決済画面用
-              "frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com",
+              // 画像: self + Supabase Storage + data URI + blob + Stripe
+              "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.com https://replicate.delivery https://pbxt.replicate.delivery https://*.stripe.com",
+              // 接続先: self + Supabase + Stripe + AI APIs + hCaptcha
+              "connect-src 'self' https://*.supabase.co https://*.supabase.com https://api.stripe.com https://*.stripe.com https://hcaptcha.com https://*.hcaptcha.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.replicate.com wss://*.supabase.co",
+              // フレーム: Stripe決済 + hCaptcha
+              "frame-src 'self' https://js.stripe.com https://*.stripe.com https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com",
               // メディア
               "media-src 'self' blob: https://*.supabase.co https://*.supabase.com",
               // オブジェクト
@@ -69,7 +69,7 @@ const nextConfig = {
               // ベースURI
               "base-uri 'self'",
               // フォーム送信先
-              "form-action 'self'",
+              "form-action 'self' https://*.stripe.com",
               // frame-ancestors（クリックジャッキング対策）
               "frame-ancestors 'self'",
             ].join('; '),
