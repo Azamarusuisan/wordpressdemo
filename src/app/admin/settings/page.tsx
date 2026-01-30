@@ -903,28 +903,30 @@ function SettingsPage() {
                     )}
                 </div>
 
-                {/* 保存ボタン（フローティング） */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200 p-3 sm:p-4 z-50">
-                    <div className="max-w-5xl mx-auto flex justify-between items-center gap-3">
-                        <p className="text-xs sm:text-sm text-gray-500 font-medium hidden sm:block">
-                            {isSaving ? '保存中...' : saveStatus === 'success' ? '保存完了' : '変更を保存してください'}
-                        </p>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="flex items-center justify-center gap-2 bg-gray-900 text-white px-6 sm:px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-all disabled:opacity-50 shadow-sm min-h-[44px] w-full sm:w-auto"
-                        >
-                            {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : saveStatus === 'success' ? (
-                                <CheckCircle className="h-4 w-4" />
-                            ) : (
-                                <Save className="h-4 w-4" />
-                            )}
-                            変更を保存
-                        </button>
+                {/* 保存ボタン（フローティング） - プランタブ以外で表示 */}
+                {activeTab !== 'plan' && (
+                    <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200 p-3 sm:p-4 z-50">
+                        <div className="max-w-5xl mx-auto flex justify-between items-center gap-3">
+                            <p className="text-xs sm:text-sm text-gray-500 font-medium hidden sm:block">
+                                {isSaving ? '保存中...' : saveStatus === 'success' ? '保存完了' : '変更を保存してください'}
+                            </p>
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="flex items-center justify-center gap-2 bg-gray-900 text-white px-6 sm:px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-all disabled:opacity-50 shadow-sm min-h-[44px] w-full sm:w-auto"
+                            >
+                                {isSaving ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : saveStatus === 'success' ? (
+                                    <CheckCircle className="h-4 w-4" />
+                                ) : (
+                                    <Save className="h-4 w-4" />
+                                )}
+                                変更を保存
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* クレジット購入モーダル */}
