@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sidebar, MobileMenuButton } from '@/components/admin/Sidebar';
 import { SWRProvider } from '@/components/providers/SWRProvider';
+import { UserStatusGuard } from '@/components/auth/UserStatusGuard';
 
 export default function AdminLayout({
     children,
@@ -13,21 +14,24 @@ export default function AdminLayout({
 
     return (
         <SWRProvider>
-            <div className="flex min-h-screen bg-gray-50">
-                {/* モバイル用メニューボタン */}
-                <MobileMenuButton onClick={() => setSidebarOpen(true)} />
+            {/* BAN/planチェック（Node.js RuntimeのAPIを使用） */}
+            <UserStatusGuard requireSubscription={true}>
+                <div className="flex min-h-screen bg-gray-50">
+                    {/* モバイル用メニューボタン */}
+                    <MobileMenuButton onClick={() => setSidebarOpen(true)} />
 
-                {/* サイドバー */}
-                <Sidebar
-                    isOpen={sidebarOpen}
-                    onClose={() => setSidebarOpen(false)}
-                />
+                    {/* サイドバー */}
+                    <Sidebar
+                        isOpen={sidebarOpen}
+                        onClose={() => setSidebarOpen(false)}
+                    />
 
-                {/* メインコンテンツ */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden lg:ml-0 pt-14 lg:pt-0 min-w-0">
-                    {children}
-                </main>
-            </div>
+                    {/* メインコンテンツ */}
+                    <main className="flex-1 overflow-y-auto overflow-x-hidden lg:ml-0 pt-14 lg:pt-0 min-w-0">
+                        {children}
+                    </main>
+                </div>
+            </UserStatusGuard>
         </SWRProvider>
     );
 }

@@ -518,25 +518,44 @@ createServerClient(url, anonKey, {
 
 ### 13.1 利用一覧
 
-| ファイル | 目的 | 入力 | ログ方針 |
-|---------|------|------|----------|
-| `src/lib/supabase/middleware.ts` | UserSettings取得（BAN/plan確認） | userId (JWT由来) | なし |
-| `src/lib/supabase.ts` | Storage操作（画像アップロード） | ファイルデータ | アップロードログあり |
-| `src/app/api/webhooks/stripe/route.ts` | ユーザー作成 | Stripe metadata | Webhook処理ログあり |
-| `src/app/api/admin/users/route.ts` | ユーザー一覧取得 | なし | 管理者操作 |
+| ファイル | 目的 | 入力 | ログ方針 | Runtime |
+|---------|------|------|----------|---------|
+| `src/lib/supabase.ts` | Storage操作（画像アップロード） | ファイルデータ | アップロードログあり | Node.js |
+| `src/app/api/webhooks/stripe/route.ts` | ユーザー作成 | Stripe metadata | Webhook処理ログあり | Node.js |
+| `src/app/api/admin/users/route.ts` | ユーザー一覧取得 | なし | 管理者操作 | Node.js |
 
 ### 13.2 設計方針
 
+- **Edge Runtimeでは使用禁止**: service_roleはNode.js Runtimeのみで使用
 - **最小権限**: service_roleは必要な操作のみに使用
 - **フォールバック禁止**: anon keyへのフォールバックは廃止
 - **入力検証**: 外部入力（Stripe metadata等）は署名検証後に使用
 - **ログ**: 重要操作はGenerationRun/WebhookEventテーブルに記録
 
-### 13.3 Edge Runtime注意事項
+### 13.3 BAN/planチェックの設計
 
-- `src/lib/supabase/middleware.ts`はEdge Runtimeで動作
-- service_roleキーがEdge環境に露出するリスクあり
-- 対策: 環境変数はVercel Edge Configで保護
+以前はEdge Middleware（`src/lib/supabase/middleware.ts`）でservice_roleを使用してBAN/planチェックを行っていたが、
+セキュリティリスク（service_role漏洩時に全データ流出）を考慮し、以下の設計に変更:
+
+```
+【旧設計（危険）】
+Edge Middleware + service_role → DB直接アクセス → BAN/planチェック
+
+【新設計（安全）】
+Edge Middleware（認証のみ、anon key使用）
+    ↓
+クライアント: /api/user/status を呼び出し
+    ↓
+Node.js API（Prisma使用）→ BAN/planチェック
+    ↓
+クライアント: 結果に応じて /banned or /subscribe へリダイレクト
+```
+
+**関連ファイル:**
+- `src/lib/supabase/middleware.ts` - 認証のみ（service_role不使用）
+- `src/app/api/user/status/route.ts` - BAN/planチェックAPI（Node.js Runtime）
+- `src/components/auth/UserStatusGuard.tsx` - クライアント側リダイレクト処理
+- `src/app/admin/layout.tsx` - UserStatusGuardでラップ
 
 ---
 

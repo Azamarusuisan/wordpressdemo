@@ -1,41 +1,14 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-// ユーザーステータスをチェックする関数
-interface UserStatus {
-    isBanned: boolean;
-    hasActiveSubscription: boolean;
-    plan: string | null;
-}
-
-async function checkUserStatus(userId: string): Promise<UserStatus> {
-    // Supabaseの直接クエリを使用（Prismaはエッジランタイムで使えない）
-    const supabaseAdmin = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // UserSettingsを取得
-    const { data: settings } = await supabaseAdmin
-        .from('UserSettings')
-        .select('isBanned, plan')
-        .eq('userId', userId)
-        .single();
-
-    const isBanned = settings?.isBanned === true;
-    const plan = settings?.plan || null;
-
-    // 有効なサブスクリプションがあるかチェック
-    // planがfree以外なら有効（pro, business, enterprise）
-    const hasActiveSubscription = !!plan && plan !== 'free';
-
-    return {
-        isBanned,
-        hasActiveSubscription,
-        plan,
-    };
-}
+/**
+ * Edge Middleware - 認証のみ処理
+ *
+ * セキュリティ方針:
+ * - Edge Runtimeではservice_roleキーを使用しない（漏洩リスク回避）
+ * - BAN/planチェックは各APIルート（Node.js Runtime）で実施
+ * - ここでは認証状態の確認とセッション更新のみ行う
+ */
 
 export async function updateSession(request: NextRequest) {
     let response = NextResponse.next({
@@ -99,60 +72,24 @@ export async function updateSession(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
 
     // 認証不要のパブリックルート
-    const publicRoutes = ['/', '/auth/callback', '/terms', '/privacy', '/welcome'];
+    const publicRoutes = ['/', '/auth/callback', '/terms', '/privacy', '/welcome', '/banned', '/subscribe'];
     const isPublicRoute = publicRoutes.includes(pathname)
         || pathname.startsWith('/p/')
         || pathname.startsWith('/api/auth/')
-        || pathname.startsWith('/api/billing/checkout')
+        || pathname.startsWith('/api/billing/')
         || pathname.startsWith('/api/webhooks/')
+        || pathname.startsWith('/api/user/status')  // BAN/planチェック用API
         || pathname.startsWith('/reset-password');
-
-    // 特殊ページ
-    const isBannedPage = pathname === '/banned';
-    const isSubscriptionRequiredPage = pathname === '/subscribe';
-    const isAdminRoute = pathname.startsWith('/admin');
 
     // 未認証ユーザーがプライベートルートにアクセスした場合、ログインページへリダイレクト
     if (!user && !isPublicRoute) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // 認証済みユーザーの場合
-    if (user) {
-        // ユーザーステータスをチェック
-        const status = await checkUserStatus(user.id);
-
-        // BANされている場合は常にBANページへ
-        if (status.isBanned && !isBannedPage) {
-            return NextResponse.redirect(new URL('/banned', request.url));
-        }
-
-        // BANページにいるが、BANされていない場合はリダイレクト
-        if (isBannedPage && !status.isBanned) {
-            return NextResponse.redirect(new URL('/admin', request.url));
-        }
-
-        // 有効なサブスクリプションがない場合（adminルートへのアクセス時のみ）
-        if (isAdminRoute && !status.hasActiveSubscription) {
-            // サブスク必要ページへリダイレクト
-            return NextResponse.redirect(new URL('/subscribe', request.url));
-        }
-
-        // サブスク必要ページにいるが、すでにサブスクがある場合
-        if (isSubscriptionRequiredPage && status.hasActiveSubscription) {
-            return NextResponse.redirect(new URL('/admin', request.url));
-        }
-
-        // ログインページにアクセスしている場合
-        if (pathname === '/') {
-            if (status.isBanned) {
-                return NextResponse.redirect(new URL('/banned', request.url));
-            }
-            if (!status.hasActiveSubscription) {
-                return NextResponse.redirect(new URL('/subscribe', request.url));
-            }
-            return NextResponse.redirect(new URL('/admin', request.url));
-        }
+    // 認証済みユーザーがトップページにアクセスした場合、/adminへリダイレクト
+    // （BAN/planチェックは/admin側のクライアントコードまたはAPIで行う）
+    if (user && pathname === '/') {
+        return NextResponse.redirect(new URL('/admin', request.url));
     }
 
     return response;
